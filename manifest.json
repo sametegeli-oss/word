@@ -1,0 +1,16 @@
+{
+  "name": "Word Mode",
+  "short_name": "WordMode",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0a0d14",
+  "theme_color": "#0f1117",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1041/1041888.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
