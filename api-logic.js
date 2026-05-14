@@ -4,7 +4,19 @@
 let quizQuestions = [];
 let currentQuizIndex = 0;
 let quizCorrectCount = 0;
+// callAI fonksiyonu içinde, systemPrompt'u birleştir
+const CLEAN_SYSTEM_PROMPT = `
+${originalSystemPrompt}
 
+⚠️ ÖNEMLİ KURALLAR:
+- ASLA HTML etiketi kullanma (<div>, <span>, <color>, style=, font-weight:)
+- ASLA renk kodları yazma
+- Sadece düz metin kullan
+- **bold** için çift yıldız kullan
+- *italic* için tek yıldız kullan
+- Örnek cümleler için "tırnak" kullan
+- Emoji kullanabilirsin 😊
+`;
 function setQuizCount(n){
   document.getElementById('quizCount').value = n;
   document.querySelectorAll('.quiz-count-btn').forEach(b=>b.classList.remove('active'));
@@ -1467,7 +1479,78 @@ function loadAutoReadSetting(){
 }
 
 // İngilizce kelimeleri kırmızı renkle vurgula
-function highlightEnglishWords(text){
+// ══════════════════════════════════════════════════════════
+// DÜZELTİLMİŞ - AI METİN VURGULAMA (HTML etiketlerini temizler)
+// ══════════════════════════════════════════════════════════
+
+function highlightEnglishWords(text) {
+  if (!text) return '';
+  
+  // ADIM 0: AI'nın ürettiği HTML ETİKETLERİNİ TAMAMEN TEMİZLE
+  let result = text
+    // Renk etiketleri (color:...)
+    .replace(/color:[^;>"]+["']?/gi, '')
+    .replace(/font-weight:[^;>"]+["']?/gi, '')
+    .replace(/<color[^>]*>/gi, '')
+    .replace(/<\/color>/gi, '')
+    // Stil etiketleri
+    .replace(/style="[^"]*"/gi, '')
+    .replace(/style='[^']*'/gi, '')
+    // HTML tagları
+    .replace(/<[^>]+>/g, '')
+    // Markdown kalıntıları
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '');
+  
+  // ADIM 1: HTML karakterlerini escape et
+  result = result
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  
+  // ADIM 2: Markdown formatting (güvenli)
+  result = result.replace(/\*\*([^*\n]+?)\*\*/g, '<strong style="color:#60a5fa">$1</strong>');
+  result = result.replace(/\*([^*\n]+?)\*/g, '<em style="color:#a78bfa">$1</em>');
+  
+  // ADIM 3: Tırnak içindeki kelimeleri işaretle
+  if (highlightSettings && highlightSettings.quotes?.enabled) {
+    result = result.replace(/"([^"\n]{1,200})"/g, (fullMatch, content) => {
+      const highlighted = content.replace(/\b([A-Za-z]{2,})\b/g, (word) => {
+        return `<span class="en-word clickable-word" data-word="${word.toLowerCase()}" style="color:${highlightSettings.quotes.color};font-weight:700;cursor:pointer">${word}</span>`;
+      });
+      return `<span style="color:${highlightSettings.quotes.color}">"${highlighted}"</span>`;
+    });
+  }
+  
+  // ADIM 4: Parantez içi
+  if (highlightSettings && highlightSettings.parens?.enabled) {
+    result = result.replace(/\(([^)<>\n]{1,60})\)/g, `<span style="color:${highlightSettings.parens.color};font-weight:700">($1)</span>`);
+  }
+  
+  // ADIM 5: Tırnak DIŞINDA kalan İngilizce kelimeleri işaretle
+  const parts = result.split(/(<[^>]+>)/g);
+  result = parts.map((part) => {
+    if (part.startsWith('<')) return part;
+    
+    let processed = part.replace(/"[^"]*"/g, '\x01$&\x01');
+    
+    processed = processed.replace(/\b([A-Z][a-z]{2,}|[a-z]{4,})\b/g, (word) => {
+      if (/[çğıöşüÇĞİÖŞÜ]/.test(word)) return word;
+      // Türkçe kelimeleri atla (zorunlu)
+      const turkishWords = ['ve', 'ile', 'ki', 'de', 'da', 'bir', 'bu', 'şu', 'o', 'ben', 'sen'];
+      if (turkishWords.includes(word.toLowerCase())) return word;
+      
+      return `<span class="en-word clickable-word" data-word="${word.toLowerCase()}" style="color:#22c55e;font-weight:600;cursor:pointer">${word}</span>`;
+    });
+    
+    processed = processed.replace(/\x01([^]*?)\x01/g, '$1');
+    return processed;
+  }).join('');
+  
+  return result;
+}
+
+function highlightEnglishWordsilinecek(text){
   // ADIM 0: Markdown ve HTML kalıntılarını temizle (escape'den ÖNCE)
   let result = text
     // Markdown başlıkları (### ## #)
@@ -5745,8 +5828,180 @@ function addWordClickListeners(element) {
   
   walkNodes(element);
 }
-
 async function sendChat() {
+  const input = document.getElementById("chatInput");
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = "";
+  
+  // Kullanıcı mesajı
+  const userWrapper = document.createElement('div');
+  userWrapper.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin-bottom:12px;justify-content:flex-end';
+  
+  const userDiv = document.createElement('div');
+  userDiv.className = 'chat-msg user';
+  userDiv.textContent = msg;
+  
+  userWrapper.appendChild(userDiv);
+  document.getElementById('chatMessages').appendChild(userWrapper);
+  
+  chatHistory.push({ role: "user", content: msg });
+  
+  let systemPrompt, fullQuestion;
+  
+  if (chatMode === "turkish") {
+    systemPrompt = `Sen yardımsever bir Türkçe asistansın. Kullanıcının sorularına Türkçe cevap ver. Samimi ve arkadaşça ol. ASLA HTML etiketi kullanma. Sadece düz metin ve emoji kullan.`;
+    fullQuestion = msg;
+  } else {
+    const currentWord = (words && words[idx]) ? words[idx] : null;
+    const contextInfo = currentWord ? `Şu cümleyi öğreniyorum: "${currentWord.sentence || currentWord.word}" ${currentWord.sentenceTr ? `(Türkçe: "${currentWord.sentenceTr}")` : `(${currentWord.tr})`}. Ana kelime: "${currentWord.word}" (${currentWord.tr}).\n\n` : "";
+    
+    const levelPrompts = {
+      beginner: "Kullanıcı başlangıç seviyesinde. Çok basit cümleler kur, bol örnek ver. Akademik kelimelerden kaçın. Türkçe açıkla ama İngilizce örnekler ver.",
+      intermediate: "Kullanıcı orta seviyede. Detaylı dilbilgisi açıklamaları yap, farklı yapıları karşılaştır. Türkçe açıkla.",
+      advanced: "Kullanıcı ileri seviyede. Akademik terimler kullan, deyimler ve kültürel nüansları açıkla. İngilizce de kullanabilirsin."
+    };
+    
+    systemPrompt = `Sen bir İngilizce dil öğretmenisin.
+Seviye: ${aiUserLevel}
+${levelPrompts[aiUserLevel]}
+Görevin: Öğrencinin İngilizce sorusunu detaylı, eğitici ve teşvik edici şekilde cevapla.
+
+⚠️ ÖNEMLİ KURALLAR:
+1. ASLA HTML etiketi kullanma (color, font-weight, style, div, span vs.)
+2. ASLA renk kodları yazma (#22c55e, #60a5fa vb.)
+3. Sadece düz metin kullan, kelimeleri **bold** için **çift yıldız** kullan
+4. Cümle örneklerini "tırnak içinde" göster
+5. Madde işaretleri için • veya - kullan
+
+Madde işaretleri kullan, örnekler ver. Cümlenin dilbilgisi yapısını, zamanını ve kelime görevlerini açıkla.`;
+    
+    fullQuestion = contextInfo + "Öğrenci sorusu: " + msg;
+  }
+  
+  // AI mesajı wrapper
+  const aiWrapper = document.createElement('div');
+  aiWrapper.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;margin-bottom:12px;gap:8px';
+  
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'chat-msg ai';
+  typingDiv.innerHTML = `<em style="color:var(--muted)">🤖 Yazıyor...</em>`;
+  
+  aiWrapper.appendChild(typingDiv);
+  document.getElementById('chatMessages').appendChild(aiWrapper);
+  aiWrapper.scrollIntoView({ behavior: 'smooth' });
+  
+  try {
+    // AI çağrısı
+    const aiResponse = await callAI(systemPrompt, fullQuestion, 'chat');
+    let response = String(aiResponse.content || aiResponse);
+    
+    // HTML ETİKETLERİNİ TAMAMEN TEMİZLE (önlem)
+    response = response
+      .replace(/<color[^>]*>/gi, '')
+      .replace(/<\/color>/gi, '')
+      .replace(/<span[^>]*>/gi, '')
+      .replace(/<\/span>/gi, '')
+      .replace(/<div[^>]*>/gi, '')
+      .replace(/<\/div>/gi, '')
+      .replace(/<font[^>]*>/gi, '')
+      .replace(/<\/font>/gi, '')
+      .replace(/style="[^"]*"/gi, '')
+      .replace(/color:[^;>]+;?/gi, '')
+      .replace(/font-weight:[^;>]+;?/gi, '')
+      .replace(/<b>/gi, '**')
+      .replace(/<\/b>/gi, '**')
+      .replace(/<i>/gi, '*')
+      .replace(/<\/i>/gi, '*')
+      .replace(/<strong>/gi, '**')
+      .replace(/<\/strong>/gi, '**')
+      .replace(/<em>/gi, '*')
+      .replace(/<\/em>/gi, '*');
+    
+    // Markdown **bold** ve *italic* koru, geri kalan HTML taglarını temizle
+    response = response.replace(/<[^>]+>/g, '');
+    
+    // Vurgulamayı uygula (güvenli)
+    const highlighted = highlightEnglishWords(response);
+    typingDiv.innerHTML = highlighted.replace(/\n/g, '<br>');
+    
+    // Model badge ekle
+    if (aiResponse.model) {
+      const modelNames = {
+        'groq': 'Groq Llama 3.3',
+        'openai': 'OpenAI GPT-4o-mini',
+        'claude': 'Claude 3.5 Sonnet',
+        'gemini': 'Gemini 2.5 Flash',
+        'openrouter': 'OpenRouter (Ücretsiz)'
+      };
+      const modelColors = {
+        'groq': '#60a5fa',
+        'openai': '#10b981',
+        'claude': '#a78bfa',
+        'gemini': '#f59e0b',
+        'openrouter': '#22c55e'
+      };
+      
+      const modelName = modelNames[aiResponse.model] || aiResponse.model;
+      const modelColor = modelColors[aiResponse.model] || '#64748b';
+      
+      const badge = document.createElement('div');
+      badge.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: rgba(0,0,0,0.3);
+        border: 1px solid ${modelColor};
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 700;
+        color: ${modelColor};
+        margin-left: 8px;
+      `;
+      badge.innerHTML = `🤖 ${modelName} <span style="opacity:0.6">• ${aiResponse.tokenLimit} token</span>`;
+      aiWrapper.appendChild(badge);
+    }
+    
+    chatHistory.push({ role: "assistant", content: response });
+    if (chatHistory.length > 10) chatHistory.shift();
+    
+  } catch (error) {
+    console.error('Chat hatası:', error);
+    typingDiv.innerHTML = `<span style="color:var(--red)">❌ ${error.message || 'Yanıt alınamadı'}</span>`;
+  }
+  
+  // Ses butonları
+  const buttonRow = document.createElement('div');
+  buttonRow.style.cssText = 'display:flex;gap:6px;margin-left:8px';
+  
+  const aiSpeakBtn = document.createElement('button');
+  aiSpeakBtn.innerHTML = '🔊 Sesli Oku';
+  aiSpeakBtn.style.cssText = 'padding:6px 12px;border:none;border-radius:8px;background:var(--green);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif';
+  aiSpeakBtn.onclick = () => readMessageAloud(typingDiv);
+  buttonRow.appendChild(aiSpeakBtn);
+  
+  const aiStopBtn = document.createElement('button');
+  aiStopBtn.innerHTML = '🔇 Sus';
+  aiStopBtn.style.cssText = 'padding:6px 12px;border:none;border-radius:8px;background:var(--red);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif';
+  aiStopBtn.onclick = () => stopSpeech();
+  buttonRow.appendChild(aiStopBtn);
+  
+  aiWrapper.appendChild(buttonRow);
+  aiWrapper.scrollIntoView({ behavior: 'smooth' });
+  
+  // Otomatik sesli oku
+  if (enableAutoRead) {
+    setTimeout(() => readMessageAloud(typingDiv), 500);
+  }
+  
+  // Kelime tıklama
+  if (enableWordClick) {
+    typingDiv.addEventListener('dblclick', handleWordDoubleClick);
+    typingDiv.addEventListener('touchend', handleMobileTouchEnd);
+  }
+}
+async function sendChatsilinecek() {
   const input = document.getElementById("chatInput");
   const msg = input.value.trim();
   if (!msg) return;
