@@ -1552,6 +1552,44 @@ function highlightEnglishWords(text) {
   return result;
 }
 
+// ══════════════════════════════════════════════════════════
+// YARDIMCI FONKSİYON - AI Yanıtını Temizle (ÖN İŞLEME)
+// ══════════════════════════════════════════════════════════
+
+function cleanAIResponse(rawResponse) {
+  if (!rawResponse) return '';
+  
+  let cleaned = String(rawResponse);
+  
+  // Tüm CSS/HTML kalıntılarını yok et
+  cleaned = cleaned
+    .replace(/#[a-fA-F0-9]{3,6}\s*;?/gi, '')
+    .replace(/color:\s*[a-z]+/gi, '')
+    .replace(/color:\s*#[a-fA-F0-9]{3,6}/gi, '')
+    .replace(/font-weight:\s*\d+/gi, '')
+    .replace(/font-size:\s*[\d.]+px/gi, '')
+    .replace(/font-family:[^;]+/gi, '')
+    .replace(/display:\s*[^;]+/gi, '')
+    .replace(/background:[^;]+/gi, '')
+    .replace(/border[^:]+:[^;]+/gi, '')
+    .replace(/margin[^:]+:[^;]+/gi, '')
+    .replace(/padding[^:]+:[^;]+/gi, '')
+    .replace(/<\/?[a-z]+[^>]*>/gi, '')
+    .replace(/&lt;\/?[a-z]+[^&]*&gt;/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
+  
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
+  cleaned = cleaned
+    .replace(/\*\*([^*]+?)\*\*/g, '**$1**')
+    .replace(/\*([^*]+?)\*/g, '*$1*');
+  
+  return cleaned;
+}
+
 function highlightEnglishWordsilinecek(text){
   // ADIM 0: Markdown ve HTML kalıntılarını temizle (escape'den ÖNCE)
   let result = text
