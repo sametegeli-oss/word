@@ -11770,7 +11770,197 @@ async function callAI(systemPrompt, userMessage, aiType) {
     throw error;
   }
 }
+// ══════════════════════════════════════════════════════════
+// GELİŞMİŞ HATA YÖNETİMİ VE RETRY MEKANİZMASI
+// ══════════════════════════════════════════════════════════
 
+async function callAIWithRetry(systemPrompt, userMessage, aiType, maxRetries = 2) {
+  let lastError = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`🔄 AI çağrısı yeniden deneniyor (${attempt}/${maxRetries})...`);
+        // Exponential backoff
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+      
+      const result = await callAI(systemPrompt, userMessage, aiType);
+      return result;
+      
+    } catch (error) {
+      lastError = error;
+      console.error(`❌ Deneme ${attempt + 1} başarısız:`, error.message);
+      
+      // Rate limit hatası - daha uzun bekle
+      if (error.message.includes('rate') || error.message.includes('429')) {
+        await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
+      }
+    }
+  }
+  
+  throw new Error(`AI çağrısı ${maxRetries + 1} kez başarısız oldu: ${lastError?.message}`);
+}
+
+// ══════════════════════════════════════════════════════════
+// COMPRESSED STORAGE (localStorage optimizasyonu)
+// ══════════════════════════════════════════════════════════
+
+function compressData(data) {
+  // Basit string compression - JSON'u sıkıştır
+  const jsonStr = JSON.stringify(data);
+  if (jsonStr.length < 1000) return jsonStr;
+  
+  // Tekrarlayan desenleri kısalt
+  let compressed = jsonStr
+    .replace(/\"word\":/g, '"w":')
+    .replace(/\"translation\":/g, '"t":')
+    .replace(/\"level\":/g, '"l":')
+    .replace(/\"addedDate\":/g, '"a":')
+    .replace(/\"lastReviewed\":/g, '"r":')
+    .replace(/\"reviewCount\":/g, '"c":');
+  
+  return compressed;
+}
+
+function decompressData(compressed) {
+  if (!compressed) return null;
+  try {
+    // Önce normal parse dene
+    return JSON.parse(compressed);
+  } catch(e) {
+    // Compressed formatı dene
+    const decompressed = compressed
+      .replace(/\"w\":/g, '"word":')
+      .replace(/\"t\":/g, '"translation":')
+      .replace(/\"l\":/g, '"level":')
+      .replace(/\"a\":/g, '"addedDate":')
+      .replace(/\"r\":/g, '"lastReviewed":')
+      .replace(/\"c\":/g, '"reviewCount":');
+    return JSON.parse(decompressed);
+  }
+}
+
+// Optimize edilmiş saveLearnedWords
+function saveLearnedWordsOptimized() {
+  try {
+    const compressed = compressData(learnedWords);
+    localStorage.setItem('learnedWords_compressed', compressed);
+    console.log('💾 Öğrenilen kelimeler sıkıştırılarak kaydedildi:', 
+                (compressed.length / 1024).toFixed(1), 'KB');
+    
+    // Yedekleme (eski format)
+    localStorage.setItem('learnedWords', JSON.stringify(learnedWords));
+  } catch(e) {
+    console.error('❌ Sıkıştırılmış kayıt hatası:', e);
+    // Fallback - normal kaydet
+    try {
+      localStorage.setItem('learnedWords', JSON.stringify(learnedWords.slice(0, 500)));
+    } catch(e2) {
+      alert('⚠️ Depolama alanı doldu! Eski kelimeleri temizleyin.');
+    }
+  }
+}
+
+// Optimize edilmiş loadLearnedWords
+function loadLearnedWordsOptimized() {
+  try {
+    // Önce compressed versiyonu dene
+    const compressed = localStorage.getItem('learnedWords_compressed');
+    if (compressed) {
+      learnedWords = decompressData(compressed);
+      if (learnedWords && Array.isArray(learnedWords)) {
+        console.log('✅ Sıkıştırılmış veri yüklendi:', learnedWords.length, 'kelime');
+        return;
+      }
+    }
+    
+    // Fallback - normal format
+    const stored = localStorage.getItem('learnedWords');
+    if (stored) {
+      learnedWords = JSON.parse(stored);
+      console.log('✅ Normal format yüklendi:', learnedWords.length, 'kelime');
+    } else {
+      learnedWords = [];
+    }
+  } catch(e) {
+    console.error('❌ Yükleme hatası:', e);
+    learnedWords = [];
+  }
+  
+  // Bellek sınırı kontrolü - çok fazla kelime varsa uyar
+  if (learnedWords.length > 2000) {
+    console.warn('⚠️ Çok fazla kelime! Performans düşebilir.');
+  }
+}
+
+// Export edilmiş fonksiyonları replace et
+saveLearnedWords = saveLearnedWordsOptimized;
+loadLearnedWords = loadLearnedWordsOptimized;
+
+// ══════════════════════════════════════════════════════════
+// GELİŞMİŞ NOTIFICATION HANDLER (SW ile iletişim)
+// ══════════════════════════════════════════════════════════
+
+async function sendNotificationViaSW(title, body, tag = 'word-mode') {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    if (registration.active) {
+      registration.active.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title,
+        body,
+        tag
+      });
+      return true;
+    } else {
+      throw new Error('Service Worker aktif değil');
+    }
+  } catch(e) {
+    console.warn('SW notification failed, using fallback:', e);
+    if (Notification.permission === 'granted') {
+      new Notification(title, { body, tag });
+    }
+    return false;
+  }
+}
+
+// Hatırlatma sistemini güncelle
+function scheduleReminderImproved() {
+  if (reminderTimer) clearInterval(reminderTimer);
+  
+  const raw = localStorage.getItem('reminderSettings');
+  if (!raw) return;
+  
+  const settings = JSON.parse(raw);
+  if (!settings.dailyActive || Notification.permission !== 'granted') return;
+  
+  const [targetHour, targetMinute] = (settings.time || '09:00').split(':').map(Number);
+  
+  function checkAndSendReminder() {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const todayKey = `reminder_sent_${now.getFullYear()}_${now.getMonth()+1}_${now.getDate()}`;
+    
+    if (localStorage.getItem(todayKey)) return;
+    
+    const isTargetTime = (currentHour === targetHour && currentMinute === targetMinute);
+    const justMissed = (currentHour === targetHour && currentMinute > targetMinute && currentMinute <= targetMinute + 5);
+    
+    if (isTargetTime || justMissed) {
+      localStorage.setItem(todayKey, 'true');
+      sendNotificationViaSW(
+        '📚 Günlük Kelime Zamanı',
+        settings.msg || 'Bugün kelime çalışma zamanı! 🌱',
+        'daily-reminder'
+      );
+    }
+  }
+  
+  reminderTimer = setInterval(checkAndSendReminder, 30000);
+  setTimeout(checkAndSendReminder, 1000);
+}
 // OpenRouter API - SADECE ÜCRETSİZ MODELLER
 async function callOpenRouterAPI(systemPrompt, userMessage, maxTokens = 500) {
   if(!apiKeys.openrouter) {
