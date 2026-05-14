@@ -4,10 +4,9 @@
 let quizQuestions = [];
 let currentQuizIndex = 0;
 let quizCorrectCount = 0;
-// callAI fonksiyonu içinde, systemPrompt'u birleştir
-const CLEAN_SYSTEM_PROMPT = `
-${originalSystemPrompt}
 
+// ✅ DÜZELTİLMİŞ - originalSystemPrompt hatası giderildi
+const CLEAN_SYSTEM_PROMPT = `
 ⚠️ ÖNEMLİ KURALLAR:
 - ASLA HTML etiketi kullanma (<div>, <span>, <color>, style=, font-weight:)
 - ASLA renk kodları yazma
@@ -17,11 +16,14 @@ ${originalSystemPrompt}
 - Örnek cümleler için "tırnak" kullan
 - Emoji kullanabilirsin 😊
 `;
+
 function setQuizCount(n){
   document.getElementById('quizCount').value = n;
   document.querySelectorAll('.quiz-count-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('qc-'+n)?.classList.add('active');
 }
+
+
 
 function setQuizType(t){
   document.getElementById('quizType').value = t;
