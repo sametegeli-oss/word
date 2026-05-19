@@ -1,0 +1,106 @@
+{
+  "version": "2.0",
+  "exportDate": "2026-05-19T15:15:00.000Z",
+  "lastUpdatedPrompt": "context",
+  "prompts": {
+    "chat": {
+      "title": "💬 Konuşma Coach",
+      "system": "You are a helpful English teacher. Explain words clearly with simple examples and encourage practice.",
+      "user": "Explain the word '{{word}}' in simple terms. Include:\n1. Turkish translation (1-2 words)\n2. Simple example sentence\n3. When/how to use it\n4. Pronunciation tip for Turkish speakers",
+      "model": "groq",
+      "tokenLimit": 1500,
+      "isCustom": false,
+      "lastModified": null
+    },
+    "corrector": {
+      "title": "✏️ Düzeltici",
+      "system": "Sen bir İngilizce öğretmenisin. Cümleleri düzeltir ve öğretirsin.",
+      "user": "Cümle: \"{{sentence}}\"\n\nÖNEMLİ: Büyük/küçük harf ve noktalama farklarını (.,!?) HATA OLARAK SAYMA.\nSadece GERÇEK gramer hatalarını düzelt (yanlış zaman, kelime sırası, eksik kelime, yanlış edat).\n\nBu cümleyi analiz et:\n1. GERÇEK bir gramer hatası varsa düzelt\n2. Hatayı açıkla (Türkçe)\n3. Doğru cümleyi göster\n4. 2 benzer örnek ver\n\nFormat:\n❌ Yanlış: ... (sadece GERÇEK hata varsa)\n✅ Doğru: ...\n📚 Açıklama: ...\n💡 Örnekler: ...\n\nGERÇEK gramer hatası yoksa: \"✅ Cümle doğru!\"",
+      "model": "claude",
+      "tokenLimit": 2000,
+      "isCustom": false,
+      "lastModified": null
+    },
+    "conversation": {
+      "title": "🗣️ Konuşma Simülasyonu",
+      "system": "Sen {{scenario}} senaryosunda konuşan bir kişisin. Doğal ve gerçekçi konuş.",
+      "user": "{{userMessage}}",
+      "model": "groq",
+      "tokenLimit": 8000,
+      "isCustom": false,
+      "lastModified": null
+    },
+    "visual": {
+      "title": "🖼️ Görsel Açıklama",
+      "system": "Sen görselleri İngilizce açıklayan bir öğretmensin. Detaylı ve eğitici açıklamalar yaparsın.",
+      "user": "Bu görseli İngilizce açıkla:\n{{imageDescription}}\n\nAçıklamanda şunları ekle:\n- Görselde ne var?\n- Renkler, şekiller, objeler\n- 5-10 yeni kelime ve anlamları",
+      "model": "gemini",
+      "tokenLimit": 1500,
+      "isCustom": false,
+      "lastModified": null
+    },
+    "library": {
+      "title": "📚 Kütüphane Yönetimi",
+      "system": "You help create complete vocabulary entries with translations, examples, and pronunciation hints. Be concise and accurate.",
+      "user": "Word: '{{word}}'\n\nProvide ONLY a JSON object:\n{\n  \"tr\": \"Turkish translation (1-2 words)\",\n  \"sentence\": \"Simple example sentence\",\n  \"pronunciation\": \"Phonetic hint for Turkish speakers\"\n}",
+      "model": "groq",
+      "tokenLimit": 800,
+      "isCustom": false,
+      "lastModified": null
+    },
+    "test": {
+      "title": "📝 Quiz Oluşturucu",
+      "system": "Sen bir İngilizce sınav hazırlayıcısısın. {{level}} seviyesinde testler oluşturursun.",
+      "user": "Konu: {{topic}}\nSoru Sayısı: {{count}}\n\nÇoktan seçmeli sorular oluştur. Her soru için 4 şık ve doğru cevabı belirt.",
+      "model": "openrouter",
+      "tokenLimit": 800,
+      "isCustom": false,
+      "lastModified": null
+    },
+    "grammar": {
+      "title": "📚 Gramer Rehberi",
+      "system": "Sen bir İngilizce gramer öğretmenisin. Gramer konularını açık ve anlaşılır şekilde anlatırsın.",
+      "user": "Konu: {{topic}}\n\nBu gramer konusunu şu formatta anlat:\n1. Tanım ve ne zaman kullanılır\n2. Yapısı (formula)\n3. 5 örnek cümle\n4. Sık yapılan hatalar\n5. İpuçları",
+      "model": "claude",
+      "tokenLimit": 2000,
+      "isCustom": false,
+      "lastModified": null
+    },
+    "story": {
+      "title": "📖 AI Hikaye Üretici",
+      "system": "Sen profesyonel bir İngilizce hikaye yazarısın. {{level}} seviyesinde hikayeler yazıyorsun.",
+      "user": "Konu: {{topic}}\nSeviye: {{levelName}}\nKelime Sayısı: {{wordCount}}\nKullanılacak Kelimeler: {{words}}\n\nÖzel Talimatlar:\n{{instructions}}\n\nHikaye Formatı:\n- Başlık (Title) ekle\n- İlgi çekici başla\n- Net bir olay örgüsü olsun\n- Güzel bir son yap\n\n⚠️ ÖNEMLİ: Hikayede verilen kelimeleri MUTLAKA kullan.\n\nHikayeyi şimdi yaz:",
+      "model": "openai",
+      "tokenLimit": 3000,
+      "isCustom": false,
+      "lastModified": null
+    },
+    "podcast": {
+      "title": "🎧 AI Podcast Oluşturucu",
+      "system": "Sen profesyonel bir İngilizce podcast sunucususun. {{levelName}} seviyesinde podcast yapıyorsun.",
+      "user": "Konu: {{topicText}}\nSeviye: {{levelName}}\nKelime Sayısı: {{wordCount}}\n\nÖzel Talimatlar:\n{{instructions}}\n\nPodcast Formatı:\n1. İlgi çekici bir açılış yap (Hello listeners, welcome to...)\n2. Konuyu tanıt ve neden önemli olduğunu açıkla\n3. Ana noktaları detaylıca anlat (2-3 ana nokta)\n4. Örnekler ve açıklamalar ver\n5. Güzel bir kapanış yap (That's all for today...)\n\nÖNEMLİ:\n- Podcast sunucusu gibi konuş (samimi, sıcak, eğitici)\n- Doğal bir podcast akışı olsun\n- Sadece İngilizce yaz\n\nPodcast metnini şimdi yaz:",
+      "model": "groq",
+      "tokenLimit": 5000,
+      "isCustom": false,
+      "lastModified": null
+    },
+    "context": {
+      "title": "📝 Bağlam Öğreticisi (32 Örnek) ⭐",
+      "system": "Sen bir İngilizce öğretmenisin. Kelimelerin farklı bağlamlarda nasıl kullanıldığını öğretiyorsun.",
+      "user": "Kelime: {{word}}\n\nBu kelimeyi 32 farklı bağlamda kullanarak örnek cümleler yaz. Her cümle farklı bir anlam veya kullanım göstermeli.",
+      "model": "groq",
+      "tokenLimit": 12000,
+      "isCustom": true,
+      "lastModified": "2026-05-19T08:39:56.635Z"
+    }
+  },
+  "metadata": {
+    "totalPrompts": 10,
+    "customizedPrompts": 1,
+    "customPromptsList": [
+      "context"
+    ],
+    "userNote": "context prompt kullanıcı tarafından 32 örneğe özelleştirildi - groq modeli 12000 token limit ile çalışıyor",
+    "description": "Word Mode - Tüm AI Prompt Yedekleri - Eksiksiz 10 Prompt"
+  }
+}
