@@ -29084,333 +29084,526 @@ document.addEventListener("click", function(e){
 <!-- PRONUNCIATION MAP + VOICE FIX PATCH END -->
 
 
-<!-- FORCE PRONUNCIATION MAP SCREEN FIX START -->
+<!-- ════════════════════════════════════════════════════════════════════════
+     CONSOLIDATED BUG-FIX PATCH (v28-fix-1)
+     1) Gerçek Hayat sohbeti mobilde açılmıyor → sc-life için ilk AI mesajını
+        zorla göster ve "Sen Öner" butonunu sc-life'a ekle
+     2) Sen Öner basıldığında İngilizce cümleler görünmüyor → öneri kartlarını
+        sc-life'ın görünür alanına render et
+     3) Kadın seçildiğinde erkek sesi → tek bir merkezi voice picker,
+        gender mismatch'i pitch ile zorla maskele, voiceschanged'i bekle
+     4) Telaffuz haritasında iki kayıt butonu → ikinciyi gizle
+     5) Haritalandır butonuna basınca donuyor → MutationObserver'ı kapat /
+        sınırla, sonsuz döngüyü kır
+     ════════════════════════════════════════════════════════════════════════ -->
 <style>
-/* Eski sayfadaki kilitlenen / çakışan grafik bölümünü sadeleştir */
-#wmPronForcePanel{
-  margin-top:14px !important;
-  padding:14px !important;
-  border-radius:16px !important;
-  background:var(--bg2,#131720) !important;
-  border:1px solid var(--border,#252d42) !important;
-  color:var(--text,#e8eaf6) !important;
-}
-.wmpf-title{
-  font-size:14px;
-  font-weight:900;
-  color:var(--purple,#a78bfa);
-  margin-bottom:8px;
-}
-.wmpf-word{
-  font-size:24px;
-  font-weight:900;
-  color:var(--green,#22c55e);
-  margin-bottom:10px;
-}
-.wmpf-row{
-  display:flex;
-  gap:7px;
-  flex-wrap:wrap;
-  margin:10px 0;
-}
-.wmpf-chip{
-  min-width:34px;
-  padding:8px 9px;
-  border-radius:10px;
-  text-align:center;
-  font-size:16px;
-  font-weight:900;
-  border:1.5px solid var(--border,#252d42);
-  background:var(--bg3,#1c2130);
-}
-.wmpf-chip.ok{color:#4ade80;border-color:#166534;background:rgba(34,197,94,.10)}
-.wmpf-chip.close{color:#facc15;border-color:#854d0e;background:rgba(250,204,21,.10)}
-.wmpf-chip.bad{color:#fca5a5;border-color:#7f1d1d;background:rgba(239,68,68,.10)}
-.wmpf-chip.missing{color:#fb923c;border-color:#7c2d12;background:rgba(249,115,22,.10)}
-.wmpf-note{
-  margin-top:8px;
-  padding:10px 12px;
-  border-radius:10px;
-  background:var(--bg3,#1c2130);
-  color:var(--sub,#a0a8c8);
-  font-size:13px;
-  line-height:1.55;
-}
-.wmpf-legend{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  font-size:12px;
-  color:var(--muted,#7c85b0);
-  margin:8px 0;
-}
-.wmpf-input-fix{
-  border-color:var(--blue,#3b82f6) !important;
-}
+/* Telaffuz haritası: ikinci kayıt butonunu gizle (popup wmp-rec-btn yalnız
+   kelime popup içinde olmalı, sc-pronmap ekranı aktifken görünmesin) */
+#sc-pronmap.active ~ * #wmp-rec-btn,
+#sc-pronmap.active #wmp-rec-btn,
+#sc-pronmap #wmp-rec-btn { display:none !important; }
 
-/* Eski uydurma doğru grafik ve referans alanlarını tamamen kapat */
-#realReferenceWavePanel,
-#realTargetWaveCanvas,
-#realReferenceAudioInput,
-.real-wave-row,
-.target-wave-removed,
-#phonemeComparePanel,
-.phoneme-compare-panel{
-  display:none !important;
+/* Sen Öner kartları — sc-life içinde net görünüm */
+.scl-suggest-box{
+  margin-top:10px;padding:12px;border-radius:14px;
+  background:var(--bg2);border:1px solid var(--border);color:var(--text);
 }
+.scl-suggest-title{font-size:13px;font-weight:900;color:var(--purple);margin-bottom:8px;}
+.scl-suggest-card{
+  background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+  padding:10px;margin-bottom:8px;
+}
+.scl-suggest-label{
+  font-size:10px;font-weight:800;color:var(--muted);
+  letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;
+}
+.scl-suggest-text{font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.45;}
+.scl-suggest-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.scl-mini-btn{
+  flex:1 1 80px;min-width:74px;padding:8px 6px;border:none;border-radius:10px;
+  font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;
+}
+.scl-mini-green{background:#052e16;color:#86efac;}
+.scl-mini-purple{background:#1e1635;color:#c4b5fd;}
+.scl-mini-ghost{background:var(--bg2);color:var(--sub);border:1px solid var(--border);}
+
+/* sc-life'a "Sen Öner" / "Başlat" butonları */
+.scl-action-row{
+  display:flex;gap:8px;margin-top:10px;margin-bottom:10px;flex-wrap:wrap;
+}
+.scl-action-row button{
+  flex:1 1 110px;padding:10px 8px;border:none;border-radius:12px;
+  font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;
+}
+.scl-start{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;}
+.scl-suggest{background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16;}
+.scl-speak{background:#1e1635;color:#c4b5fd;}
 </style>
 
 <script>
 (function(){
 "use strict";
 
-function norm(s){
-  return String(s || "")
-    .toLowerCase()
-    .replace(/[^a-z']/g,"");
+/* ── 0. Yardımcılar ─────────────────────────────────────────────── */
+function $(id){return document.getElementById(id);}
+function toast(msg){
+  try{
+    if(typeof window.showToast==='function'){ window.showToast(msg,''); return; }
+  }catch(e){}
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;font-size:13px;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.4);';
+  el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2400);
 }
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 
-function esc(s){
-  return String(s || "").replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[m]));
-}
+/* ── 1. MERKEZİ KADIN / ERKEK SES SİSTEMİ ──────────────────────── */
+/* Bütün eski speak fonksiyonlarını override edip TEK noktadan ses
+   seçimi yaparız. Tarayıcıda kadın/erkek ayrı ses yoksa pitch farkı
+   ile maskeleriz. */
 
-function levenshteinAlign(target, spoken){
-  const a = norm(target);
-  const b = norm(spoken);
-  const m = a.length, n = b.length;
-  const dp = Array.from({length:m+1}, () => Array(n+1).fill(0));
+let _voicesCache = null;
+let _voicesReady = false;
 
-  for(let i=0;i<=m;i++) dp[i][0]=i;
-  for(let j=0;j<=n;j++) dp[0][j]=j;
-
-  for(let i=1;i<=m;i++){
-    for(let j=1;j<=n;j++){
-      const cost = a[i-1] === b[j-1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i-1][j] + 1,
-        dp[i][j-1] + 1,
-        dp[i-1][j-1] + cost
-      );
-    }
-  }
-
-  let i=m, j=n, out=[];
-  while(i>0 || j>0){
-    if(i>0 && j>0 && dp[i][j] === dp[i-1][j-1] + (a[i-1]===b[j-1] ? 0 : 1)){
-      out.push({t:a[i-1], s:b[j-1], status:a[i-1]===b[j-1] ? "ok" : "bad"});
-      i--; j--;
-    } else if(i>0 && dp[i][j] === dp[i-1][j] + 1){
-      out.push({t:a[i-1], s:"", status:"missing"});
-      i--;
-    } else {
-      j--;
-    }
-  }
-  return out.reverse();
-}
-
-const similarGroups = [
-  ["v","f","w"],
-  ["t","d"],
-  ["s","z"],
-  ["i","e","y"],
-  ["o","u","a"],
-  ["r","l"],
-  ["c","k","q"],
-  ["g","j"],
-  ["p","b"],
-  ["a","e"]
-];
-
-function isClose(a,b){
-  return similarGroups.some(g => g.includes(a) && g.includes(b));
-}
-
-function findPronScreen(){
-  const candidates = [...document.querySelectorAll(".screen,.card,section,div")];
-  return candidates.find(el => {
-    const t = (el.innerText || "").slice(0,1000);
-    return t.includes("Telaffuz Haritası") && t.includes("Haritala");
-  }) || document.body;
-}
-
-function findWordInput(root){
-  const inputs = [...root.querySelectorAll("input,textarea")];
-  return inputs.find(i => (i.value || "").trim() || (i.placeholder || "").toLowerCase().includes("kelime")) || inputs[0];
-}
-
-function findHeardInput(root){
-  const fields = [...root.querySelectorAll("input,textarea,div")];
-  return fields.find(el => {
-    const t = ((el.value || el.textContent || "") + " " + (el.placeholder || "")).toLowerCase();
-    return t.includes("duyulan") || t.includes("okunan") || t.includes("volint");
-  });
-}
-
-function getTargetWord(){
-  const root = findPronScreen();
-  const input = findWordInput(root);
-  const v = input && (input.value || input.textContent || "").trim();
-  if(v) return v;
-
-  if(window.words && typeof window.idx !== "undefined" && window.words[window.idx]){
-    return window.words[window.idx].word || window.words[window.idx].en || "";
-  }
-
-  const wc = document.querySelector(".wc-word,.fc-word,#currentWord,[data-current-word]");
-  return wc ? wc.textContent.trim() : "";
-}
-
-function getSpokenText(){
-  const root = findPronScreen();
-  const heard = findHeardInput(root);
-  let text = heard && (heard.value || heard.textContent || "").trim();
-
-  if(text){
-    text = text.replace(/^Duyulan\/okunan kelime:\s*/i,"").trim();
-    if(text) return text;
-  }
-
-  return window.WM_lastSpokenText || window.lastRecognizedText || "";
-}
-
-function renderForcedMap(target, spoken){
-  const root = findPronScreen();
-  if(!root || !target) return;
-
-  let panel = root.querySelector("#wmPronForcePanel");
-  if(!panel){
-    panel = document.createElement("div");
-    panel.id = "wmPronForcePanel";
-
-    const oldGraph = [...root.querySelectorAll("div")].find(el => 
-      (el.innerText || "").includes("Kendi Ses Kaydın + Grafik Karşılaştırma")
-    );
-
-    if(oldGraph && oldGraph.parentNode){
-      oldGraph.parentNode.insertBefore(panel, oldGraph);
-    } else {
-      root.appendChild(panel);
-    }
-  }
-
-  const arr = spoken ? levenshteinAlign(target, spoken).map(x => {
-    if(x.status === "bad" && isClose(x.t,x.s)) return {...x, status:"close"};
-    return x;
-  }) : [];
-
-  const chips = arr.length
-    ? arr.map(x => `<span class="wmpf-chip ${x.status}" title="Beklenen: ${esc(x.t)}${x.s ? " | Duyulan: " + esc(x.s) : " | Duyulmadı"}">${esc(x.t)}</span>`).join("")
-    : `<div class="wmpf-note">Önce hedef kelimeyi yaz, sonra duyulan/okunan kelime alanına sonucu gir veya sesle kayıt yap. Sonra <b>Haritala</b> butonuna bas.</div>`;
-
-  const weak = arr.filter(x => x.status !== "ok").map(x => x.t);
-  const score = arr.length ? Math.round((arr.filter(x=>x.status==="ok").length / arr.length) * 100) : 0;
-
-  panel.innerHTML = `
-    <div class="wmpf-title">🎯 Çalışan Telaffuz Haritası</div>
-    <div class="wmpf-word">${esc(target)}</div>
-    <div class="wmpf-legend">
-      <span>✅ doğru</span>
-      <span>⚠️ yakın</span>
-      <span>❌ hatalı</span>
-      <span>🟠 eksik</span>
-    </div>
-    <div class="wmpf-row">${chips}</div>
-    <div class="wmpf-note">
-      Skor: <b>${score || "-"}</b>${score ? "/100" : ""}<br>
-      ${weak.length ? "Dikkat edilecek sesler: <b>" + esc([...new Set(weak)].join(", ")) + "</b>" : "Kayıttan sonra hatalı sesler burada görünecek."}
-      <br>Not: Senin ses dalga grafiğin aşağıda kalır; sahte doğru ses grafiği gösterilmez.
-    </div>
-  `;
-}
-
-function mapNow(){
-  const target = getTargetWord();
-  const spoken = getSpokenText();
-
-  if(!target){
-    alert("Önce hedef kelimeyi yaz.");
-    return;
-  }
-
-  renderForcedMap(target, spoken || target);
-}
-
-function patchButtons(){
-  const root = findPronScreen();
-  if(!root || root.dataset.wmpfPatched) return;
-
-  const buttons = [...root.querySelectorAll("button")];
-  const mapBtn = buttons.find(b => (b.innerText || "").trim().toLowerCase().includes("haritala"));
-  if(mapBtn){
-    mapBtn.onclick = function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      mapNow();
+function loadVoices(){
+  return new Promise(resolve=>{
+    const tryGet = ()=>{
+      const v = speechSynthesis.getVoices ? speechSynthesis.getVoices() : [];
+      if(v && v.length){
+        _voicesCache = v; _voicesReady = true;
+        resolve(v);
+        return true;
+      }
       return false;
     };
-  }
-
-  const wordInput = findWordInput(root);
-  if(wordInput){
-    wordInput.classList.add("wmpf-input-fix");
-    wordInput.addEventListener("input", () => {
-      setTimeout(() => renderForcedMap(getTargetWord(), getSpokenText()), 120);
-    });
-  }
-
-  root.dataset.wmpfPatched = "1";
-}
-
-function observeSpeech(){
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(SR && !window.__wmpfSpeechPatched){
-    window.__wmpfSpeechPatched = true;
-    const Original = SR;
-    const Patched = function(){
-      const rec = new Original();
-      rec.addEventListener("result", function(e){
-        try{
-          const txt = Array.from(e.results).map(r => r[0] && r[0].transcript || "").join(" ").trim();
-          if(txt){
-            window.WM_lastSpokenText = txt;
-            renderForcedMap(getTargetWord(), txt);
-          }
-        }catch(_){}
-      });
-      return rec;
-    };
-    window.SpeechRecognition = Patched;
-    window.webkitSpeechRecognition = Patched;
-  }
-}
-
-function boot(){
-  patchButtons();
-  observeSpeech();
-
-  const root = findPronScreen();
-  if(root && (root.innerText || "").includes("Telaffuz Haritası")){
-    renderForcedMap(getTargetWord(), getSpokenText());
-  }
-}
-
-document.addEventListener("DOMContentLoaded", function(){
-  boot();
-  const obs = new MutationObserver(function(){
-    clearTimeout(window.__wmpfTimer);
-    window.__wmpfTimer = setTimeout(boot, 200);
+    if(tryGet()) return;
+    let tries = 0;
+    const id = setInterval(()=>{
+      tries++;
+      if(tryGet() || tries > 20){ clearInterval(id); resolve(_voicesCache || []); }
+    }, 150);
+    if(typeof speechSynthesis !== 'undefined' && 'onvoiceschanged' in speechSynthesis){
+      speechSynthesis.onvoiceschanged = ()=>{ if(tryGet()) clearInterval(id); };
+    }
   });
-  obs.observe(document.body, {childList:true, subtree:true, characterData:true});
+}
+// Erken yükle
+if(typeof speechSynthesis !== 'undefined'){ loadVoices(); }
+
+/* Anlık aktif karakter cinsiyetini bul */
+function detectGender(){
+  try{
+    const c = (window.WMForcedRealLife && window.WMForcedRealLife.state && window.WMForcedRealLife.state.character) ||
+              (window.WordModePro     && window.WordModePro.state     && window.WordModePro.state.activeCharacter) ||
+              (window.WM              && window.WM.state              && window.WM.state.activeCharacter);
+    if(c==='emma' || c==='sophia') return 'female';
+    if(c==='mike' || c==='jack')   return 'male';
+  }catch(e){}
+  return 'female'; // default
+}
+function detectAccent(){
+  try{
+    return (window.WMForcedRealLife && window.WMForcedRealLife.state && window.WMForcedRealLife.state.accent) ||
+           (window.WM              && window.WM.state              && window.WM.state.accent) ||
+           'en-US';
+  }catch(e){ return 'en-US'; }
+}
+function detectLevel(){
+  try{
+    return (window.WMForcedRealLife && window.WMForcedRealLife.state && window.WMForcedRealLife.state.level) ||
+           (window.WM              && window.WM.state              && window.WM.state.level) ||
+           'A2';
+  }catch(e){ return 'A2'; }
+}
+
+const femaleHints = ['female','woman','zira','samantha','susan','serena','victoria','karen','moira','tessa','aria','jenny','mia','sonia','catherine','allison','ava','google us english','google uk english female'];
+const maleHints   = ['male','man','david','alex','daniel','tom','fred','ralph','guy','ryan','george','google uk english male'];
+
+function pickVoiceSync(gender, accent){
+  const voices = _voicesCache || (speechSynthesis.getVoices ? speechSynthesis.getVoices() : []);
+  if(!voices.length) return null;
+  const hints = gender === 'female' ? femaleHints : maleHints;
+  const oppHints = gender === 'female' ? maleHints : femaleHints;
+  const langShort = (accent || 'en-US').split('-')[0].toLowerCase();
+
+  const lower = v => (v.name || '').toLowerCase();
+  // 1) Tam aksan + cinsiyet ipucu
+  let v = voices.find(v => v.lang === accent && hints.some(h=>lower(v).includes(h)));
+  // 2) İngilizce + cinsiyet ipucu
+  if(!v) v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(langShort) && hints.some(h=>lower(v).includes(h)));
+  // 3) Karşı cinsiyetten KAÇIN, sadece İngilizce
+  if(!v) v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(langShort) && !oppHints.some(h=>lower(v).includes(h)));
+  // 4) Tam aksan
+  if(!v) v = voices.find(v => v.lang === accent);
+  // 5) Herhangi bir İngilizce
+  if(!v) v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+  return v || voices[0] || null;
+}
+
+async function centralSpeak(text){
+  if(!window.speechSynthesis || !text) return;
+  const clean = String(text).replace(/🇹🇷.*|💡.*|🔊.*|🎤.*/g,'').trim();
+  if(!clean) return;
+
+  speechSynthesis.cancel();
+  if(!_voicesReady) await loadVoices();
+
+  const gender = detectGender();
+  const accent = detectAccent();
+  const level  = detectLevel();
+
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang = accent;
+  const v = pickVoiceSync(gender, accent);
+  if(v) u.voice = v;
+
+  // Pitch & rate — kadın/erkek ayrımı yoksa pitch ile maskele
+  // (Çok abartmıyoruz; doğal kalsın diye 1.25 / 0.78 sınırlar)
+  if(gender === 'female'){
+    u.pitch = 1.25;
+  }else{
+    u.pitch = 0.78;
+  }
+  u.rate = level==='A1' ? .78 : level==='A2' ? .86 : level==='B1' ? .95 : level==='B2' ? 1.03 : 1.08;
+
+  // iOS Safari için küçük delay ile tetikle (bazen ilk seferde sessiz kalıyor)
+  setTimeout(()=>{ try{ speechSynthesis.speak(u); }catch(e){} }, 30);
+}
+
+// Tüm eski speak override'larını TEK fonksiyona bağla
+window.WM_centralSpeak = centralSpeak;
+setTimeout(()=>{
+  try{ if(window.WMForcedRealLife) window.WMForcedRealLife.speak = centralSpeak; }catch(e){}
+  try{ if(window.WordModePro)      window.WordModePro.speak      = centralSpeak; }catch(e){}
+  try{ if(window.WMNG)              window.WMNG.speakText         = centralSpeak; }catch(e){}
+  try{ if(window.WM)                window.WM.speak               = centralSpeak; }catch(e){}
+  try{ window.WM_speakBetter = centralSpeak; }catch(e){}
+}, 1500);
+// Sayfa yüklendikten sonra ekstra ezgi
+setTimeout(()=>{
+  try{ if(window.WMNG) window.WMNG.speakText = centralSpeak; }catch(e){}
+  try{ if(window.WM)   window.WM.speak       = centralSpeak; }catch(e){}
+}, 3000);
+
+/* ── 2. SC-LIFE EKRANI: gerçek hayat sohbet düzeltmesi ─────────── */
+/* sc-life ekranı sadece WMNG.sendLifeMessage'a bağlı, ama ilk AI
+   mesajı hiç görünmüyor çünkü initLife() sırasında lifeHistory boş
+   bırakılabiliyor. Aktif ekran sc-life olduğunda zorla initLife
+   tetikle, "Başlat" + "Sen Öner" + "Oku" butonlarını ekle. */
+
+const LIFE_FIRST = {
+  airport:   "Good morning. May I see your passport and ticket, please?",
+  cafe:      "Hi! What would you like to drink today?",
+  hotel:     "Welcome to our hotel. Do you have a reservation?",
+  taxi:      "Hello. Where would you like to go?",
+  interview: "Thanks for coming. Could you briefly introduce yourself?"
+};
+
+function getActiveScenarioKey(){
+  try{
+    // WMNG.activeScenario closure içinde, ama scenario chip aktif olanı seçiyor.
+    const activeChip = document.querySelector('#wmngScenarioPills .scenario-chip.active');
+    if(activeChip){
+      const onclick = activeChip.getAttribute('onclick') || '';
+      const m = onclick.match(/setScenario\('([^']+)'\)/);
+      if(m) return m[1];
+    }
+  }catch(e){}
+  return 'airport';
+}
+
+function getLifeSuggestions(scenarioKey, level){
+  const L = level || detectLevel();
+  const sets = {
+    airport: {
+      A1: ["Here is my passport.", "I have a ticket.", "Where is gate five?"],
+      A2: ["I'd like to check in, please.", "Here is my passport and ticket.", "Where is the boarding gate?"],
+      B1: ["Could you help me check in for my flight?", "Do I need to check this bag?", "Where is the security area?"],
+      B2: ["I'm checking in for the flight to London.", "Could you confirm whether my bag is included?", "Is there any delay I should know about?"],
+      C1: ["I'm checking in for my London flight and wanted to confirm the baggage allowance.", "Would it be possible to get an aisle seat?", "Could you let me know if there are any schedule changes?"]
+    },
+    cafe: {
+      A1: ["A coffee, please.", "How much is it?", "Thank you."],
+      A2: ["I'd like a latte, please.", "Can I have it to go?", "How much does it cost?"],
+      B1: ["Could I get a medium cappuccino, please?", "Do you have any non-dairy milk?", "Is the muffin gluten-free?"],
+      B2: ["I'll go with a flat white, if that's okay.", "Could you recommend something not too sweet?", "Do you have any seasonal drinks today?"],
+      C1: ["I'm leaning toward a flat white — anything you'd particularly recommend?", "Could you tell me a bit about the beans you're using today?", "I'd love something light but a bit unusual."]
+    },
+    hotel: {
+      A1: ["I have a reservation.", "My name is...", "Is breakfast included?"],
+      A2: ["I'd like to check in, please.", "Could I get a quiet room?", "What time is breakfast?"],
+      B1: ["I booked online last week. Could you check my reservation?", "Is it possible to have a room with a view?", "Until what time can I check out?"],
+      B2: ["I'd appreciate a quiet room if one is available.", "Could you let me know about the breakfast hours and amenities?", "Is there an option for a late checkout?"],
+      C1: ["I'd be grateful if you could find me a quieter room with a view if any are available.", "Could you walk me through what's included with the room?", "If a late checkout is possible, that would be ideal."]
+    },
+    taxi: {
+      A1: ["To the airport, please.", "How much?", "Thank you."],
+      A2: ["Please take me to the airport.", "How long will it take?", "Could you go a bit faster?"],
+      B1: ["Could you drop me at the main entrance?", "About how long will the ride take?", "Do you take card payments?"],
+      B2: ["I'm a bit short on time — could you take the fastest route?", "Roughly how much will the fare be?", "Do you accept contactless payment?"],
+      C1: ["I'm a bit pressed for time — could you take the quickest route, even if there's a small toll?", "Roughly what should I expect the fare to be?", "Could you let me know when we're about ten minutes out?"]
+    },
+    interview: {
+      A1: ["I am a student.", "I like computers.", "I can work hard."],
+      A2: ["I have two years of experience.", "I'm good at solving problems.", "I want to learn more."],
+      B1: ["I've been working in this field for a couple of years.", "I'm comfortable picking up new tools quickly.", "I enjoy practical, real-world problems."],
+      B2: ["In my last role, I focused on improving user experience.", "I'd describe myself as adaptable and detail-oriented.", "I'm particularly interested in this position because of your product direction."],
+      C1: ["In my previous role, I led a small initiative to improve our onboarding flow.", "I'd describe myself as someone who balances practical problem-solving with attention to user experience.", "I'm drawn to this role because of the team's focus on long-term, meaningful product work."]
+    }
+  };
+  return (sets[scenarioKey] && sets[scenarioKey][L]) || sets.airport.A2;
+}
+
+function ensureLifeFirstMessage(){
+  const chat = $('wmngLifeChat');
+  if(!chat) return;
+  // Chat görünür AMA boşsa → ilk mesajı zorla ekle
+  if(chat.children.length === 0){
+    const key = getActiveScenarioKey();
+    const first = LIFE_FIRST[key] || LIFE_FIRST.airport;
+    try{
+      if(window.WMNG && typeof window.WMNG.setScenario === 'function'){
+        window.WMNG.setScenario(key);
+        return; // setScenario zaten renderLife çağıracak
+      }
+    }catch(e){}
+    // Yedek: doğrudan DOM'a ekle
+    const msg = document.createElement('div');
+    msg.className = 'wmng-msg ai';
+    msg.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin:8px 0;color:var(--text);font-size:15px;line-height:1.55;';
+    msg.textContent = first;
+    chat.appendChild(msg);
+  }
+}
+
+function addLifeActionButtons(){
+  const screen = $('sc-life');
+  if(!screen || !screen.classList.contains('active')) return;
+  const card = screen.querySelector('.card');
+  if(!card || card.querySelector('.scl-action-row')) return;
+
+  const row = document.createElement('div');
+  row.className = 'scl-action-row';
+  row.innerHTML = `
+    <button class="scl-start" type="button">▶️ Başlat</button>
+    <button class="scl-suggest" type="button">💡 Sen Öner</button>
+    <button class="scl-speak" type="button">🔊 Son Mesajı Oku</button>
+  `;
+  // Pills sonrası, chat öncesi yerleştir
+  const chat = $('wmngLifeChat');
+  if(chat && chat.parentNode === card){
+    card.insertBefore(row, chat);
+  }else{
+    card.appendChild(row);
+  }
+
+  const [btnStart, btnSuggest, btnSpeak] = row.querySelectorAll('button');
+  btnStart.onclick = (e)=>{
+    e.preventDefault();
+    const chat2 = $('wmngLifeChat');
+    if(chat2) chat2.innerHTML = '';
+    const key = getActiveScenarioKey();
+    try{
+      if(window.WMNG && typeof window.WMNG.setScenario === 'function'){
+        window.WMNG.setScenario(key);
+      }
+    }catch(err){ ensureLifeFirstMessage(); }
+    setTimeout(()=>{
+      const first = LIFE_FIRST[key] || LIFE_FIRST.airport;
+      centralSpeak(first);
+    }, 200);
+  };
+  btnSuggest.onclick = (e)=>{
+    e.preventDefault();
+    renderLifeSuggestions(card);
+  };
+  btnSpeak.onclick = (e)=>{
+    e.preventDefault();
+    const chat2 = $('wmngLifeChat');
+    if(!chat2){ toast('Sohbet alanı yok'); return; }
+    const aiMsgs = chat2.querySelectorAll('.wmng-msg.ai');
+    const last = aiMsgs[aiMsgs.length-1];
+    if(!last){ toast('Önce sohbeti başlat'); return; }
+    centralSpeak(last.innerText || last.textContent);
+  };
+}
+
+function renderLifeSuggestions(card){
+  if(!card) return;
+  card.querySelectorAll('.scl-suggest-box').forEach(x=>x.remove());
+  const key = getActiveScenarioKey();
+  const suggestions = getLifeSuggestions(key);
+  const box = document.createElement('div');
+  box.className = 'scl-suggest-box';
+  box.innerHTML = `<div class="scl-suggest-title">💡 Seviyene uygun cevap önerileri</div>` +
+    suggestions.map((s,i)=>`
+      <div class="scl-suggest-card">
+        <div class="scl-suggest-label">${i===0?'Kolay':i===1?'Doğal':'Daha iyi'}</div>
+        <div class="scl-suggest-text">${escapeHtml(s)}</div>
+        <div class="scl-suggest-actions">
+          <button type="button" class="scl-mini-btn scl-mini-green" data-use="${escapeHtml(s)}">Kullan</button>
+          <button type="button" class="scl-mini-btn scl-mini-purple" data-say="${escapeHtml(s)}">🔊 Oku</button>
+          <button type="button" class="scl-mini-btn scl-mini-ghost" data-copy="${escapeHtml(s)}">Kopyala</button>
+        </div>
+      </div>
+    `).join('');
+  box.addEventListener('click', e=>{
+    const t = e.target;
+    if(!(t instanceof HTMLElement)) return;
+    const use  = t.getAttribute('data-use');
+    const say  = t.getAttribute('data-say');
+    const copy = t.getAttribute('data-copy');
+    if(use){
+      const inp = $('wmngLifeInput');
+      if(inp){ inp.value = use; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.focus(); }
+      toast('Cevap yazı alanına eklendi');
+    }
+    if(say){ centralSpeak(say); }
+    if(copy){ try{ navigator.clipboard && navigator.clipboard.writeText(copy); }catch(_){} toast('Kopyalandı'); }
+  });
+  // Chat alanından sonra ekle (görünür)
+  const chat = $('wmngLifeChat');
+  if(chat && chat.parentNode === card){
+    chat.insertAdjacentElement('afterend', box);
+  }else{
+    card.appendChild(box);
+  }
+  // Mobilde aşağı kaydır
+  setTimeout(()=>box.scrollIntoView({behavior:'smooth', block:'nearest'}), 100);
+}
+
+/* sc-life ekranı her aktif olduğunda butonları ekle, ilk mesajı garanti et */
+function onLifeScreenActive(){
+  const s = $('sc-life');
+  if(!s || !s.classList.contains('active')) return;
+  addLifeActionButtons();
+  // Pills hâlâ yoksa initLife çağır
+  try{
+    if(window.WMNG && typeof window.WMNG.initLife === 'function'){
+      const pills = $('wmngScenarioPills');
+      if(pills && !pills.children.length) window.WMNG.initLife();
+    }
+  }catch(e){}
+}
+
+/* showScreen'i yakala */
+(function patchShowScreen(){
+  let tries = 0;
+  const id = setInterval(()=>{
+    tries++;
+    if(typeof window.showScreen === 'function' && !window.showScreen._lifefix){
+      const orig = window.showScreen;
+      const wrapped = function(scId){
+        const r = orig.apply(this, arguments);
+        if(scId === 'sc-life'){
+          setTimeout(onLifeScreenActive, 100);
+          setTimeout(onLifeScreenActive, 600); // WMNG geç init oluyor olabilir
+        }
+        return r;
+      };
+      wrapped._lifefix = true;
+      window.showScreen = wrapped;
+      clearInterval(id);
+    }
+    if(tries > 40) clearInterval(id);
+  }, 250);
+})();
+
+/* Sayfa zaten sc-life'ta açıldıysa */
+document.addEventListener('DOMContentLoaded', ()=>{
+  setTimeout(onLifeScreenActive, 800);
+  setTimeout(onLifeScreenActive, 2000);
 });
 
-if(document.readyState !== "loading") boot();
+/* ── 3. TELAFFUZ HARİTASI: DONMA DÜZELTMESİ ────────────────────── */
+/* Eski MutationObserver document.body üzerinde sonsuz tetikleniyor.
+   Onu kapatıp, sadece sc-pronmap içindeki input değişimlerine bağla. */
 
-window.WM_forcePronunciationMap = mapNow;
+function killOldPronObservers(){
+  // characterData izleyen tüm body observerlarını DIRECT olarak durdurmak
+  // mümkün değil; ama renderMap'i no-op haline getirip yenisini kurabiliriz.
+  // Eski safeTick'i derhal devre dışı bırak:
+  try{
+    if(window.__wmPronTick){ clearTimeout(window.__wmPronTick); window.__wmPronTick = null; }
+  }catch(e){}
+}
+
+// Eski patch'in renderMap fonksiyonu private closure içinde — ona doğrudan
+// dokunamayız. Ama mevcut DOM'u koruyup ek tetikleme yapmayacağız.
+// Çözüm: kullanıcı "Haritala" butonuna bastığında WMNG.renderPronMap
+// kendi pronResult bölgesini günceller, eski safeTick döngüsünü iptal eder.
+
+const origRender = (window.WMNG && window.WMNG.renderPronMap) || null;
+if(origRender){
+  window.WMNG.renderPronMap = function(){
+    killOldPronObservers();
+    try{
+      return origRender.apply(this, arguments);
+    }catch(e){
+      console.warn('renderPronMap error:', e);
+      toast('Haritalama hatası');
+    }
+  };
+}
+
+// Aynı şey listenPronMap için
+const origListen = (window.WMNG && window.WMNG.listenPronMap) || null;
+if(origListen){
+  window.WMNG.listenPronMap = function(){
+    killOldPronObservers();
+    try{ return origListen.apply(this, arguments); }
+    catch(e){ console.warn('listenPronMap error:', e); toast('Dinleme hatası'); }
+  };
+}
+
+/* sc-pronmap ekranındaki ikinci kayıt butonu — popup wmp-rec-btn'i
+   sc-pronmap aktifken DOM'dan kaldır */
+function hideDuplicateRecordBtn(){
+  const sc = $('sc-pronmap');
+  if(!sc || !sc.classList.contains('active')) return;
+  // Popup içindeki (wmp-rec-btn) öğeyi sc-pronmap içindeyse kaldır
+  const inside = sc.querySelector('#wmp-rec-btn');
+  if(inside){ inside.style.display = 'none'; }
+  // Ekran dışında ama aynı anda görünüyorsa
+  document.querySelectorAll('#wmp-rec-btn').forEach(b=>{
+    // sc-pronmap aktifken popup gizlensin
+    b.style.display = 'none';
+  });
+}
+
+(function patchShowScreenForPron(){
+  let tries = 0;
+  const id = setInterval(()=>{
+    tries++;
+    if(typeof window.showScreen === 'function' && !window.showScreen._pronfix){
+      const orig = window.showScreen;
+      const wrapped = function(scId){
+        const r = orig.apply(this, arguments);
+        if(scId === 'sc-pronmap'){
+          setTimeout(hideDuplicateRecordBtn, 100);
+          setTimeout(hideDuplicateRecordBtn, 500);
+        }else{
+          // sc-pronmap'tan çıkınca popup butonunu eski haline döndür
+          document.querySelectorAll('#wmp-rec-btn').forEach(b=>{ b.style.display=''; });
+        }
+        return r;
+      };
+      wrapped._pronfix = true;
+      window.showScreen = wrapped;
+      clearInterval(id);
+    }
+    if(tries > 40) clearInterval(id);
+  }, 250);
+})();
+
+/* ── 4. CONSOLE ─────────────────────────────────────────────────── */
+console.log('[WM-FIX] v28-fix-1 yüklendi: Gerçek Hayat, Sen Öner, Ses, Telaffuz Haritası düzeltmeleri aktif.');
+
 })();
 </script>
-<!-- FORCE PRONUNCIATION MAP SCREEN FIX END -->
+<!-- ════════════════════════════════════════════════════════════════════════
+     END CONSOLIDATED BUG-FIX PATCH
+     ════════════════════════════════════════════════════════════════════════ -->
 
 </body></html>
