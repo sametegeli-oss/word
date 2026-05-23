@@ -28732,4 +28732,355 @@ window.initSettingsScreen = window.initSettingsScreen || function(){};
 window.initRealLifeScreen = window.initRealLifeScreen || function(){};
 </script>
 
+
+<!-- PRONUNCIATION MAP + VOICE FIX PATCH START -->
+<style>
+/* Eski çakışan telaffuz butonlarını gizle */
+#realReferenceWavePanel,
+#realTargetWaveCanvas,
+#realReferenceAudioInput,
+.real-wave-row.target-wave-removed,
+#phonemeComparePanel .wmfr-btnrow,
+#phonemeComparePanel button:not(.keep-btn),
+.phoneme-compare-panel button:not(.keep-btn){
+  display:none !important;
+}
+
+/* Yeni sade telaffuz haritası */
+#wmSafePronMap{
+  margin-top:10px;
+  padding:12px;
+  border-radius:14px;
+  background:var(--bg2,#131720);
+  border:1px solid var(--border,#252d42);
+  color:var(--text,#e8eaf6);
+}
+.wmsp-title{
+  font-size:12px;
+  font-weight:900;
+  color:var(--purple,#a78bfa);
+  margin-bottom:8px;
+}
+.wmsp-word{
+  font-size:22px;
+  font-weight:900;
+  color:var(--green,#22c55e);
+  margin-bottom:8px;
+}
+.wmsp-row{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:8px 0;
+}
+.wmsp-chip{
+  min-width:34px;
+  padding:8px 9px;
+  border-radius:10px;
+  text-align:center;
+  font-weight:900;
+  font-size:15px;
+  background:var(--bg3,#1c2130);
+  border:1.5px solid var(--border,#252d42);
+}
+.wmsp-chip.ok{color:#4ade80;border-color:#166534;background:rgba(34,197,94,.10)}
+.wmsp-chip.close{color:#facc15;border-color:#854d0e;background:rgba(250,204,21,.10)}
+.wmsp-chip.bad{color:#fca5a5;border-color:#7f1d1d;background:rgba(239,68,68,.10)}
+.wmsp-chip.missing{color:#fb923c;border-color:#7c2d12;background:rgba(249,115,22,.10)}
+.wmsp-note{
+  margin-top:8px;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--sub,#a0a8c8);
+  background:var(--bg3,#1c2130);
+  border-radius:10px;
+  padding:9px 10px;
+}
+.wm-voice-warning{
+  margin-top:8px;
+  padding:9px 10px;
+  border-radius:10px;
+  background:rgba(249,115,22,.10);
+  border:1px solid rgba(249,115,22,.35);
+  color:var(--sub,#a0a8c8);
+  font-size:12px;
+  line-height:1.45;
+}
+</style>
+
+<script>
+(function(){
+"use strict";
+
+/* --------- Telaffuz haritası: buton ekleme yok, kilitlenme yok --------- */
+
+function normalize(s){
+  return String(s||"").toLowerCase().replace(/[^a-z']/g,"");
+}
+
+function currentWord(){
+  try{
+    if(window.words && typeof window.idx !== "undefined" && window.words[window.idx]){
+      return window.words[window.idx].word || window.words[window.idx].en || window.words[window.idx].english || "";
+    }
+  }catch(e){}
+  const el = document.querySelector(".wc-word,.fc-word,#currentWord,[data-current-word]");
+  return el ? el.textContent.trim() : "";
+}
+
+function lastSpoken(){
+  const sels = [".live-tx .heard",".live-tx","#pronunLiveText","#speechText","#heardText"];
+  for(const s of sels){
+    const el = document.querySelector(s);
+    if(el && el.textContent.trim()) return el.textContent.trim();
+  }
+  return window.WM_lastSpokenText || window.lastRecognizedText || "";
+}
+
+function levAlign(a,b){
+  a = normalize(a); b = normalize(b);
+  const m=a.length,n=b.length;
+  const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+cost);
+    }
+  }
+  let i=m,j=n,out=[];
+  while(i>0 || j>0){
+    if(i>0 && j>0 && dp[i][j]===dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)){
+      out.push({t:a[i-1],s:b[j-1],status:a[i-1]===b[j-1]?"ok":"bad"});
+      i--;j--;
+    }else if(i>0 && dp[i][j]===dp[i-1][j]+1){
+      out.push({t:a[i-1],s:"",status:"missing"}); i--;
+    }else{ j--; }
+  }
+  return out.reverse();
+}
+
+const similar = [["v","f","w"],["t","d"],["s","z"],["i","e","y"],["o","u","a"],["r","l"],["c","k","q"],["g","j"],["p","b"]];
+function closeSound(a,b){return similar.some(g=>g.includes(a)&&g.includes(b));}
+
+function renderMap(target, spoken){
+  if(!target) return;
+  const host = document.querySelector("#pronunResult,.pronun-result,.pronun-panel");
+  if(!host) return;
+
+  let panel = document.querySelector("#wmSafePronMap");
+  if(!panel){
+    panel = document.createElement("div");
+    panel.id = "wmSafePronMap";
+    host.appendChild(panel);
+  }
+
+  const arr = spoken ? levAlign(target, spoken).map(x => x.status==="bad" && closeSound(x.t,x.s) ? {...x,status:"close"} : x) : [];
+  const chips = arr.length ? arr.map(x=>`<span class="wmsp-chip ${x.status}" title="Beklenen: ${x.t}${x.s ? " | Duyulan: "+x.s : " | Duyulmadı"}">${x.t}</span>`).join("") : 
+    `<span class="wmsp-note">Kayıt yaptıktan sonra harita otomatik oluşur.</span>`;
+
+  const weak = arr.filter(x=>x.status==="bad"||x.status==="close"||x.status==="missing").map(x=>x.t);
+  const note = weak.length ? 
+    "Dikkat etmen gereken sesler: " + [...new Set(weak)].join(", ") + "." :
+    "Yeşil sesler doğru duyuldu. Sarı yakın, kırmızı/ turuncu geliştirilmesi gereken bölümlerdir.";
+
+  panel.innerHTML = `
+    <div class="wmsp-title">🎯 Telaffuz Haritası</div>
+    <div class="wmsp-word">${escapeHtml(target)}</div>
+    <div class="wmsp-row">${chips}</div>
+    <div class="wmsp-note">${escapeHtml(note)}<br>Bu bölüm ekstra buton eklemez; mevcut Dinle / Kayıt sistemiyle çalışır.</div>
+  `;
+}
+
+function escapeHtml(s){
+  return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+
+function cleanupOldPronunciationClutter(){
+  // Sahte/çakışan referans waveform panellerini kaldır
+  document.querySelectorAll("#realReferenceWavePanel,#realTargetWaveCanvas,#realReferenceAudioInput").forEach(el=>{
+    const row = el.closest(".real-wave-row") || el.closest("div");
+    if(row) row.remove();
+    else el.remove();
+  });
+
+  // Eski phoneme panelindeki ekstra buton satırlarını kaldır
+  document.querySelectorAll("#phonemeComparePanel button,.phoneme-compare-panel button").forEach(btn=>btn.remove());
+}
+
+function safeTick(){
+  cleanupOldPronunciationClutter();
+  const w = currentWord();
+  const s = lastSpoken();
+  if(w) renderMap(w,s);
+}
+
+/* SpeechRecognition sonucunu yakala ama mevcut recorder'ı bozma */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(SR && !window.__wmSafePronSRPatch){
+  window.__wmSafePronSRPatch = true;
+  const Original = SR;
+  const Patched = function(){
+    const rec = new Original();
+    rec.addEventListener("result", function(e){
+      try{
+        const txt = Array.from(e.results).map(r=>r[0]&&r[0].transcript||"").join(" ").trim();
+        if(txt){
+          window.WM_lastSpokenText = txt;
+          renderMap(currentWord(), txt);
+        }
+      }catch(_){}
+    });
+    return rec;
+  };
+  window.SpeechRecognition = Patched;
+  window.webkitSpeechRecognition = Patched;
+}
+
+/* Daha önce sahte grafik çizen fonksiyonlar varsa etkisizleştir */
+["drawTargetWaveform","drawCorrectWaveform","drawReferenceWaveform","drawFakeTargetWaveform"].forEach(name=>{
+  window[name] = function(){ safeTick(); return false; };
+});
+
+document.addEventListener("DOMContentLoaded", function(){
+  safeTick();
+  const obs = new MutationObserver(function(){
+    clearTimeout(window.__wmPronTick);
+    window.__wmPronTick = setTimeout(safeTick, 120);
+  });
+  obs.observe(document.body,{childList:true,subtree:true,characterData:true});
+});
+
+/* --------- Kadın / erkek ses seçimi düzeltmesi --------- */
+
+function getVoicesReady(){
+  return new Promise(resolve=>{
+    let voices = speechSynthesis.getVoices ? speechSynthesis.getVoices() : [];
+    if(voices.length) return resolve(voices);
+    const done = () => resolve(speechSynthesis.getVoices ? speechSynthesis.getVoices() : []);
+    speechSynthesis.onvoiceschanged = done;
+    setTimeout(done, 800);
+  });
+}
+
+function genderHints(gender){
+  if(gender === "female"){
+    return ["female","woman","zira","samantha","susan","serena","victoria","karen","moira","tessa","google us english","microsoft aria","microsoft jenny","microsoft mia","microsoft sonia"];
+  }
+  return ["male","man","david","alex","daniel","tom","fred","ralph","google uk english male","microsoft guy","microsoft ryan","microsoft george"];
+}
+
+function activeGender(){
+  try{
+    if(window.WMForcedRealLife && WMForcedRealLife.state && WMForcedRealLife.state.character){
+      const c = WMForcedRealLife.state.character;
+      if(c === "emma" || c === "sophia") return "female";
+      if(c === "mike" || c === "jack") return "male";
+    }
+  }catch(e){}
+  try{
+    if(window.WordModePro && WordModePro.state && WordModePro.state.activeCharacter){
+      const c = WordModePro.state.activeCharacter;
+      if(c === "emma" || c === "sophia") return "female";
+      if(c === "mike" || c === "jack") return "male";
+    }
+  }catch(e){}
+  return "female";
+}
+
+function activeAccent(){
+  try{
+    if(window.WMForcedRealLife && WMForcedRealLife.state && WMForcedRealLife.state.accent) return WMForcedRealLife.state.accent;
+  }catch(e){}
+  try{
+    if(window.WordModePro && WordModePro.state && WordModePro.state.accent) return WordModePro.state.accent;
+  }catch(e){}
+  return "en-US";
+}
+
+function activeLevel(){
+  try{
+    if(window.WMForcedRealLife && WMForcedRealLife.state && WMForcedRealLife.state.level) return WMForcedRealLife.state.level;
+  }catch(e){}
+  try{
+    if(window.WordModePro && WordModePro.state && WordModePro.state.level) return WordModePro.state.level;
+  }catch(e){}
+  return "A2";
+}
+
+async function pickVoice(gender, accent){
+  const voices = await getVoicesReady();
+  const hints = genderHints(gender);
+  const langShort = (accent||"en-US").split("-")[0].toLowerCase();
+
+  let v = voices.find(v => v.lang === accent && hints.some(h=>v.name.toLowerCase().includes(h)));
+  if(!v) v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(langShort) && hints.some(h=>v.name.toLowerCase().includes(h)));
+  if(!v) v = voices.find(v => v.lang === accent);
+  if(!v) v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("en"));
+  return v || null;
+}
+
+function showVoiceWarning(){
+  if(document.querySelector(".wm-voice-warning")) return;
+  const panel = document.querySelector("#wmForcedRealLifeCoach") || document.querySelector(".wm-pro-panel");
+  if(!panel) return;
+  const div = document.createElement("div");
+  div.className = "wm-voice-warning";
+  div.innerHTML = "Not: Tarayıcıda ayrı kadın/erkek İngilizce ses yüklü değilse iki karakter aynı sesle konuşabilir. Windows’ta İngilizce ses paketleri eklenirse ayrım daha iyi çalışır.";
+  panel.appendChild(div);
+}
+
+/* Mevcut konuşma fonksiyonlarını daha iyi ses seçimiyle override et */
+async function speakBetter(text){
+  if(!window.speechSynthesis || !text) return;
+  speechSynthesis.cancel();
+
+  const gender = activeGender();
+  const accent = activeAccent();
+  const level = activeLevel();
+
+  const u = new SpeechSynthesisUtterance(String(text).replace(/🇹🇷.*|💡.*|🔊.*/g,""));
+  u.lang = accent;
+
+  const v = await pickVoice(gender, accent);
+  if(v) u.voice = v;
+  else showVoiceWarning();
+
+  u.pitch = gender === "female" ? 1.18 : 0.82;
+  u.rate = level === "A1" ? .78 : level === "A2" ? .86 : level === "B1" ? .95 : level === "B2" ? 1.03 : 1.08;
+
+  speechSynthesis.speak(u);
+}
+
+window.WM_speakBetter = speakBetter;
+
+setTimeout(function(){
+  try{
+    if(window.WMForcedRealLife) window.WMForcedRealLife.speak = speakBetter;
+    if(window.WordModePro) window.WordModePro.speak = speakBetter;
+  }catch(e){}
+}, 1000);
+
+/* Sayfadaki Oku butonlarını yakala */
+document.addEventListener("click", function(e){
+  const btn = e.target.closest("button");
+  if(!btn) return;
+  const t = (btn.textContent||"").trim();
+  if(t.includes("Son Mesajı Oku") || t === "🔊 Oku" || t.includes("Oku")){
+    const root = document.querySelector("#wmForcedRealLifeCoach")?.parentElement || document.body;
+    const msgs = root.querySelectorAll(".conv-msg.ai,.chat-msg.ai,.partner-msg.ai,.wmfr-ai-msg");
+    const last = msgs[msgs.length-1];
+    if(last){
+      e.preventDefault();
+      e.stopPropagation();
+      speakBetter(last.innerText);
+    }
+  }
+}, true);
+
+})();
+</script>
+<!-- PRONUNCIATION MAP + VOICE FIX PATCH END -->
+
 </body></html>
