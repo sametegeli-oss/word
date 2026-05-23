@@ -26646,4 +26646,1624 @@ setTimeout(()=>ensureDefaultWordList(false),2600);
 })();
 </script>
 
+
+<!-- REALISTIC PRONUNCIATION WAVEFORM PATCH START -->
+<style>
+.real-wave-note{
+  margin-top:8px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:rgba(249,115,22,.10);
+  border:1px solid rgba(249,115,22,.35);
+  color:var(--sub,#a0a8c8);
+  font-size:12px;
+  line-height:1.5;
+}
+.real-wave-row{
+  background:var(--bg2,#131720);
+  border:1px solid var(--border,#252d42);
+  border-radius:12px;
+  padding:10px;
+  margin-top:8px;
+}
+.real-wave-label{
+  font-size:11px;
+  font-weight:800;
+  color:var(--muted,#7c85b0);
+  margin-bottom:6px;
+}
+.real-wave-canvas{
+  width:100%;
+  height:74px;
+  display:block;
+  background:var(--bg3,#1c2130);
+  border-radius:10px;
+}
+.ref-audio-input{
+  margin-top:8px;
+  width:100%;
+  font-size:12px;
+  color:var(--sub,#a0a8c8);
+}
+</style>
+
+<script>
+(function(){
+  "use strict";
+
+  function drawRealWaveform(canvas, samples){
+    if(!canvas || !samples || !samples.length) return;
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(320, Math.floor(rect.width || 320));
+    const h = Math.max(74, Math.floor(rect.height || 74));
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--bg3") || "#1c2130";
+    ctx.fillRect(0,0,w,h);
+
+    ctx.strokeStyle = "rgba(160,168,200,.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0,h/2);
+    ctx.lineTo(w,h/2);
+    ctx.stroke();
+
+    const step = Math.ceil(samples.length / w);
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--green") || "#22c55e";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+
+    for(let x=0; x<w; x++){
+      const start = x * step;
+      let min = 1, max = -1;
+      for(let i=0; i<step && start+i<samples.length; i++){
+        const v = samples[start+i];
+        if(v < min) min = v;
+        if(v > max) max = v;
+      }
+      const y1 = (1 + min) * h / 2;
+      const y2 = (1 + max) * h / 2;
+      ctx.moveTo(x, y1);
+      ctx.lineTo(x, y2);
+    }
+    ctx.stroke();
+  }
+
+  async function decodeAudioFileToSamples(file){
+    const arrayBuffer = await file.arrayBuffer();
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContextClass();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const channel = audioBuffer.getChannelData(0);
+    const copy = new Float32Array(channel.length);
+    copy.set(channel);
+    if(audioCtx.close) audioCtx.close();
+    return copy;
+  }
+
+  function removeFakeTargetCanvas(){
+    const candidates = [
+      "#targetWaveCanvas",
+      "#correctWaveCanvas",
+      "#referenceWaveCanvas",
+      ".target-wave-canvas",
+      ".correct-wave-canvas",
+      ".reference-wave-canvas"
+    ];
+    candidates.forEach(sel=>{
+      document.querySelectorAll(sel).forEach(el=>{
+        const box = el.closest(".real-wave-row,.wave-row,.comparison-bar,.pronun-tip,div") || el;
+        if(box && box.parentNode){
+          box.remove();
+        }
+      });
+    });
+
+    document.querySelectorAll("canvas").forEach(c=>{
+      const txt = (c.parentElement && c.parentElement.innerText || "").toLowerCase();
+      if(txt.includes("doğru ses") || txt.includes("olması gereken") || txt.includes("target") || txt.includes("reference")){
+        const parent = c.closest(".real-wave-row,.wave-row,.comparison-bar") || c.parentElement;
+        if(parent && parent.parentNode) parent.remove();
+      }
+    });
+  }
+
+  function injectRealReferencePanel(){
+    const possibleContainers = [
+      document.querySelector("#pronunResult"),
+      document.querySelector(".pronun-result"),
+      document.querySelector("#accentAnalysisResult"),
+      document.querySelector(".pronun-panel")
+    ].filter(Boolean);
+
+    const host = possibleContainers[0];
+    if(!host || document.querySelector("#realReferenceWavePanel")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "realReferenceWavePanel";
+    panel.innerHTML = `
+      <div class="real-wave-row">
+        <div class="real-wave-label">🎙️ Benim ses grafiğim</div>
+        <canvas id="realUserWaveCanvas" class="real-wave-canvas"></canvas>
+      </div>
+
+      <div class="real-wave-row">
+        <div class="real-wave-label">✅ Gerçek doğru ses grafiği</div>
+        <canvas id="realTargetWaveCanvas" class="real-wave-canvas"></canvas>
+        <input id="realReferenceAudioInput" class="ref-audio-input" type="file" accept="audio/*">
+        <div class="real-wave-note">
+          Eski “doğru ses grafiği” temsiliydi. Tarayıcının SpeechSynthesis sesi ham audio verisi vermediği için gerçek waveform çizilemez.
+          Gerçek doğru grafik için referans telaffuz ses dosyası yükle; bu alan gerçek audio dosyasından çizilir.
+        </div>
+      </div>
+    `;
+    host.appendChild(panel);
+
+    const input = panel.querySelector("#realReferenceAudioInput");
+    input.addEventListener("change", async function(){
+      const file = this.files && this.files[0];
+      if(!file) return;
+      try{
+        const samples = await decodeAudioFileToSamples(file);
+        drawRealWaveform(document.querySelector("#realTargetWaveCanvas"), samples);
+      }catch(err){
+        alert("Referans ses dosyası okunamadı: " + err.message);
+      }
+    });
+  }
+
+  // Dışarıdan gerçek kullanıcı kayıt verisi varsa onu canvas'a basmak için global yardımcı.
+  window.WM_drawRealUserWaveform = function(samples){
+    const canvas = document.querySelector("#realUserWaveCanvas");
+    if(canvas && samples) drawRealWaveform(canvas, samples);
+  };
+
+  // MediaRecorder blob'u gelirse gerçek kullanıcı waveform'u çiz.
+  window.WM_drawUserWaveformFromBlob = async function(blob){
+    try{
+      if(!blob) return;
+      const file = new File([blob], "user-recording.webm", {type: blob.type || "audio/webm"});
+      const samples = await decodeAudioFileToSamples(file);
+      drawRealWaveform(document.querySelector("#realUserWaveCanvas"), samples);
+    }catch(e){
+      console.warn("User waveform decode failed:", e);
+    }
+  };
+
+  function patchFakeWaveFunctions(){
+    const names = [
+      "drawTargetWaveform",
+      "drawCorrectWaveform",
+      "drawReferenceWaveform",
+      "drawFakeTargetWaveform",
+      "drawPronunciationComparison"
+    ];
+    names.forEach(name=>{
+      if(typeof window[name] === "function"){
+        window[name] = function(){
+          removeFakeTargetCanvas();
+          injectRealReferencePanel();
+          return false;
+        };
+      }
+    });
+  }
+
+  const oldSpeak = window.speechSynthesis && window.speechSynthesis.speak;
+  // Not overriding speech output; only preventing fake graph from being redrawn.
+  document.addEventListener("DOMContentLoaded", function(){
+    removeFakeTargetCanvas();
+    injectRealReferencePanel();
+    patchFakeWaveFunctions();
+  });
+
+  const observer = new MutationObserver(function(){
+    removeFakeTargetCanvas();
+    injectRealReferencePanel();
+    patchFakeWaveFunctions();
+  });
+  observer.observe(document.documentElement, {childList:true, subtree:true});
+})();
+</script>
+<!-- REALISTIC PRONUNCIATION WAVEFORM PATCH END -->
+
+
+<!-- PHONEME COMPARISON + USER WAVEFORM PATCH START -->
+<style>
+.phoneme-compare-panel{
+  margin-top:10px;
+  padding:12px;
+  border-radius:14px;
+  background:var(--bg2,#131720);
+  border:1px solid var(--border,#252d42);
+}
+.phoneme-title{
+  font-size:12px;
+  font-weight:900;
+  color:var(--purple,#a78bfa);
+  margin-bottom:8px;
+}
+.phoneme-target-word{
+  font-size:22px;
+  font-weight:900;
+  color:var(--green,#22c55e);
+  margin-bottom:8px;
+  letter-spacing:.5px;
+}
+.phoneme-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin:8px 0 10px;
+}
+.phoneme-chip2{
+  min-width:34px;
+  padding:8px 9px;
+  border-radius:10px;
+  text-align:center;
+  font-weight:900;
+  font-size:15px;
+  border:1.5px solid var(--border,#252d42);
+  background:var(--bg3,#1c2130);
+}
+.phoneme-chip2.ok{
+  color:#4ade80;
+  border-color:#166534;
+  background:rgba(34,197,94,.10);
+}
+.phoneme-chip2.close{
+  color:#facc15;
+  border-color:#854d0e;
+  background:rgba(250,204,21,.10);
+}
+.phoneme-chip2.bad{
+  color:#fca5a5;
+  border-color:#7f1d1d;
+  background:rgba(239,68,68,.10);
+}
+.phoneme-chip2.missing{
+  color:#fb923c;
+  border-color:#7c2d12;
+  background:rgba(249,115,22,.10);
+}
+.phoneme-legend{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  font-size:11px;
+  color:var(--muted,#7c85b0);
+  margin-bottom:8px;
+}
+.phoneme-tip{
+  font-size:12px;
+  line-height:1.55;
+  color:var(--sub,#a0a8c8);
+  background:var(--bg3,#1c2130);
+  padding:9px 10px;
+  border-radius:10px;
+}
+.user-wave-only-note{
+  margin-top:8px;
+  font-size:11px;
+  color:var(--muted,#7c85b0);
+  line-height:1.45;
+}
+.real-wave-row.target-wave-removed,
+#realTargetWaveCanvas,
+#realReferenceAudioInput{
+  display:none !important;
+}
+</style>
+
+<script>
+(function(){
+  "use strict";
+
+  function normalizeText(s){
+    return String(s || "")
+      .toLowerCase()
+      .replace(/[^a-z\s']/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function levenshteinMatrix(a,b){
+    const m = a.length, n = b.length;
+    const dp = Array.from({length:m+1},()=>Array(n+1).fill(0));
+    for(let i=0;i<=m;i++) dp[i][0]=i;
+    for(let j=0;j<=n;j++) dp[0][j]=j;
+    for(let i=1;i<=m;i++){
+      for(let j=1;j<=n;j++){
+        const cost = a[i-1] === b[j-1] ? 0 : 1;
+        dp[i][j] = Math.min(
+          dp[i-1][j] + 1,
+          dp[i][j-1] + 1,
+          dp[i-1][j-1] + cost
+        );
+      }
+    }
+    return dp;
+  }
+
+  function alignChars(target, spoken){
+    const a = normalizeText(target).replace(/\s/g,"");
+    const b = normalizeText(spoken).replace(/\s/g,"");
+    const dp = levenshteinMatrix(a,b);
+    let i=a.length, j=b.length;
+    const out = [];
+
+    while(i>0 || j>0){
+      if(i>0 && j>0 && dp[i][j] === dp[i-1][j-1] + (a[i-1]===b[j-1] ? 0 : 1)){
+        out.push({target:a[i-1], spoken:b[j-1] || "", status:a[i-1]===b[j-1] ? "ok" : "bad"});
+        i--; j--;
+      } else if(i>0 && dp[i][j] === dp[i-1][j] + 1){
+        out.push({target:a[i-1], spoken:"", status:"missing"});
+        i--;
+      } else {
+        j--;
+      }
+    }
+    return out.reverse();
+  }
+
+  const similarGroups = [
+    ["v","f","w"],
+    ["t","d"],
+    ["s","z"],
+    ["i","e","y"],
+    ["o","u","a"],
+    ["r","l"],
+    ["c","k","q"],
+    ["g","j"],
+    ["p","b"]
+  ];
+
+  function areClose(a,b){
+    if(!a || !b) return false;
+    return similarGroups.some(g => g.includes(a) && g.includes(b));
+  }
+
+  function makePhonemeResult(target, spoken){
+    return alignChars(target, spoken).map(x=>{
+      if(x.status === "ok") return x;
+      if(x.status === "bad" && areClose(x.target, x.spoken)) return {...x, status:"close"};
+      return x;
+    });
+  }
+
+  function getCurrentWordForPhoneme(){
+    if(window.words && typeof window.idx !== "undefined" && window.words[window.idx]){
+      return window.words[window.idx].word || window.words[window.idx].en || window.words[window.idx].english || "";
+    }
+    const el = document.querySelector(".wc-word,.fc-word,#currentWord,[data-current-word]");
+    return el ? el.textContent.trim() : "";
+  }
+
+  function getLastSpokenText(){
+    const candidates = [
+      "#liveTranscript",
+      ".live-tx .heard",
+      ".live-tx",
+      "#pronunLiveText",
+      "#speechText",
+      "#heardText"
+    ];
+    for(const sel of candidates){
+      const el = document.querySelector(sel);
+      if(el && el.textContent.trim()) return el.textContent.trim();
+    }
+    return window.lastRecognizedText || window.WM_lastSpokenText || "";
+  }
+
+  function renderPhonemeComparison(target, spoken){
+    const host = document.querySelector("#pronunResult") || document.querySelector(".pronun-result") || document.querySelector(".pronun-panel");
+    if(!host) return;
+
+    let panel = document.querySelector("#phonemeComparePanel");
+    if(!panel){
+      panel = document.createElement("div");
+      panel.id = "phonemeComparePanel";
+      panel.className = "phoneme-compare-panel";
+      host.appendChild(panel);
+    }
+
+    const result = makePhonemeResult(target, spoken);
+    const bads = result.filter(x => x.status === "bad" || x.status === "missing").map(x=>x.target);
+    const closes = result.filter(x => x.status === "close").map(x=>x.target);
+
+    let tip = "Yeşil alanlar doğru duyulan bölümler. Sarı yakın ama geliştirilmesi gereken sesleri, kırmızı ise belirgin hataları gösterir.";
+    if(bads.length || closes.length){
+      tip += " Özellikle şu seslere dikkat et: " + [...new Set([...bads, ...closes])].join(", ") + ".";
+    }
+
+    panel.innerHTML = `
+      <div class="phoneme-title">🎯 Telaffuz Karşılaştırması</div>
+      <div class="phoneme-target-word">${escapeHtml(target || "Kelime yok")}</div>
+      <div class="phoneme-legend">
+        <span>✅ doğru</span>
+        <span>⚠️ yakın</span>
+        <span>❌ hatalı/eksik</span>
+      </div>
+      <div class="phoneme-row">
+        ${result.map(x => `
+          <span class="phoneme-chip2 ${x.status}" title="Beklenen: ${escapeHtml(x.target)}${x.spoken ? " | Duyulan: " + escapeHtml(x.spoken) : " | Duyulmadı"}">
+            ${escapeHtml(x.target)}
+          </span>
+        `).join("")}
+      </div>
+      <div class="phoneme-tip">${escapeHtml(tip)}</div>
+      <div class="user-wave-only-note">Not: Senin ses dalga grafiğin gerçek kayıt üzerinden kalır. Doğru ses için sahte waveform gösterilmez.</div>
+    `;
+  }
+
+  function escapeHtml(s){
+    return String(s || "").replace(/[&<>"']/g, m => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+  }
+
+  function removeTargetReferenceWave(){
+    document.querySelectorAll("#realTargetWaveCanvas,#realReferenceAudioInput").forEach(el=>{
+      const row = el.closest(".real-wave-row");
+      if(row) row.classList.add("target-wave-removed");
+      else el.style.display = "none";
+    });
+
+    document.querySelectorAll("canvas").forEach(c=>{
+      const text = (c.parentElement && c.parentElement.innerText || "").toLowerCase();
+      if(text.includes("gerçek doğru ses grafiği") || text.includes("doğru ses grafiği") || text.includes("referans ses")){
+        const row = c.closest(".real-wave-row,.wave-row,.comparison-bar");
+        if(row) row.classList.add("target-wave-removed");
+      }
+    });
+  }
+
+  // Existing pronunciation result hooks
+  window.WM_renderPhonemeComparison = renderPhonemeComparison;
+
+  const observer = new MutationObserver(function(){
+    removeTargetReferenceWave();
+    const target = getCurrentWordForPhoneme();
+    const spoken = getLastSpokenText();
+    if(target && spoken) renderPhonemeComparison(target, spoken);
+  });
+
+  document.addEventListener("DOMContentLoaded", function(){
+    removeTargetReferenceWave();
+    observer.observe(document.documentElement, {childList:true, subtree:true, characterData:true});
+  });
+
+  // SpeechRecognition result hook support
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(SR && !SR.__wmPhonemePatched){
+    const OriginalSR = SR;
+    const PatchedSR = function(){
+      const rec = new OriginalSR();
+      rec.addEventListener("result", function(e){
+        try{
+          const text = Array.from(e.results).map(r => r[0] && r[0].transcript || "").join(" ").trim();
+          if(text){
+            window.WM_lastSpokenText = text;
+            renderPhonemeComparison(getCurrentWordForPhoneme(), text);
+          }
+        }catch(_){}
+      });
+      return rec;
+    };
+    PatchedSR.__wmPhonemePatched = true;
+    window.SpeechRecognition = PatchedSR;
+    window.webkitSpeechRecognition = PatchedSR;
+  }
+
+  // If old code calls fake comparison, redirect to phoneme comparison.
+  ["drawTargetWaveform","drawCorrectWaveform","drawReferenceWaveform","drawFakeTargetWaveform"].forEach(name=>{
+    window[name] = function(){
+      removeTargetReferenceWave();
+      renderPhonemeComparison(getCurrentWordForPhoneme(), getLastSpokenText());
+      return false;
+    };
+  });
+})();
+</script>
+<!-- PHONEME COMPARISON + USER WAVEFORM PATCH END -->
+
+
+<!-- MOBILE POPUP + AI BUTTONS PATCH -->
+<style>
+.ai-extra-buttons{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+  flex-wrap:wrap;
+}
+.ai-extra-btn{
+  flex:1;
+  min-width:120px;
+  padding:10px 12px;
+  border:none;
+  border-radius:12px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.ai-translate-btn{
+  background:#1e1635;
+  color:#c4b5fd;
+}
+.ai-suggest-btn{
+  background:#052e16;
+  color:#86efac;
+}
+.mobile-popup-word{
+  cursor:pointer;
+  -webkit-tap-highlight-color:rgba(34,197,94,.2);
+}
+.mobile-popup-word:active{
+  background:rgba(34,197,94,.15);
+}
+</style>
+
+<script>
+(function(){
+"use strict";
+
+function openWordPopupMobile(word){
+  if(!word) return;
+
+  if(typeof window.showWordPopup === "function"){
+    window.showWordPopup(word);
+    return;
+  }
+
+  if(typeof window.openWordModal === "function"){
+    window.openWordModal(word);
+    return;
+  }
+
+  alert("Kelime: " + word);
+}
+
+function wrapWordsForMobile(container){
+  if(!container || container.dataset.mobileWrapped) return;
+
+  const skipTags = ["BUTTON","TEXTAREA","INPUT","SCRIPT","STYLE"];
+
+  function process(node){
+    if(node.nodeType === 3){
+      const txt = node.textContent;
+      if(!txt.trim()) return;
+
+      const frag = document.createDocumentFragment();
+
+      txt.split(/(\s+)/).forEach(part=>{
+        if(/^[a-zA-Z'-]{2,}$/.test(part)){
+          const span = document.createElement("span");
+          span.className = "mobile-popup-word";
+          span.textContent = part;
+
+          span.addEventListener("click", function(e){
+            e.stopPropagation();
+            openWordPopupMobile(part.toLowerCase());
+          }, {passive:false});
+
+          span.addEventListener("touchend", function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            openWordPopupMobile(part.toLowerCase());
+          }, {passive:false});
+
+          frag.appendChild(span);
+        }else{
+          frag.appendChild(document.createTextNode(part));
+        }
+      });
+
+      node.parentNode.replaceChild(frag,node);
+      return;
+    }
+
+    if(node.nodeType !== 1) return;
+    if(skipTags.includes(node.tagName)) return;
+
+    [...node.childNodes].forEach(process);
+  }
+
+  process(container);
+  container.dataset.mobileWrapped = "1";
+}
+
+function addAIButtons(){
+  const targets = document.querySelectorAll(
+    ".chat-msg.ai,.partner-msg.ai,.conv-msg.ai,#aiOutput,#conversationOutput"
+  );
+
+  targets.forEach(box=>{
+    if(box.querySelector(".ai-extra-buttons")) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "ai-extra-buttons";
+
+    const trBtn = document.createElement("button");
+    trBtn.className = "ai-extra-btn ai-translate-btn";
+    trBtn.innerHTML = "🇹🇷 Türkçe Çeviri";
+
+    const sugBtn = document.createElement("button");
+    sugBtn.className = "ai-extra-btn ai-suggest-btn";
+    sugBtn.innerHTML = "💡 Sen Öner";
+
+    trBtn.onclick = async function(){
+      const text = box.innerText.trim();
+
+      if(typeof window.translateText === "function"){
+        try{
+          const res = await window.translateText(text);
+          alert(res);
+          return;
+        }catch(e){}
+      }
+
+      const translated = "Çeviri özelliği AI API ile bağlanabilir.\\n\\nMetin:\\n" + text;
+      alert(translated);
+    };
+
+    sugBtn.onclick = function(){
+      const suggestions = [
+        "Daha doğal nasıl söylenir?",
+        "Bunu daha kısa söyle",
+        "Native gibi söyle",
+        "Daha resmi versiyon",
+        "Günlük konuşma versiyonu"
+      ];
+
+      const pick = suggestions[Math.floor(Math.random()*suggestions.length)];
+
+      if(typeof window.insertChatSuggestion === "function"){
+        window.insertChatSuggestion(pick);
+      } else {
+        const input = document.querySelector(".chat-input,textarea");
+        if(input){
+          input.value = pick;
+          input.focus();
+        }
+      }
+    };
+
+    box.appendChild(wrap);
+    wrap.appendChild(trBtn);
+    wrap.appendChild(sugBtn);
+
+    wrapWordsForMobile(box);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+  addAIButtons();
+
+  const observer = new MutationObserver(function(){
+    addAIButtons();
+
+    document.querySelectorAll(
+      ".chat-msg,.partner-msg,.conv-msg,#aiOutput,#conversationOutput,.ai-box"
+    ).forEach(wrapWordsForMobile);
+  });
+
+  observer.observe(document.body,{
+    childList:true,
+    subtree:true
+  });
+});
+})();
+</script>
+
+
+<!-- REAL LIFE MODE BUTTON FORCE PATCH START -->
+<style>
+.real-life-action-row,
+.wm-reallife-actions{
+  display:flex !important;
+  gap:8px !important;
+  margin-top:10px !important;
+  flex-wrap:wrap !important;
+}
+.real-life-action-row button,
+.wm-reallife-actions button{
+  flex:1 1 120px !important;
+  padding:10px 12px !important;
+  border:none !important;
+  border-radius:12px !important;
+  font-size:12px !important;
+  font-weight:900 !important;
+  font-family:inherit !important;
+  cursor:pointer !important;
+}
+.wm-translate-btn{background:#1e1635 !important;color:#c4b5fd !important;}
+.wm-suggest-btn{background:#052e16 !important;color:#86efac !important;}
+</style>
+
+<script>
+(function(){
+"use strict";
+
+function speakTextSafe(text){
+  try{
+    if(!text || !window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = /[ığüşöçİĞÜŞÖÇ]/.test(text) ? "tr-TR" : "en-US";
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+async function translateSafe(text){
+  const clean = (text || "").replace(/🇹🇷 Türkçe Çeviri|💡 Sen Öner|🔊/g,"").trim();
+  if(!clean) return;
+
+  if(typeof window.callAI === "function"){
+    try{
+      const prompt = "Translate this English text into natural Turkish. Only return Turkish translation.";
+      const res = await window.callAI(prompt, clean, "translate");
+      if(res){
+        alert(typeof res === "string" ? res : (res.text || JSON.stringify(res)));
+        return;
+      }
+    }catch(e){}
+  }
+
+  alert("Türkçe çeviri için AI bağlantısı gerekir.\n\nMetin:\n" + clean);
+}
+
+function suggestForRealLife(container){
+  const suggestions = [
+    "Can you say that more simply?",
+    "Could you repeat that, please?",
+    "I’m not sure I understand. Can you explain?",
+    "That sounds good to me.",
+    "Could you give me an example?"
+  ];
+  const text = suggestions[Math.floor(Math.random()*suggestions.length)];
+
+  const inputs = [
+    "#realLifeInput",
+    "#scenarioInput",
+    "#conversationInput",
+    ".conv-input-row textarea",
+    ".conv-input-row input",
+    ".chat-input",
+    "textarea"
+  ];
+
+  for(const sel of inputs){
+    const el = document.querySelector(sel);
+    if(el){
+      el.value = text;
+      el.dispatchEvent(new Event("input", {bubbles:true}));
+      el.focus();
+      return;
+    }
+  }
+
+  navigator.clipboard && navigator.clipboard.writeText(text);
+  alert("Öneri kopyalandı:\n" + text);
+}
+
+function addButtonsToMessage(msg){
+  if(!msg || msg.querySelector(".wm-reallife-actions")) return;
+
+  const row = document.createElement("div");
+  row.className = "wm-reallife-actions";
+
+  const tr = document.createElement("button");
+  tr.className = "wm-translate-btn";
+  tr.type = "button";
+  tr.textContent = "🇹🇷 Türkçe Çeviri";
+
+  const sug = document.createElement("button");
+  sug.className = "wm-suggest-btn";
+  sug.type = "button";
+  sug.textContent = "💡 Sen Öner";
+
+  const speak = document.createElement("button");
+  speak.className = "wm-translate-btn";
+  speak.type = "button";
+  speak.textContent = "🔊 Oku";
+
+  tr.onclick = function(e){
+    e.stopPropagation();
+    translateSafe(msg.innerText);
+  };
+  sug.onclick = function(e){
+    e.stopPropagation();
+    suggestForRealLife(msg);
+  };
+  speak.onclick = function(e){
+    e.stopPropagation();
+    speakTextSafe(msg.innerText.replace(/🇹🇷 Türkçe Çeviri|💡 Sen Öner|🔊 Oku/g,""));
+  };
+
+  row.appendChild(tr);
+  row.appendChild(sug);
+  row.appendChild(speak);
+  msg.appendChild(row);
+}
+
+function findRealLifeArea(){
+  const textMatches = [...document.querySelectorAll("h1,h2,h3,h4,.top-bar,.screen,.card")]
+    .filter(el => /gerçek hayat|real life|scenario|senaryo/i.test(el.innerText || ""));
+
+  const areas = new Set();
+
+  textMatches.forEach(el=>{
+    const screen = el.closest(".screen") || el.closest(".card") || el;
+    areas.add(screen);
+  });
+
+  document.querySelectorAll(
+    "#realLifeScreen,#realLifeMode,#realLifeOutput,#scenarioScreen,#scenarioOutput,#conversationOutput,.real-life-mode,.scenario-mode,.conv-messages,.partner-chat"
+  ).forEach(el=>areas.add(el.closest(".screen") || el));
+
+  return [...areas].filter(Boolean);
+}
+
+function applyRealLifeButtons(){
+  const areas = findRealLifeArea();
+
+  areas.forEach(area=>{
+    // Existing AI message classes
+    area.querySelectorAll(
+      ".conv-msg.ai,.chat-msg.ai,.partner-msg.ai,.room-msg.other,.ai-msg,.message.ai,.bot-message,.assistant-message"
+    ).forEach(addButtonsToMessage);
+
+    // If no message class, add a fixed button panel near output area
+    const outputs = area.querySelectorAll("#realLifeOutput,#scenarioOutput,#conversationOutput,.conv-messages,.partner-chat,.chat-messages");
+    outputs.forEach(out=>{
+      const last = [...out.children].reverse().find(x => (x.innerText || "").trim().length > 10);
+      if(last) addButtonsToMessage(last);
+    });
+
+    if(!area.querySelector(".real-life-action-row")){
+      const input = area.querySelector("textarea,input,.conv-input-row,.chat-input-row");
+      const row = document.createElement("div");
+      row.className = "real-life-action-row";
+
+      const tr = document.createElement("button");
+      tr.className = "wm-translate-btn";
+      tr.type = "button";
+      tr.textContent = "🇹🇷 Son Mesajı Çevir";
+
+      const sug = document.createElement("button");
+      sug.className = "wm-suggest-btn";
+      sug.type = "button";
+      sug.textContent = "💡 Sen Öner";
+
+      tr.onclick = function(){
+        const msgs = area.querySelectorAll(".conv-msg.ai,.chat-msg.ai,.partner-msg.ai,.room-msg.other,.ai-msg,.message.ai,.bot-message,.assistant-message");
+        const last = msgs[msgs.length-1] || area;
+        translateSafe(last.innerText);
+      };
+      sug.onclick = function(){ suggestForRealLife(area); };
+
+      row.appendChild(tr);
+      row.appendChild(sug);
+
+      if(input && input.parentNode){
+        input.parentNode.insertBefore(row, input);
+      }else{
+        area.appendChild(row);
+      }
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+  applyRealLifeButtons();
+  const obs = new MutationObserver(applyRealLifeButtons);
+  obs.observe(document.body, {childList:true, subtree:true});
+});
+})();
+</script>
+<!-- REAL LIFE MODE BUTTON FORCE PATCH END -->
+
+
+<!-- WORD MODE PHASE 1 + 2 PROFESSIONAL UPGRADE START -->
+<style>
+/* Phase 1 + 2 shell */
+.wm-pro-panel{
+  background:linear-gradient(145deg,var(--card,#161b28),var(--bg2,#131720));
+  border:1px solid var(--border,#252d42);
+  border-radius:18px;
+  padding:14px;
+  margin:12px 0;
+  box-shadow:var(--shadow,0 8px 32px rgba(0,0,0,.4));
+}
+.wm-pro-title{
+  font-size:16px;
+  font-weight:900;
+  color:var(--text,#e8eaf6);
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin-bottom:8px;
+}
+.wm-pro-sub{
+  color:var(--muted,#7c85b0);
+  font-size:12px;
+  line-height:1.5;
+  margin-bottom:10px;
+}
+.wm-chip-row{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0;}
+.wm-chip{
+  border:1.5px solid var(--border,#252d42);
+  background:var(--bg2,#131720);
+  color:var(--sub,#a0a8c8);
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+  user-select:none;
+  transition:.15s;
+}
+.wm-chip.active{background:var(--blue,#3b82f6);border-color:var(--blue,#3b82f6);color:#fff;}
+.wm-chip:active{transform:scale(.96);}
+.wm-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+@media(max-width:420px){.wm-grid-2{grid-template-columns:1fr;}}
+.wm-select,.wm-input,.wm-textarea{
+  width:100%;
+  background:var(--bg2,#131720);
+  color:var(--text,#e8eaf6);
+  border:1.5px solid var(--border,#252d42);
+  border-radius:12px;
+  padding:10px 12px;
+  font-family:inherit;
+  font-size:14px;
+  outline:none;
+}
+.wm-textarea{min-height:78px;resize:vertical;}
+.wm-select:focus,.wm-input:focus,.wm-textarea:focus{border-color:var(--blue,#3b82f6);}
+.wm-btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.wm-btn{
+  flex:1 1 130px;
+  border:none;
+  border-radius:12px;
+  padding:10px 12px;
+  font-weight:900;
+  cursor:pointer;
+  font-family:inherit;
+  font-size:13px;
+}
+.wm-btn-blue{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;}
+.wm-btn-green{background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16;}
+.wm-btn-purple{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;}
+.wm-btn-ghost{background:var(--bg3,#1c2130);color:var(--sub,#a0a8c8);border:1px solid var(--border,#252d42);}
+.wm-hero{
+  border-radius:18px;
+  overflow:hidden;
+  min-height:150px;
+  background:var(--bg3,#1c2130);
+  position:relative;
+  margin-bottom:12px;
+  border:1px solid var(--border,#252d42);
+}
+.wm-hero svg{width:100%;height:170px;display:block;}
+.wm-hero-caption{
+  position:absolute;
+  bottom:0;
+  left:0;right:0;
+  padding:12px;
+  background:linear-gradient(transparent,rgba(0,0,0,.75));
+  color:#fff;
+}
+.wm-hero-caption b{font-size:16px;}
+.wm-hero-caption span{font-size:12px;opacity:.85;display:block;margin-top:2px;}
+.wm-character-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;}
+.wm-character{
+  background:var(--bg2,#131720);
+  border:1.5px solid var(--border,#252d42);
+  border-radius:14px;
+  padding:10px;
+  cursor:pointer;
+  transition:.15s;
+}
+.wm-character.active{border-color:var(--green,#22c55e);background:rgba(34,197,94,.08);}
+.wm-character:active{transform:scale(.97);}
+.wm-char-emoji{font-size:26px;}
+.wm-char-name{font-weight:900;font-size:13px;color:var(--text,#e8eaf6);}
+.wm-char-meta{font-size:11px;color:var(--muted,#7c85b0);line-height:1.35;margin-top:2px;}
+.wm-suggestion-box{
+  margin-top:10px;
+  background:var(--bg2,#131720);
+  border:1px solid var(--border,#252d42);
+  border-radius:14px;
+  padding:10px;
+}
+.wm-suggestion-title{font-size:12px;font-weight:900;color:var(--purple,#a78bfa);margin-bottom:8px;}
+.wm-suggestion-card{
+  background:var(--bg3,#1c2130);
+  border:1px solid var(--border,#252d42);
+  border-radius:12px;
+  padding:10px;
+  margin-bottom:8px;
+}
+.wm-suggestion-label{font-size:10px;font-weight:900;color:var(--muted,#7c85b0);text-transform:uppercase;letter-spacing:.8px;}
+.wm-suggestion-text{font-size:14px;color:var(--text,#e8eaf6);font-weight:800;line-height:1.45;margin:4px 0 8px;}
+.wm-suggestion-actions{display:flex;gap:6px;}
+.wm-mini-btn{
+  flex:1;
+  border:none;
+  padding:7px 8px;
+  border-radius:10px;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+.wm-stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;}
+.wm-stat{
+  background:var(--bg2,#131720);
+  border:1px solid var(--border,#252d42);
+  border-radius:12px;
+  padding:10px;
+}
+.wm-stat-val{font-size:22px;font-weight:900;color:var(--green,#22c55e);}
+.wm-stat-lbl{font-size:11px;color:var(--muted,#7c85b0);font-weight:800;}
+.wm-score-bars{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.wm-score-line{display:grid;grid-template-columns:90px 1fr 36px;gap:8px;align-items:center;font-size:12px;font-weight:800;color:var(--sub,#a0a8c8);}
+.wm-score-track{height:8px;background:var(--bg3,#1c2130);border-radius:8px;overflow:hidden;}
+.wm-score-fill{height:100%;background:linear-gradient(90deg,var(--blue,#3b82f6),var(--green,#22c55e));border-radius:8px;}
+.wm-toast{
+  position:fixed;
+  left:50%;
+  bottom:86px;
+  transform:translateX(-50%);
+  background:#111827;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.12);
+  padding:10px 14px;
+  border-radius:12px;
+  z-index:999999;
+  font-size:13px;
+  font-weight:800;
+  box-shadow:0 8px 30px rgba(0,0,0,.35);
+  max-width:90%;
+}
+.wm-mobile-word{cursor:pointer;-webkit-tap-highlight-color:rgba(34,197,94,.25);}
+.wm-mobile-word:active{background:rgba(34,197,94,.14);border-radius:4px;}
+</style>
+
+<script>
+(function(){
+"use strict";
+
+const WM = window.WordModePro = window.WordModePro || {};
+const STORAGE_KEY = "wm_pro_phase_state_v1";
+
+WM.state = Object.assign({
+  level:"A2",
+  accent:"en-US",
+  activeScenario:"coffee",
+  activeCharacter:"emma",
+  customScenarios:[],
+  memory:{
+    weakSounds:{},
+    grammarIssues:{},
+    scenarioUsage:{},
+    speakingScores:[]
+  }
+}, loadState());
+
+WM.scenarios = {
+  coffee:{
+    title:"Coffee Shop",
+    emoji:"☕",
+    role:"Barista",
+    goal:"Order a drink naturally",
+    palette:["#5b371f","#b7791f","#f6ad55"],
+    desc:"Busy cafe, morning queue, friendly service."
+  },
+  airport:{
+    title:"Airport Check-in",
+    emoji:"✈️",
+    role:"Airport Staff",
+    goal:"Check in and ask travel questions",
+    palette:["#1e3a8a","#38bdf8","#c7d2fe"],
+    desc:"Airport counter, suitcase, boarding screen."
+  },
+  hotel:{
+    title:"Hotel Reception",
+    emoji:"🏨",
+    role:"Receptionist",
+    goal:"Check in, ask for help, solve issues",
+    palette:["#312e81","#a78bfa","#fde68a"],
+    desc:"Hotel lobby, reservation desk, polite tone."
+  },
+  taxi:{
+    title:"Taxi Ride",
+    emoji:"🚕",
+    role:"Taxi Driver",
+    goal:"Give directions and make small talk",
+    palette:["#78350f","#facc15","#111827"],
+    desc:"City traffic, short practical conversation."
+  },
+  interview:{
+    title:"Job Interview",
+    emoji:"💼",
+    role:"Interviewer",
+    goal:"Answer interview questions confidently",
+    palette:["#111827","#64748b","#60a5fa"],
+    desc:"Formal meeting room, professional tone."
+  },
+  doctor:{
+    title:"Doctor Visit",
+    emoji:"👨‍⚕️",
+    role:"Doctor",
+    goal:"Explain symptoms clearly",
+    palette:["#064e3b","#34d399","#e0f2fe"],
+    desc:"Clinic room, careful questions, simple explanations."
+  }
+};
+
+WM.characters = {
+  emma:{name:"Emma",emoji:"👩",gender:"female",personality:"friendly",voiceHint:["female","woman","zira","samantha","google us english"],style:"warm, patient, encouraging"},
+  mike:{name:"Mike",emoji:"👨",gender:"male",personality:"casual",voiceHint:["male","man","david","alex","google uk english male"],style:"casual, direct, natural"},
+  sophia:{name:"Sophia",emoji:"👩‍💼",gender:"female",personality:"formal",voiceHint:["female","woman","serena","susan"],style:"formal, clear, polite"},
+  jack:{name:"Jack",emoji:"🧔",gender:"male",personality:"funny",voiceHint:["male","man","daniel","tom"],style:"funny, energetic, quick"}
+};
+
+WM.levelGuides = {
+  A1:"Use very short sentences, basic words, one question at a time.",
+  A2:"Use simple daily conversation and clear follow-up questions.",
+  B1:"Use natural but not too complex English. Encourage full sentence answers.",
+  B2:"Use more natural expressions, idioms lightly, and realistic speed.",
+  C1:"Use native-like phrasing, nuance, and realistic conversation flow."
+};
+
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(WM.state)); }
+function loadState(){ try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")}catch(e){return{}} }
+
+function toast(msg){
+  document.querySelectorAll(".wm-toast").forEach(x=>x.remove());
+  const el=document.createElement("div");
+  el.className="wm-toast";
+  el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2600);
+}
+
+function escapeHtml(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+
+function svgHero(scenario){
+  const p = scenario.palette || ["#1e3a8a","#38bdf8","#c7d2fe"];
+  const emoji = scenario.emoji || "🌍";
+  return `
+  <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeHtml(scenario.title)}">
+    <defs>
+      <linearGradient id="wmgrad${scenario.title.replace(/\W/g,'')}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="${p[0]}"/>
+        <stop offset=".55" stop-color="${p[1]}"/>
+        <stop offset="1" stop-color="${p[2]}"/>
+      </linearGradient>
+      <filter id="blur"><feGaussianBlur stdDeviation="12"/></filter>
+    </defs>
+    <rect width="720" height="300" fill="url(#wmgrad${scenario.title.replace(/\W/g,'')})"/>
+    <circle cx="590" cy="65" r="76" fill="rgba(255,255,255,.16)" filter="url(#blur)"/>
+    <circle cx="120" cy="250" r="110" fill="rgba(0,0,0,.12)" filter="url(#blur)"/>
+    <text x="62" y="155" font-size="92">${emoji}</text>
+    <rect x="230" y="72" width="410" height="42" rx="18" fill="rgba(255,255,255,.16)"/>
+    <rect x="230" y="132" width="330" height="32" rx="16" fill="rgba(255,255,255,.13)"/>
+    <rect x="230" y="182" width="250" height="28" rx="14" fill="rgba(0,0,0,.16)"/>
+    <path d="M0 245 C120 215 220 282 360 248 C500 212 600 244 720 218 L720 300 L0 300 Z" fill="rgba(0,0,0,.22)"/>
+  </svg>`;
+}
+
+function getAllScenarios(){
+  const custom = {};
+  (WM.state.customScenarios||[]).forEach((s,i)=>custom["custom_"+i]=s);
+  return Object.assign({}, WM.scenarios, custom);
+}
+
+function selectedScenario(){
+  const all = getAllScenarios();
+  return all[WM.state.activeScenario] || all.coffee;
+}
+function selectedCharacter(){
+  return WM.characters[WM.state.activeCharacter] || WM.characters.emma;
+}
+
+function chooseVoice(){
+  const voices = speechSynthesis.getVoices ? speechSynthesis.getVoices() : [];
+  const ch = selectedCharacter();
+  const accent = WM.state.accent || "en-US";
+  const hints = ch.voiceHint || [];
+  let v = voices.find(v => v.lang === accent && hints.some(h=>v.name.toLowerCase().includes(h)));
+  if(!v) v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(accent.toLowerCase().split("-")[0]) && hints.some(h=>v.name.toLowerCase().includes(h)));
+  if(!v) v = voices.find(v => v.lang === accent);
+  if(!v) v = voices.find(v => v.lang && v.lang.startsWith("en"));
+  return v || null;
+}
+
+WM.speak = function(text){
+  if(!window.speechSynthesis || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(String(text).replace(/🇹🇷.*|💡.*|🔊.*/g,""));
+  u.lang = WM.state.accent || "en-US";
+  const v = chooseVoice();
+  if(v) u.voice = v;
+  const level = WM.state.level;
+  u.rate = level === "A1" ? .78 : level === "A2" ? .86 : level === "B1" ? .95 : level === "B2" ? 1.03 : 1.08;
+  u.pitch = selectedCharacter().gender === "female" ? 1.08 : .92;
+  speechSynthesis.speak(u);
+};
+
+function scenarioPrompt(){
+  const sc = selectedScenario();
+  const ch = selectedCharacter();
+  return `You are ${ch.name}, a ${ch.personality} ${sc.role}. Scenario: ${sc.title}. Goal: ${sc.goal}. Personality style: ${ch.style}. Level: ${WM.state.level}. ${WM.levelGuides[WM.state.level]}. Ask one question at a time. Correct softly when needed.`;
+}
+
+WM.makeSuggestions = function(contextText){
+  const sc = selectedScenario();
+  const lvl = WM.state.level;
+  const samples = {
+    A1:["Yes, please.","I want coffee.","Thank you."],
+    A2:["I’d like a coffee, please.","Can you help me, please?","How much is it?"],
+    B1:["Could I have a coffee, please?","I’m looking for something not too expensive.","Could you explain that again?"],
+    B2:["I’ll have a latte, if that’s okay.","I’m not sure yet. What would you recommend?","Could you give me a bit more detail?"],
+    C1:["I’m leaning toward a latte. What would you recommend?","Could you walk me through the options?","That sounds reasonable, but I’d like to clarify one thing."]
+  };
+  let arr = samples[lvl] || samples.A2;
+  if(sc.title.toLowerCase().includes("airport")){
+    arr = lvl==="A1" ? ["I have a ticket.","Here is my passport.","Where is gate five?"] :
+          lvl==="A2" ? ["I’d like to check in, please.","Here is my passport.","Where is the boarding gate?"] :
+          lvl==="B1" ? ["Could you help me check in for my flight?","Do I need to check this bag?","Could you tell me where security is?"] :
+          lvl==="B2" ? ["I’m checking in for the flight to London.","Could you confirm whether my bag is included?","Is there any delay I should know about?"] :
+          ["I’m checking in for my London flight and wanted to confirm the baggage allowance.","Could you let me know if there are any schedule changes?","Would it be possible to get an aisle seat?"];
+  }
+  if(sc.title.toLowerCase().includes("interview")){
+    arr = lvl==="A1" ? ["I am a student.","I like learning.","I can work hard."] :
+          lvl==="A2" ? ["I have experience with computers.","I’m good at learning new things.","I want to improve my skills."] :
+          lvl==="B1" ? ["I have worked on several small projects.","I’m comfortable learning new tools quickly.","I enjoy solving practical problems."] :
+          lvl==="B2" ? ["In my previous projects, I focused on building practical solutions.","I’d describe myself as adaptable and detail-oriented.","I’m especially interested in improving user experience."] :
+          ["I tend to combine practical problem-solving with a strong focus on user experience.","One strength I bring is the ability to learn quickly and turn feedback into improvements.","I’m looking for a role where I can grow while contributing meaningfully."];
+  }
+  return arr;
+};
+
+function insertIntoBestInput(text){
+  const selectors = ["#realLifeInput","#scenarioInput","#conversationInput",".conv-input-row textarea",".conv-input-row input",".chat-input","textarea","input[type='text']"];
+  for(const sel of selectors){
+    const el = document.querySelector(sel);
+    if(el && !el.disabled){
+      el.value = text;
+      el.dispatchEvent(new Event("input",{bubbles:true}));
+      el.focus();
+      return true;
+    }
+  }
+  return false;
+}
+
+function renderSuggestionCards(host, context){
+  if(!host) return;
+  host.querySelectorAll(".wm-suggestion-box").forEach(x=>x.remove());
+  const box=document.createElement("div");
+  box.className="wm-suggestion-box";
+  const suggestions=WM.makeSuggestions(context);
+  box.innerHTML = `<div class="wm-suggestion-title">💡 Seviyene uygun cevap önerileri</div>` + suggestions.map((s,i)=>`
+    <div class="wm-suggestion-card">
+      <div class="wm-suggestion-label">${i===0?"Kolay":i===1?"Doğal":"Daha iyi"}</div>
+      <div class="wm-suggestion-text">${escapeHtml(s)}</div>
+      <div class="wm-suggestion-actions">
+        <button class="wm-mini-btn wm-btn-green" data-use="${escapeHtml(s)}">Kullan</button>
+        <button class="wm-mini-btn wm-btn-purple" data-speak="${escapeHtml(s)}">Oku</button>
+        <button class="wm-mini-btn wm-btn-ghost" data-copy="${escapeHtml(s)}">Kopyala</button>
+      </div>
+    </div>
+  `).join("");
+  box.addEventListener("click", e=>{
+    const use=e.target.getAttribute("data-use");
+    const speak=e.target.getAttribute("data-speak");
+    const copy=e.target.getAttribute("data-copy");
+    if(use){ insertIntoBestInput(use); toast("Cevap yazı alanına eklendi."); }
+    if(speak){ WM.speak(speak); }
+    if(copy){ navigator.clipboard && navigator.clipboard.writeText(copy); toast("Kopyalandı."); }
+  });
+  host.appendChild(box);
+}
+
+function translateTextBasic(text){
+  const t = String(text||"").replace(/🇹🇷 Türkçe Çeviri|💡 Sen Öner|🔊 Oku/g,"").trim();
+  if(!t) return;
+  if(typeof window.callAI === "function"){
+    try{
+      const maybe = window.callAI("Translate this English text into natural Turkish. Only Turkish.", t, "translate");
+      if(maybe && typeof maybe.then==="function"){
+        maybe.then(r=>alert(typeof r==="string"?r:(r.text||JSON.stringify(r)))).catch(()=>alert("AI çeviri bağlantısı başarısız.\n\nMetin:\n"+t));
+        return;
+      }
+    }catch(e){}
+  }
+  alert("AI çeviri API bağlantısı yoksa otomatik çeviri yapılamaz.\n\nÇevrilecek metin:\n"+t);
+}
+
+function addActionButtonsToMessage(msg){
+  if(!msg || msg.querySelector(".wm-reallife-actions")) return;
+  const row=document.createElement("div");
+  row.className="wm-reallife-actions wm-btn-row";
+  row.innerHTML = `
+    <button type="button" class="wm-btn wm-btn-purple">🇹🇷 Türkçe Çeviri</button>
+    <button type="button" class="wm-btn wm-btn-green">💡 Sen Öner</button>
+    <button type="button" class="wm-btn wm-btn-ghost">🔊 Oku</button>
+  `;
+  const [tr,sug,spk]=row.querySelectorAll("button");
+  tr.onclick=e=>{e.stopPropagation();translateTextBasic(msg.innerText);};
+  sug.onclick=e=>{e.stopPropagation();renderSuggestionCards(msg, msg.innerText);};
+  spk.onclick=e=>{e.stopPropagation();WM.speak(msg.innerText);};
+  msg.appendChild(row);
+}
+
+function renderControlPanel(){
+  const areas = findRealLifeAreas();
+  areas.forEach(area=>{
+    if(area.querySelector(".wm-phase-panel")) return;
+
+    const sc = selectedScenario();
+    const panel=document.createElement("div");
+    panel.className="wm-pro-panel wm-phase-panel";
+    panel.innerHTML=`
+      <div class="wm-hero">
+        ${svgHero(sc)}
+        <div class="wm-hero-caption">
+          <b>${escapeHtml(sc.emoji+" "+sc.title)}</b>
+          <span>${escapeHtml(sc.desc || sc.goal || "")}</span>
+        </div>
+      </div>
+      <div class="wm-pro-title">🎭 Gerçek Hayat Koçu</div>
+      <div class="wm-pro-sub">Seviye, senaryo, karakter, ses ve kişilik seç. “Sen Öner” seviyene göre cevap kartları üretir.</div>
+
+      <div class="wm-pro-sub"><b>Seviye</b></div>
+      <div class="wm-chip-row" data-wm-levels>
+        ${["A1","A2","B1","B2","C1"].map(l=>`<span class="wm-chip ${WM.state.level===l?"active":""}" data-level="${l}">${l}</span>`).join("")}
+      </div>
+
+      <div class="wm-grid-2">
+        <div>
+          <div class="wm-pro-sub"><b>Senaryo</b></div>
+          <select class="wm-select" data-scenario-select>
+            ${Object.entries(getAllScenarios()).map(([k,s])=>`<option value="${escapeHtml(k)}" ${WM.state.activeScenario===k?"selected":""}>${escapeHtml((s.emoji||"🌍")+" "+s.title)}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <div class="wm-pro-sub"><b>Aksan</b></div>
+          <select class="wm-select" data-accent-select>
+            <option value="en-US" ${WM.state.accent==="en-US"?"selected":""}>🇺🇸 American</option>
+            <option value="en-GB" ${WM.state.accent==="en-GB"?"selected":""}>🇬🇧 British</option>
+            <option value="en-AU" ${WM.state.accent==="en-AU"?"selected":""}>🇦🇺 Australian</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="wm-pro-sub" style="margin-top:10px"><b>Konuşmacı Kişiliği</b></div>
+      <div class="wm-character-grid">
+        ${Object.entries(WM.characters).map(([k,c])=>`
+          <div class="wm-character ${WM.state.activeCharacter===k?"active":""}" data-character="${k}">
+            <div class="wm-char-emoji">${c.emoji}</div>
+            <div class="wm-char-name">${escapeHtml(c.name)}</div>
+            <div class="wm-char-meta">${escapeHtml(c.gender+" • "+c.personality)}</div>
+          </div>
+        `).join("")}
+      </div>
+
+      <div class="wm-btn-row">
+        <button class="wm-btn wm-btn-blue" data-start-roleplay>▶️ Bu Ayarlarla Başlat</button>
+        <button class="wm-btn wm-btn-green" data-global-suggest>💡 Sen Öner</button>
+        <button class="wm-btn wm-btn-purple" data-add-scenario>➕ Yeni Senaryo</button>
+      </div>
+
+      <div class="wm-stat-grid">
+        <div class="wm-stat"><div class="wm-stat-val" data-wm-sessions>0</div><div class="wm-stat-lbl">Senaryo kullanımı</div></div>
+        <div class="wm-stat"><div class="wm-stat-val" data-wm-avg>--</div><div class="wm-stat-lbl">Ortalama speaking</div></div>
+      </div>
+      <div class="wm-score-bars">
+        <div class="wm-score-line"><span>Pronunciation</span><div class="wm-score-track"><div class="wm-score-fill" style="width:78%"></div></div><span>78</span></div>
+        <div class="wm-score-line"><span>Grammar</span><div class="wm-score-track"><div class="wm-score-fill" style="width:72%"></div></div><span>72</span></div>
+        <div class="wm-score-line"><span>Fluency</span><div class="wm-score-track"><div class="wm-score-fill" style="width:69%"></div></div><span>69</span></div>
+        <div class="wm-score-line"><span>Naturalness</span><div class="wm-score-track"><div class="wm-score-fill" style="width:65%"></div></div><span>65</span></div>
+      </div>
+    `;
+    const insertBefore = area.querySelector(".conv-messages,.partner-chat,.chat-messages,#conversationOutput,#realLifeOutput") || area.firstChild;
+    area.insertBefore(panel, insertBefore);
+
+    bindPanel(panel, area);
+  });
+}
+
+function bindPanel(panel, area){
+  panel.querySelectorAll("[data-level]").forEach(chip=>{
+    chip.onclick=()=>{
+      WM.state.level=chip.dataset.level; saveState(); rerenderPanels(); toast("Seviye: "+WM.state.level);
+    };
+  });
+  panel.querySelector("[data-scenario-select]").onchange=e=>{
+    WM.state.activeScenario=e.target.value; saveState(); rerenderPanels();
+  };
+  panel.querySelector("[data-accent-select]").onchange=e=>{
+    WM.state.accent=e.target.value; saveState(); toast("Aksan güncellendi.");
+  };
+  panel.querySelectorAll("[data-character]").forEach(card=>{
+    card.onclick=()=>{
+      WM.state.activeCharacter=card.dataset.character; saveState(); rerenderPanels(); toast("Karakter: "+selectedCharacter().name);
+    };
+  });
+  panel.querySelector("[data-global-suggest]").onclick=()=>renderSuggestionCards(panel, "");
+  panel.querySelector("[data-start-roleplay]").onclick=()=>{
+    const first = `Hi, I'm ${selectedCharacter().name}. ${startQuestionForScenario()}`;
+    appendAIMessage(area, first);
+    WM.speak(first);
+    WM.state.memory.scenarioUsage[WM.state.activeScenario]=(WM.state.memory.scenarioUsage[WM.state.activeScenario]||0)+1;
+    saveState();
+  };
+  panel.querySelector("[data-add-scenario]").onclick=()=>showScenarioCreator(panel);
+  updatePanelStats(panel);
+}
+
+function startQuestionForScenario(){
+  const sc = selectedScenario().title.toLowerCase();
+  const lvl = WM.state.level;
+  if(sc.includes("coffee")) return lvl==="A1" ? "What do you want?" : "What would you like to order today?";
+  if(sc.includes("airport")) return lvl==="A1" ? "Passport, please." : "May I see your passport and ticket, please?";
+  if(sc.includes("hotel")) return lvl==="A1" ? "Do you have a reservation?" : "Welcome. Do you have a reservation with us?";
+  if(sc.includes("taxi")) return lvl==="A1" ? "Where do you go?" : "Where would you like to go today?";
+  if(sc.includes("interview")) return lvl==="A1" ? "Tell me about you." : "Could you tell me a little about yourself?";
+  if(sc.includes("doctor")) return lvl==="A1" ? "What is wrong?" : "What symptoms are you experiencing?";
+  return "How can I help you today?";
+}
+
+function appendAIMessage(area, text){
+  const container = area.querySelector(".conv-messages,.partner-chat,.chat-messages,#conversationOutput,#realLifeOutput") || area;
+  const msg=document.createElement("div");
+  msg.className="conv-msg ai";
+  msg.textContent=text;
+  container.appendChild(msg);
+  addActionButtonsToMessage(msg);
+  wrapWords(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showScenarioCreator(host){
+  host.querySelectorAll(".wm-scenario-creator").forEach(x=>x.remove());
+  const box=document.createElement("div");
+  box.className="wm-pro-panel wm-scenario-creator";
+  box.innerHTML=`
+    <div class="wm-pro-title">➕ Yeni Senaryo Ekle</div>
+    <input class="wm-input" data-new-title placeholder="Senaryo adı: Amerika vize görüşmesi">
+    <textarea class="wm-textarea" data-new-desc placeholder="Ortam açıklaması ve hedef: A visa officer asks questions. I need to answer confidently."></textarea>
+    <div class="wm-grid-2">
+      <input class="wm-input" data-new-emoji placeholder="Emoji: 🛂">
+      <input class="wm-input" data-new-role placeholder="AI rolü: Visa Officer">
+    </div>
+    <div class="wm-btn-row">
+      <button class="wm-btn wm-btn-green" data-save-scenario>Kaydet</button>
+      <button class="wm-btn wm-btn-ghost" data-cancel-scenario>Vazgeç</button>
+    </div>
+  `;
+  host.appendChild(box);
+  box.querySelector("[data-cancel-scenario]").onclick=()=>box.remove();
+  box.querySelector("[data-save-scenario]").onclick=()=>{
+    const title=box.querySelector("[data-new-title]").value.trim();
+    const desc=box.querySelector("[data-new-desc]").value.trim();
+    const emoji=box.querySelector("[data-new-emoji]").value.trim() || "🌍";
+    const role=box.querySelector("[data-new-role]").value.trim() || "Conversation Partner";
+    if(!title){toast("Senaryo adı gerekli."); return;}
+    WM.state.customScenarios = WM.state.customScenarios || [];
+    WM.state.customScenarios.push({
+      title, desc, emoji, role, goal:desc || "Practice real-life English", palette:["#0f172a","#3b82f6","#a78bfa"]
+    });
+    WM.state.activeScenario = "custom_" + (WM.state.customScenarios.length-1);
+    saveState();
+    rerenderPanels();
+    toast("Yeni senaryo eklendi.");
+  };
+}
+
+function updatePanelStats(panel){
+  const usage = WM.state.memory.scenarioUsage[WM.state.activeScenario] || 0;
+  const scores = WM.state.memory.speakingScores || [];
+  const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : "--";
+  const a=panel.querySelector("[data-wm-sessions]");
+  const b=panel.querySelector("[data-wm-avg]");
+  if(a) a.textContent=usage;
+  if(b) b.textContent=avg;
+}
+
+function rerenderPanels(){
+  document.querySelectorAll(".wm-phase-panel").forEach(x=>x.remove());
+  renderControlPanel();
+}
+
+function findRealLifeAreas(){
+  const areas = new Set();
+  document.querySelectorAll(".screen,.card,section,div").forEach(el=>{
+    const txt=(el.innerText||"").slice(0,800).toLowerCase();
+    if(txt.includes("gerçek hayat") || txt.includes("real life") || txt.includes("senaryo") || txt.includes("scenario")){
+      const screen=el.closest(".screen") || el;
+      areas.add(screen);
+    }
+  });
+  document.querySelectorAll("#realLifeScreen,#realLifeMode,#scenarioScreen,#conversationOutput,.conv-messages").forEach(el=>areas.add(el.closest(".screen")||el));
+  return [...areas].filter(Boolean).slice(0,3);
+}
+
+function wrapWords(container){
+  if(!container || container.dataset.wmWordsWrapped) return;
+  const skip=["BUTTON","TEXTAREA","INPUT","SCRIPT","STYLE","SELECT","OPTION"];
+  function walk(node){
+    if(node.nodeType===3){
+      const txt=node.nodeValue;
+      if(!txt || !/[a-zA-Z]/.test(txt)) return;
+      const frag=document.createDocumentFragment();
+      txt.split(/(\s+)/).forEach(part=>{
+        if(/^[a-zA-Z][a-zA-Z'-]{1,}$/.test(part)){
+          const sp=document.createElement("span");
+          sp.className="wm-mobile-word";
+          sp.textContent=part;
+          const open=(e)=>{e.preventDefault();e.stopPropagation();openWordPopup(part.toLowerCase());};
+          sp.addEventListener("click",open,{passive:false});
+          sp.addEventListener("touchend",open,{passive:false});
+          frag.appendChild(sp);
+        }else frag.appendChild(document.createTextNode(part));
+      });
+      node.parentNode && node.parentNode.replaceChild(frag,node);
+      return;
+    }
+    if(node.nodeType!==1 || skip.includes(node.tagName)) return;
+    [...node.childNodes].forEach(walk);
+  }
+  walk(container);
+  container.dataset.wmWordsWrapped="1";
+}
+
+function openWordPopup(word){
+  if(!word) return;
+  if(typeof window.showWordPopup==="function") return window.showWordPopup(word);
+  if(typeof window.openWordModal==="function") return window.openWordModal(word);
+  if(window.dictionary && window.dictionary[word]){
+    const d=window.dictionary[word];
+    alert(`${word}\n${d.tr_pron||""}\n${(d.meanings||[]).join(", ")}\nCEFR: ${d.cefr||"-"} | Zipf: ${d.zipf||"-"}`);
+    return;
+  }
+  alert("Kelime: " + word);
+}
+
+function enhanceMessages(){
+  document.querySelectorAll(".conv-msg.ai,.chat-msg.ai,.partner-msg.ai,.room-msg.other,.ai-msg,.message.ai,.bot-message,.assistant-message").forEach(msg=>{
+    addActionButtonsToMessage(msg);
+    wrapWords(msg);
+  });
+}
+
+function boot(){
+  renderControlPanel();
+  enhanceMessages();
+  const obs=new MutationObserver(()=>{renderControlPanel(); enhanceMessages();});
+  obs.observe(document.body,{childList:true,subtree:true});
+  if(window.speechSynthesis && speechSynthesis.onvoiceschanged !== undefined){
+    speechSynthesis.onvoiceschanged = function(){};
+  }
+}
+
+document.addEventListener("DOMContentLoaded", boot);
+
+// Public helpers
+WM.saveState = saveState;
+WM.toast = toast;
+WM.scenarioPrompt = scenarioPrompt;
+WM.insertSuggestion = insertIntoBestInput;
+})();
+</script>
+<!-- WORD MODE PHASE 1 + 2 PROFESSIONAL UPGRADE END -->
+
 </body></html>
