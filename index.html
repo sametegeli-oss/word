@@ -1188,7 +1188,7 @@ textarea:focus-visible {
 .wmng-scorebar{height:10px;background:var(--bg3);border-radius:8px;overflow:hidden;margin:8px 0}.wmng-scorebar>span{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--orange),var(--green));border-radius:8px;transition:width .5s ease}
 .wmng-chat{display:flex;flex-direction:column;gap:10px;max-height:390px;overflow-y:auto;padding:6px;margin-bottom:10px;}
 .wmng-msg{padding:12px 14px;border-radius:16px;max-width:88%;font-size:15px;line-height:1.55}.wmng-msg.ai{align-self:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:6px 16px 16px 16px}.wmng-msg.user{align-self:flex-end;background:linear-gradient(135deg,#0d2818,#0a1f12);border:1px solid #166534;color:#86efac;border-radius:16px 6px 16px 16px}.wmng-msg.system{align-self:center;background:#1e1635;color:var(--purple);border:1px dashed var(--purple);font-size:12px;max-width:96%;}
-.wmng-pmap{font-size:30px;font-weight:900;letter-spacing:3px;text-align:center;background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;padding:18px;line-height:1.9;word-break:break-word}.pm-ok{color:#4ade80}.pm-close{color:#facc15;text-decoration:underline}.pm-bad{color:#ef4444;text-decoration:underline wavy}.pm-extra{color:#fb923c;opacity:.8}.wmng-mini{font-size:11px;color:var(--muted);line-height:1.45}.wmng-sticky-btn{position:fixed;right:14px;bottom:92px;z-index:9998;width:52px;height:52px;border:none;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:24px;box-shadow:0 12px 30px rgba(0,0,0,.45);cursor:pointer;display:none;}
+.wmng-pmap{font-size:30px;font-weight:900;letter-spacing:3px;text-align:center;background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;padding:18px;line-height:1.9;word-break:break-word}.pm-ok{color:#4ade80}.pm-close{color:#facc15;text-decoration:underline}.pm-bad{color:#ef4444;text-decoration:underline wavy}.pm-extra{color:#fb923c;opacity:.8}.wmng-audio-box{background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;padding:12px;margin-top:12px}.wmng-wave-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}.wmng-wave-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px}.wmng-wave-label{font-size:11px;font-weight:900;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}.wmng-wave{width:100%;height:86px;background:rgba(0,0,0,.18);border-radius:10px;display:block}.wmng-speak-mini{float:right;margin-left:8px;padding:4px 7px;border:none;border-radius:8px;background:var(--bg3);color:var(--blue);font-size:13px;cursor:pointer}.wmng-clickword{cursor:pointer;border-radius:4px;padding:0 2px}.wmng-clickword:hover{background:rgba(34,197,94,.14);color:var(--green)}.wmng-mini{font-size:11px;color:var(--muted);line-height:1.45}.wmng-sticky-btn{position:fixed;right:14px;bottom:92px;z-index:9998;width:52px;height:52px;border:none;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:24px;box-shadow:0 12px 30px rgba(0,0,0,.45);cursor:pointer;display:none;}
 @media (max-width:480px){.wmng-grid{grid-template-columns:1fr 1fr}.wmng-card{padding:12px;min-height:104px}.wmng-msg{font-size:16px;max-width:92%}}
 </style>
 </head>
@@ -4482,6 +4482,11 @@ textarea:focus-visible {
   <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🔥 Bugünün Kritik Kelimeleri</h2></div>
   <div class="card">
     <div class="wmng-mini" style="margin-bottom:10px">Risk; hata sayısı, SRS gecikmesi, öğrenilme durumu ve zipf değerine göre hesaplanır.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <button class="btn btn-blue" onclick="WMNG.loadDefaultDictionaryAsList(true)">📚 Varsayılan Sözlüğü Yükle</button>
+      <button class="btn btn-purple" onclick="document.getElementById('fileInput')?.click()">➕ Özel Liste Ekle</button>
+    </div>
+    <div class="wmng-mini" style="margin-bottom:10px">Özel liste için Excel yükleyebilirsin. Varsayılan liste ise paketteki <b>sozluk.json</b> dosyasından otomatik gelir.</div>
     <div id="wmngCriticalList" class="wmng-list"></div>
   </div>
 </div>
@@ -4494,10 +4499,18 @@ textarea:focus-visible {
 <div class="screen" id="sc-rewriter">
   <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>✍️ AI Cümle İyileştirici</h2></div>
   <div class="card">
-    <textarea id="wmngRewriteInput" class="wmng-textarea" rows="4" placeholder="İngilizce cümleni yaz: I very like this movie..."></textarea>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="btn btn-blue" onclick="WMNG.rewriteSentence()" style="flex:1">✨ İyileştir</button>
-      <button class="btn btn-ghost" onclick="WMNG.useCurrentSentence()" style="flex:1">📖 Mevcut cümle</button>
+    <div class="wmng-mini" style="margin-bottom:8px">Cümleni yazabilir veya mikrofona söyleyebilirsin. Konuşma otomatik olarak kutuya aktarılır.</div>
+    <textarea id="wmngRewriteInput" class="wmng-textarea" rows="4" placeholder="İngilizce cümleni yaz veya söyle: I very like this movie..."></textarea>
+    <div id="wmngRewriteVoiceStatus" class="wmng-mini" style="display:none;margin-top:8px;background:var(--bg2);border:1px dashed var(--border);border-radius:10px;padding:8px">🎧 Dinleniyor...</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <button class="btn btn-purple" onclick="WMNG.startRewriteVoiceInput()">🎤 Sesle Gir</button>
+      <button class="btn btn-ghost" onclick="WMNG.stopRewriteVoiceInput()">⏹ Durdur</button>
+      <button class="btn btn-blue" onclick="WMNG.rewriteSentence()">✨ İyileştir</button>
+      <button class="btn btn-ghost" onclick="WMNG.useCurrentSentence()">📖 Mevcut cümle</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-ghost" onclick="WMNG.speakRewriteInput()" style="flex:1">🔊 Girdiği Oku</button>
+      <button class="btn btn-ghost" onclick="WMNG.speakRewriteResult()" style="flex:1">🔊 Sonucu Oku</button>
     </div>
     <div id="wmngRewriteResult" class="wmng-result" style="display:none"></div>
   </div>
@@ -4523,6 +4536,19 @@ textarea:focus-visible {
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="btn btn-purple" onclick="WMNG.listenPronMap()" style="flex:1">🎙️ Dinle</button>
       <button class="btn btn-blue" onclick="WMNG.renderPronMap()" style="flex:1">Haritala</button>
+    </div>
+    <div class="wmng-audio-box">
+      <div style="font-size:14px;font-weight:900;margin-bottom:8px">🎧 Kendi Ses Kaydın + Grafik Karşılaştırma</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="wmngRecordBtn" class="btn btn-green btn-sm" onclick="WMNG.toggleVoiceRecord()">● Kayıt Başlat</button>
+        <button class="btn btn-blue btn-sm" onclick="WMNG.playUserRecord()">▶ Kaydımı Dinle</button>
+        <button class="btn btn-purple btn-sm" onclick="WMNG.speakTargetAndDraw()">🔊 Doğru Sesi Dinle</button>
+      </div>
+      <div class="wmng-wave-grid">
+        <div class="wmng-wave-card"><div class="wmng-wave-label">Doğru ses / hedef model</div><canvas id="wmngRefWave" class="wmng-wave"></canvas></div>
+        <div class="wmng-wave-card"><div class="wmng-wave-label">Benim ses kaydım</div><canvas id="wmngUserWave" class="wmng-wave"></canvas></div>
+      </div>
+      <div id="wmngVoiceCompare" class="wmng-mini" style="margin-top:8px">Kayıt başlat, kelimeyi söyle, sonra grafikte doğru modelle kendi sesini karşılaştır.</div>
     </div>
     <div id="wmngPronResult" class="wmng-result" style="display:none"></div>
   </div>
@@ -26170,8 +26196,19 @@ document.head.appendChild(style);
 const DAY=86400000;
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function getAll(){return (Array.isArray(window.allWords)&&window.allWords.length)?window.allWords:[];}
-function getCurrent(){try{return (window.words&&window.words[window.idx])||getAll()[0]||null}catch(e){return null}}
+function getAll(){
+  try{
+    if(typeof allWords!=='undefined' && Array.isArray(allWords) && allWords.length) return allWords;
+    if(Array.isArray(window.allWords) && window.allWords.length) return window.allWords;
+  }catch(e){}
+  return [];
+}
+function getCurrent(){
+  try{
+    if(typeof words!=='undefined' && Array.isArray(words) && words.length) return words[typeof idx!=='undefined'?idx:0] || getAll()[0] || null;
+    return (window.words&&window.words[window.idx])||getAll()[0]||null;
+  }catch(e){return null}
+}
 function wordText(w){return typeof w==='string'?w:(w?.word||'')}
 function meanText(w){
   if(!w) return '';
@@ -26236,10 +26273,63 @@ const scenarios={
   interview:{title:'💼 Job Interview',role:'job interviewer',first:'Thanks for coming. Could you briefly introduce yourself?'}
 };
 let activeScenario='airport'; let lifeHistory=[];
+let rewriteVoiceRecognizer=null;
+let rewriteVoiceActive=false;
+
+function dictToWordArray(dict){
+  if(!dict || typeof dict!=='object') return [];
+  return Object.entries(dict).map(([key,info])=>{
+    info = info && typeof info==='object' ? info : {};
+    const meanings = Array.isArray(info.meanings) ? info.meanings.filter(Boolean) : [];
+    const tr = meanings.length ? meanings.join(', ') : (info.tr || info.meaning || info.translation || '');
+    return {
+      word: String(key).trim(),
+      en: String(key).trim(),
+      tr,
+      meanings,
+      phonetic: info.tr_pron || info.phonetic || info.pronunciation || '',
+      pronunciation: info.tr_pron || info.phonetic || info.pronunciation || '',
+      level: info.cefr || info.level || '',
+      cefr: info.cefr || info.level || '',
+      zipf: Number(info.zipf || 0) || 0,
+      sentence: info.sentence || '',
+      sentenceTr: info.sentenceTr || '',
+      highlights: [String(key).trim()].filter(Boolean),
+      colors: {}
+    };
+  }).filter(x=>x.word);
+}
+
+async function ensureDefaultWordList(force=false){
+  try{
+    const existing = getAll();
+    const hasUserList = !!localStorage.getItem('lastFileData');
+    if(existing.length && !force) return existing;
+    if(hasUserList && !force) return existing;
+    const dict = await (window.WM_DictionaryReady || Promise.resolve(window.WM_Dictionary || {}));
+    const arr = dictToWordArray(dict);
+    if(!arr.length) return [];
+    if(typeof allWords !== 'undefined') allWords = arr;
+    if(typeof words !== 'undefined') words = arr.filter(w=>!(window.learnedSet&&window.learnedSet.has&&window.learnedSet.has(w.word)));
+    if(typeof fileKey !== 'undefined') fileKey = 'wm_default_sozluk_json';
+    window.allWords = arr;
+    window.words = (typeof words !== 'undefined') ? words : arr;
+    try{
+      localStorage.setItem('lastUploadedFile', JSON.stringify({name:'sozluk.json', size:0, wordCount:arr.length, uploadDate:new Date().toISOString(), fileKey:'wm_default_sozluk_json', auto:true}));
+      localStorage.setItem('lastFileData', JSON.stringify(arr));
+      localStorage.setItem('wm_default_dictionary_loaded','1');
+    }catch(e){ console.warn('Varsayılan sözlük localStorage kaydı yapılamadı:', e); }
+    try{ if(typeof WMStore!=='undefined' && WMStore.saveAllWords) WMStore.saveAllWords(arr).catch(()=>{}); }catch(e){}
+    if(force && typeof showToast==='function') showToast('✅ Varsayılan sözlük yüklendi', arr.length + ' kelime aktif');
+    return arr;
+  }catch(e){ console.warn('Varsayılan sözlük otomatik yüklenemedi:', e); return []; }
+}
 
 window.WMNG={
   init(){
-    this.addMenuButtons(); this.addFloating(); this.renderSummary();
+    this.addMenuButtons(); this.addFloating();
+    ensureDefaultWordList(false).then(()=>{ this.renderSummary(); if(document.getElementById('sc-critical')?.classList.contains('active')) this.renderCriticalWords(); });
+    this.renderSummary();
     const oldShow=window.showScreen;
     if(typeof oldShow==='function' && !oldShow._wmng){
       const wrapped=function(id){ const r=oldShow.apply(this,arguments); if(id==='sc-nextgen') setTimeout(()=>WMNG.renderSummary(),0); return r; };
@@ -26269,6 +26359,13 @@ window.WMNG={
     const b=document.createElement('button'); b.id='wmngFloat'; b.className='wmng-sticky-btn'; b.innerHTML='🚀'; b.onclick=()=>showScreen('sc-nextgen'); document.body.appendChild(b);
     setInterval(()=>{ const nav=$('bottomNav'); b.style.display=(nav&&nav.style.display!=='none')?'block':'none';},1500);
   },
+  async loadDefaultDictionaryAsList(force=false){
+    const arr = await ensureDefaultWordList(!!force);
+    this.renderSummary();
+    this.renderCriticalWords();
+    if(!arr.length) toast('⚠️ Sözlük bulunamadı','sozluk.json aynı klasörde olmalı veya Ayarlar > Yerel Sözlük bölümünden JSON yüklemelisin.');
+    return arr;
+  },
   renderSummary(){
     const el=$('wmngSummary'); if(!el) return;
     const all=getAll(); const db=loadSRS2(); const due=Object.values(db).filter(x=>x.nextReview<=Date.now()).length;
@@ -26281,12 +26378,46 @@ window.WMNG={
   renderCriticalWords(){
     const el=$('wmngCriticalList'); if(!el) return;
     const list=criticalWords(5);
-    if(!list.length){el.innerHTML='<div class="wmng-panel">Önce bir kelime listesi yükle.</div>';return;}
-    el.innerHTML=list.map(w=>`<div class="wmng-word"><div class="risk">${riskScore(w)}</div><div style="flex:1"><div class="w">${esc(wordText(w))}</div><div class="m">${esc(meanText(w))}</div><div class="wmng-mini">Zipf: ${zipf(w)||'-'} · SRS: ${srsOf(wordText(w))?.interval||0} gün</div></div><button class="btn btn-sm btn-blue" onclick="WMNG.practiceWord('${esc(wordText(w)).replace(/'/g,'&#39;')}')">Çalış</button></div>`).join('');
+    if(!list.length){
+      el.innerHTML='<div class="wmng-panel">📚 Liste hazırlanıyor... Varsayılan <b>sozluk.json</b> yükleniyor.</div>';
+      ensureDefaultWordList(false).then(arr=>{
+        if(arr.length) this.renderCriticalWords();
+        else el.innerHTML='<div class="wmng-panel">Önce bir kelime listesi yükle. Üstteki <b>Özel Liste Ekle</b> butonuyla Excel seçebilir veya <b>Varsayılan Sözlüğü Yükle</b> butonunu deneyebilirsin.</div>';
+      });
+      return;
+    }
+    el.innerHTML=list.map(w=>{const safe=esc(wordText(w)).replace(/'/g,'&#39;'); return `<div class="wmng-word"><div class="risk">${riskScore(w)}</div><div style="flex:1"><div class="w wmng-clickword" onclick="WMNG.openWordPopup('${safe}', event)">${esc(wordText(w))}</div><div class="m">${esc(meanText(w))}</div><div class="wmng-mini">Zipf: ${zipf(w)||'-'} · SRS: ${srsOf(wordText(w))?.interval||0} gün</div></div><button class="btn btn-sm btn-blue" onclick="WMNG.practiceWord('${safe}')">Çalış</button></div>`}).join('');
   },
   practiceWord(word){
-    try{ const i=window.words.findIndex(w=>String(w.word).toLowerCase()===String(word).toLowerCase()); if(i>=0){window.idx=i; showScreen('sc-word'); window.renderLearn?.(); return;} }catch(e){}
-    toast('Kelime bulundu', word);
+    try{
+      const key = String(word || '').trim().toLowerCase();
+      if(!key){ toast('Kelime seçilemedi',''); return; }
+
+      // ÖNEMLİ: Bu dosyada `idx` ve `words` global `let` olarak tanımlı.
+      // `window.idx` yazmak gerçek aktif kelimeyi değiştirmez.
+      // Bu yüzden doğrudan lexical `idx` / `words` değişkenlerini güncelliyoruz.
+      let i = Array.isArray(words) ? words.findIndex(w => String(w.word || w.en || '').trim().toLowerCase() === key) : -1;
+
+      // Kritik kelime öğrenilmiş/filtre dışı kaldıysa aktif çalışma listesine ekle.
+      if(i < 0 && Array.isArray(allWords)){
+        const original = allWords.find(w => String(w.word || w.en || '').trim().toLowerCase() === key);
+        if(original){
+          if(!Array.isArray(words)) words = [];
+          words.unshift(original);
+          i = 0;
+        }
+      }
+
+      if(i >= 0){
+        idx = i;
+        if(typeof window !== 'undefined'){ window.idx = idx; window.words = words; }
+        showScreen('sc-word');
+        if(typeof renderLearn === 'function') renderLearn();
+        return;
+      }
+    }catch(e){ console.warn('Kritik kelime çalışma yönlendirme hatası:', e); }
+
+    toast('Kelime bulunamadı', word + ' aktif listede yok. Varsayılan sözlüğü yeniden yüklemeyi dene.');
   },
   renderIntelligence(){
     const el=$('wmngIntelligence'); if(!el) return;
@@ -26306,6 +26437,60 @@ window.WMNG={
     <h3 style="margin:14px 0 8px">🎯 AI Koç Önerisi</h3>${advice.map(a=>`<div class="wmng-level">${esc(a)}</div>`).join('')}
     <h3 style="margin:14px 0 8px">⚠️ Zorlanılan Kelimeler</h3><div>${(hard.length?hard:criticalWords(5)).map(w=>`<span class="wmng-pill">${esc(wordText(w))}</span>`).join('')}</div>
     <h3 style="margin:14px 0 8px">🔄 Bugün Tekrar</h3><div>${(due.length?due:['Henüz yok']).map(w=>`<span class="wmng-pill">${esc(w)}</span>`).join('')}</div>`;
+  },
+  startRewriteVoiceInput(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    const status=$('wmngRewriteVoiceStatus');
+    const input=$('wmngRewriteInput');
+    if(!SR){ toast('Ses tanıma yok','Bu tarayıcı Speech Recognition desteklemiyor. Chrome ile dene.'); return; }
+    try{ if(rewriteVoiceRecognizer) rewriteVoiceRecognizer.stop(); }catch(e){}
+    rewriteVoiceRecognizer=new SR();
+    rewriteVoiceRecognizer.lang='en-US';
+    rewriteVoiceRecognizer.interimResults=true;
+    rewriteVoiceRecognizer.continuous=false;
+    rewriteVoiceActive=true;
+    let finalText='';
+    if(status){ status.style.display='block'; status.innerHTML='🎤 Dinleniyor... İngilizce cümleni söyle.'; }
+    rewriteVoiceRecognizer.onresult=(ev)=>{
+      let interim='';
+      for(let i=ev.resultIndex;i<ev.results.length;i++){
+        const part=ev.results[i][0].transcript;
+        if(ev.results[i].isFinal) finalText+=part; else interim+=part;
+      }
+      const text=(finalText||interim).trim();
+      if(input && text) input.value=text;
+      if(status) status.innerHTML='🎙️ Algılanan: <b>'+esc(text||'...')+'</b>';
+    };
+    rewriteVoiceRecognizer.onerror=(e)=>{
+      rewriteVoiceActive=false;
+      if(status) status.innerHTML='⚠️ Ses alınamadı: '+esc(e.error||'hata');
+      toast('Mikrofon hatası','İzinleri kontrol et veya tekrar dene.');
+    };
+    rewriteVoiceRecognizer.onend=()=>{
+      rewriteVoiceActive=false;
+      if(status){
+        const val=input?.value?.trim();
+        status.innerHTML=val?'✅ Ses metne çevrildi. İyileştir butonuna basabilirsin.':'⏹ Dinleme bitti.';
+      }
+    };
+    try{ rewriteVoiceRecognizer.start(); }catch(e){ toast('Başlatılamadı','Mikrofon zaten açık olabilir.'); }
+  },
+  stopRewriteVoiceInput(){
+    rewriteVoiceActive=false;
+    try{ if(rewriteVoiceRecognizer) rewriteVoiceRecognizer.stop(); }catch(e){}
+    const status=$('wmngRewriteVoiceStatus');
+    if(status) status.innerHTML='⏹ Dinleme durduruldu.';
+  },
+  speakRewriteInput(){
+    const text=$('wmngRewriteInput')?.value||'';
+    if(!text.trim()){ toast('Metin yok','Önce cümle yaz veya sesle gir.'); return; }
+    this.speakText(text);
+  },
+  speakRewriteResult(){
+    const out=$('wmngRewriteResult');
+    const text=out?.innerText||'';
+    if(!text.trim()){ toast('Sonuç yok','Önce cümleyi iyileştir.'); return; }
+    this.speakText(text.replace(/BASIC:|NATURAL:|NATIVE:|EXPLANATION:/g,' '));
   },
   useCurrentSentence(){
     const cur=getCurrent(); const sent=cur?.sentence||cur?.example||''; $('wmngRewriteInput').value=sent;
@@ -26329,7 +26514,7 @@ window.WMNG={
     if(!lifeHistory.length) this.setScenario(activeScenario);
   },
   setScenario(k){activeScenario=k; lifeHistory=[{role:'ai',text:scenarios[k].first}]; this.initLife(); this.renderLife();},
-  renderLife(){const chat=$('wmngLifeChat'); if(!chat)return; chat.innerHTML=lifeHistory.map(m=>`<div class="wmng-msg ${m.role==='user'?'user':'ai'}">${esc(m.text)}</div>`).join(''); chat.scrollTop=chat.scrollHeight;},
+  renderLife(){const chat=$('wmngLifeChat'); if(!chat)return; chat.innerHTML=lifeHistory.map((m,i)=>`<div class="wmng-msg ${m.role==='user'?'user':'ai'}">${m.role==='ai'?`<button class="wmng-speak-mini" onclick="WMNG.speakLife(${i})">🔊</button>`:''}${this.clickableHTML(m.text)}</div>`).join(''); this.makeContainerWordsClickable(chat); chat.scrollTop=chat.scrollHeight;},
   async sendLifeMessage(){
     const inp=$('wmngLifeInput'); const text=inp.value.trim(); if(!text)return; inp.value=''; lifeHistory.push({role:'user',text}); this.renderLife();
     const sc=scenarios[activeScenario]; lifeHistory.push({role:'ai',text:'⏳ ...'}); this.renderLife();
@@ -26343,7 +26528,92 @@ window.WMNG={
     }catch(e){}
     lifeHistory[lifeHistory.length-1]={role:'ai',text:reply}; this.renderLife();
   },
-  fillCurrentPronMap(){ const c=getCurrent(); if(c){$('wmngPronTarget').value=wordText(c); $('wmngPronSpoken').value='';} },
+  openWordPopup(word,event){
+    try{ if(event) event.stopPropagation(); const clean=String(word||'').replace(/&#39;/g,"'").trim(); if(clean && window.WM_Pronunciation?.showPronunciationPopup) window.WM_Pronunciation.showPronunciationPopup(clean); else if(clean && typeof speak==='function') speak(clean,'en-US'); }catch(e){ console.warn('Popup açılamadı',e); }
+  },
+  clickableHTML(text){
+    return esc(text).replace(/([A-Za-z][A-Za-z'’-]{1,})/g, '<span class="wmng-clickword" onclick="WMNG.openWordPopup(\'$1\', event)">$1</span>');
+  },
+  makeContainerWordsClickable(container){
+    try{ if(window.WM_Pronunciation?.makeTextClickable) window.WM_Pronunciation.makeTextClickable(container); }catch(e){}
+  },
+  speakText(text){
+    const clean=String(text||'').replace(/<[^>]*>/g,'').trim();
+    if(!clean) return;
+    try{ if(typeof speak==='function') speak(clean,'en-US'); else if(window.WM_Pronunciation?.speak) WM_Pronunciation.speak(clean); }
+    catch(e){ const u=new SpeechSynthesisUtterance(clean); u.lang='en-US'; speechSynthesis.cancel(); speechSynthesis.speak(u); }
+  },
+  speakLife(i){ const m=lifeHistory[i]; if(m) this.speakText(m.text); },
+  enhanceAISpeechButtons(){
+    const sel='.chat-msg.ai,.partner-msg.ai,.conv-msg.ai,.wmng-msg.ai';
+    document.querySelectorAll(sel).forEach((el)=>{
+      if(el.dataset.wmngSpeechReady) return;
+      el.dataset.wmngSpeechReady='1';
+      const btn=document.createElement('button'); btn.className='wmng-speak-mini'; btn.textContent='🔊';
+      btn.onclick=(ev)=>{ev.stopPropagation(); this.speakText(el.innerText.replace(/^🔊/,'').trim());};
+      el.prepend(btn);
+      this.makeContainerWordsClickable(el);
+    });
+  },
+  drawReferenceWave(word){
+    const canvas=$('wmngRefWave'); if(!canvas) return;
+    const txt=String(word||'word');
+    this.drawSyntheticWave(canvas, txt);
+  },
+  drawSyntheticWave(canvas, seed){
+    const dpr=window.devicePixelRatio||1, rect=canvas.getBoundingClientRect();
+    canvas.width=Math.max(300,rect.width*dpr); canvas.height=86*dpr;
+    const ctx=canvas.getContext('2d'), w=canvas.width, h=canvas.height, mid=h/2;
+    ctx.clearRect(0,0,w,h); ctx.lineWidth=2*dpr; ctx.strokeStyle='#4ade80'; ctx.beginPath();
+    let hash=0; for(const ch of seed) hash=(hash*31+ch.charCodeAt(0))>>>0;
+    for(let x=0;x<w;x++){
+      const t=x/w; const amp=(0.18+0.26*Math.abs(Math.sin((hash%7+3)*Math.PI*t)))*(1-Math.abs(t-.5)*.45);
+      const y=mid + Math.sin(t*Math.PI*(18+(hash%9)) + (hash%13))*amp*h;
+      if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke(); ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(w,mid); ctx.stroke();
+  },
+  async drawAudioWave(blob){
+    const canvas=$('wmngUserWave'); if(!canvas || !blob) return;
+    const buf=await blob.arrayBuffer(); const AC=window.AudioContext||window.webkitAudioContext; const ac=new AC();
+    const audio=await ac.decodeAudioData(buf.slice(0)); const data=audio.getChannelData(0);
+    const dpr=window.devicePixelRatio||1, rect=canvas.getBoundingClientRect(); canvas.width=Math.max(300,rect.width*dpr); canvas.height=86*dpr;
+    const ctx=canvas.getContext('2d'), w=canvas.width, h=canvas.height, mid=h/2, step=Math.ceil(data.length/w);
+    ctx.clearRect(0,0,w,h); ctx.lineWidth=2*dpr; ctx.strokeStyle='#60a5fa'; ctx.beginPath();
+    for(let x=0;x<w;x++){ let min=1,max=-1; for(let j=0;j<step;j++){const v=data[x*step+j]||0; if(v<min)min=v; if(v>max)max=v;} ctx.moveTo(x, mid+min*mid*.9); ctx.lineTo(x, mid+max*mid*.9); }
+    ctx.stroke(); ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(w,mid); ctx.stroke();
+    try{ac.close();}catch(e){}
+  },
+  async toggleVoiceRecord(){
+    const btn=$('wmngRecordBtn');
+    if(this._recorder && this._recorder.state==='recording'){
+      this._recorder.stop(); if(btn) btn.textContent='● Kayıt Başlat'; return;
+    }
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      this._chunks=[]; this._recorder=new MediaRecorder(stream);
+      this._recorder.ondataavailable=e=>{ if(e.data.size) this._chunks.push(e.data); };
+      this._recorder.onstop=async()=>{
+        this._userBlob=new Blob(this._chunks,{type:this._recorder.mimeType||'audio/webm'});
+        stream.getTracks().forEach(t=>t.stop());
+        await this.drawAudioWave(this._userBlob);
+        const word=$('wmngPronTarget')?.value||''; this.drawReferenceWave(word);
+        const msg=$('wmngVoiceCompare'); if(msg) msg.innerHTML='✅ Kayıt alındı. <b>Kaydımı Dinle</b> ile sesini dinleyebilir, grafikte hedef modelle karşılaştırabilirsin.';
+      };
+      this._recorder.start(); if(btn) btn.textContent='■ Kayıt Durdur';
+      const msg=$('wmngVoiceCompare'); if(msg) msg.textContent='Kayıt başladı. Kelimeyi söyle ve durdur.';
+    }catch(e){ toast('Mikrofon açılamadı', e.message||'Tarayıcı izinlerini kontrol et.'); }
+  },
+  playUserRecord(){
+    if(!this._userBlob){toast('Kayıt yok','Önce kendi sesini kaydet.');return;}
+    const url=URL.createObjectURL(this._userBlob); const a=new Audio(url); a.onended=()=>URL.revokeObjectURL(url); a.play();
+  },
+  speakTargetAndDraw(){
+    const word=$('wmngPronTarget')?.value || wordText(getCurrent()) || '';
+    if(!word){toast('Hedef kelime yok','Önce hedef kelime yaz.');return;}
+    this.drawReferenceWave(word); this.speakText(word);
+  },
+  fillCurrentPronMap(){ const c=getCurrent(); if(c){$('wmngPronTarget').value=wordText(c); $('wmngPronSpoken').value=''; setTimeout(()=>this.drawReferenceWave(wordText(c)),120);} },
   comparePron(target,spoken){
     target=String(target||'').toLowerCase().trim(); spoken=String(spoken||'').toLowerCase().trim();
     const similar={v:['f','w'],f:['v'],r:['l'],l:['r'],t:['d'],d:['t'],i:['e','ı'],e:['i','a'],a:['e','ı'],o:['u','a'],u:['o'],c:['k','s'],k:['c'],s:['z'],z:['s'],w:['v']};
@@ -26364,8 +26634,15 @@ window.WMNG={
   }
 };
 
-document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>WMNG.init(),500));
+document.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>WMNG.init(),500);
+  setTimeout(()=>ensureDefaultWordList(false).then(()=>{ try{WMNG.renderSummary();}catch(e){} }),900);
+  setTimeout(()=>{try{WMNG.enhanceAISpeechButtons();}catch(e){}},1200);
+  try{ new MutationObserver(()=>{try{WMNG.enhanceAISpeechButtons();}catch(e){}}).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+});
 setTimeout(()=>window.WMNG&&WMNG.init(),1800);
+setInterval(()=>{try{WMNG.enhanceAISpeechButtons();}catch(e){}},2500);
+setTimeout(()=>ensureDefaultWordList(false),2600);
 })();
 </script>
 
