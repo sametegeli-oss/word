@@ -1164,6 +1164,33 @@ textarea:focus-visible {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <!-- Google Drive API -->
 <script src="https://apis.google.com/js/api.js"></script>
+<style>
+
+/* ════════════════════════════════════════════════════════════
+   WORD MODE NEXT-GEN MODULES — Added by ChatGPT
+   SRS 2.0 · Critical Words · AI Rewriter · Progress Coach · Life Scenarios · Pronunciation Map
+   ════════════════════════════════════════════════════════════ */
+.wmng-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;}
+.wmng-card{background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;padding:14px;cursor:pointer;transition:all .18s;min-height:112px;display:flex;flex-direction:column;justify-content:space-between;}
+.wmng-card:active{transform:scale(.97);filter:brightness(.92)}
+.wmng-card .ico{font-size:30px;margin-bottom:8px}.wmng-card .title{font-size:14px;font-weight:900;color:var(--text)}.wmng-card .desc{font-size:11px;color:var(--muted);line-height:1.35;margin-top:4px}
+.wmng-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);font-size:11px;color:var(--sub);font-weight:800;margin:3px 4px 3px 0;}
+.wmng-panel{background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px;}
+.wmng-row{display:flex;gap:8px;align-items:center;justify-content:space-between;}
+.wmng-list{display:flex;flex-direction:column;gap:8px;}
+.wmng-word{background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;}
+.wmng-word .w{font-size:16px;font-weight:900;color:var(--green)}.wmng-word .m{font-size:12px;color:var(--muted);margin-top:3px}.wmng-word .risk{font-size:18px;font-weight:900;min-width:38px;text-align:center;color:var(--orange)}
+.wmng-textarea,.wmng-input{width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:15px;padding:12px 14px;outline:none;resize:vertical;}
+.wmng-textarea:focus,.wmng-input:focus{border-color:var(--blue)}
+.wmng-result{background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;padding:14px;margin-top:12px;font-size:var(--ai-text-size,15px);line-height:1.7;color:var(--sub);}
+.wmng-level{border-left:4px solid var(--blue);padding:10px 12px;background:var(--bg3);border-radius:0 12px 12px 0;margin:8px 0;}
+.wmng-level b{color:var(--text)}
+.wmng-scorebar{height:10px;background:var(--bg3);border-radius:8px;overflow:hidden;margin:8px 0}.wmng-scorebar>span{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--orange),var(--green));border-radius:8px;transition:width .5s ease}
+.wmng-chat{display:flex;flex-direction:column;gap:10px;max-height:390px;overflow-y:auto;padding:6px;margin-bottom:10px;}
+.wmng-msg{padding:12px 14px;border-radius:16px;max-width:88%;font-size:15px;line-height:1.55}.wmng-msg.ai{align-self:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:6px 16px 16px 16px}.wmng-msg.user{align-self:flex-end;background:linear-gradient(135deg,#0d2818,#0a1f12);border:1px solid #166534;color:#86efac;border-radius:16px 6px 16px 16px}.wmng-msg.system{align-self:center;background:#1e1635;color:var(--purple);border:1px dashed var(--purple);font-size:12px;max-width:96%;}
+.wmng-pmap{font-size:30px;font-weight:900;letter-spacing:3px;text-align:center;background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;padding:18px;line-height:1.9;word-break:break-word}.pm-ok{color:#4ade80}.pm-close{color:#facc15;text-decoration:underline}.pm-bad{color:#ef4444;text-decoration:underline wavy}.pm-extra{color:#fb923c;opacity:.8}.wmng-mini{font-size:11px;color:var(--muted);line-height:1.45}.wmng-sticky-btn{position:fixed;right:14px;bottom:92px;z-index:9998;width:52px;height:52px;border:none;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:24px;box-shadow:0 12px 30px rgba(0,0,0,.45);cursor:pointer;display:none;}
+@media (max-width:480px){.wmng-grid{grid-template-columns:1fr 1fr}.wmng-card{padding:12px;min-height:104px}.wmng-msg{font-size:16px;max-width:92%}}
+</style>
 </head>
 <body>
 <div id="versionBadge" style="position:fixed;bottom:8px;right:8px;background:rgba(59,130,246,0.9);color:#fff;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;font-family:monospace;z-index:99999;pointer-events:none;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.3)">v28 · 23 May</div>
@@ -4429,6 +4456,78 @@ textarea:focus-visible {
 </div>
 </div>
 </div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     NEXT-GEN COACH HUB — Added by ChatGPT
+     ══════════════════════════════════════════════════════════ -->
+<div class="screen" id="sc-nextgen">
+  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-menu')">←</button><h2>🚀 Premium Koç</h2><span class="streak-badge">Yeni</span></div>
+  <div class="card">
+    <div style="font-size:20px;font-weight:900;margin-bottom:4px">Akıllı Öğrenme Merkezi</div>
+    <div class="wmng-mini" style="margin-bottom:12px">Bu bölüm SRS 2.0, kritik kelimeler, cümle iyileştirici, ilerleme zekâsı, gerçek hayat konuşmaları ve telaffuz haritasını tek yerde toplar.</div>
+    <div id="wmngSummary" class="wmng-panel"></div>
+    <div class="wmng-grid">
+      <div class="wmng-card" onclick="showScreen('sc-critical'); WMNG.renderCriticalWords();"><div><div class="ico">🔥</div><div class="title">Kritik 5 Kelime</div><div class="desc">Unutulma riski yüksek kelimeleri çalış.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-intelligence'); WMNG.renderIntelligence();"><div><div class="ico">🧠</div><div class="title">İlerleme Zekâsı</div><div class="desc">Zayıf yönlerini otomatik analiz eder.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-rewriter');"><div><div class="ico">✍️</div><div class="title">AI Cümle İyileştirici</div><div class="desc">Basic, natural, native cümle üretir.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-life'); WMNG.initLife();"><div><div class="ico">🎭</div><div class="title">Gerçek Hayat Modu</div><div class="desc">Airport, hotel, cafe gibi senaryolar.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-pronmap'); WMNG.fillCurrentPronMap();"><div><div class="ico">🗣️</div><div class="title">Telaffuz Haritası</div><div class="desc">Hangi seslerde hata yaptığını gösterir.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-srs'); if(typeof showSRSSummary==='function')showSRSSummary();"><div><div class="ico">🔄</div><div class="title">SRS Tekrar</div><div class="desc">Aralıklı tekrar sistemini açar.</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="sc-critical">
+  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🔥 Bugünün Kritik Kelimeleri</h2></div>
+  <div class="card">
+    <div class="wmng-mini" style="margin-bottom:10px">Risk; hata sayısı, SRS gecikmesi, öğrenilme durumu ve zipf değerine göre hesaplanır.</div>
+    <div id="wmngCriticalList" class="wmng-list"></div>
+  </div>
+</div>
+
+<div class="screen" id="sc-intelligence">
+  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🧠 İlerleme Zekâsı</h2></div>
+  <div class="card" id="wmngIntelligence"></div>
+</div>
+
+<div class="screen" id="sc-rewriter">
+  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>✍️ AI Cümle İyileştirici</h2></div>
+  <div class="card">
+    <textarea id="wmngRewriteInput" class="wmng-textarea" rows="4" placeholder="İngilizce cümleni yaz: I very like this movie..."></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-blue" onclick="WMNG.rewriteSentence()" style="flex:1">✨ İyileştir</button>
+      <button class="btn btn-ghost" onclick="WMNG.useCurrentSentence()" style="flex:1">📖 Mevcut cümle</button>
+    </div>
+    <div id="wmngRewriteResult" class="wmng-result" style="display:none"></div>
+  </div>
+</div>
+
+<div class="screen" id="sc-life">
+  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🎭 Gerçek Hayat Konuşması</h2></div>
+  <div class="card">
+    <div id="wmngScenarioPills" style="margin-bottom:10px"></div>
+    <div class="wmng-chat" id="wmngLifeChat"></div>
+    <div class="chat-input-row">
+      <textarea id="wmngLifeInput" class="chat-input" rows="2" placeholder="Cevabını İngilizce yaz..."></textarea>
+      <button class="chat-send" onclick="WMNG.sendLifeMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="sc-pronmap">
+  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🗣️ Telaffuz Haritası</h2></div>
+  <div class="card">
+    <input id="wmngPronTarget" class="wmng-input" placeholder="Hedef kelime: volunteer" />
+    <input id="wmngPronSpoken" class="wmng-input" style="margin-top:8px" placeholder="Duyulan/okunan kelime: volintir" />
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-purple" onclick="WMNG.listenPronMap()" style="flex:1">🎙️ Dinle</button>
+      <button class="btn btn-blue" onclick="WMNG.renderPronMap()" style="flex:1">Haritala</button>
+    </div>
+    <div id="wmngPronResult" class="wmng-result" style="display:none"></div>
+  </div>
+</div>
+
 <!-- ══ BOTTOM NAV ══ -->
 <nav class="bottom-nav" id="bottomNav" style="display:none !important;">
 <button class="bnav-btn" id="bn-daily" onclick="switchTab('daily')"><span class="bico">🌅</span>Bugün</button>
@@ -26060,4 +26159,214 @@ style.textContent = `
 document.head.appendChild(style);
 
 </script>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════════════
+   WORD MODE NEXT-GEN MODULES — SAFE EXTENSION
+   Bu modül mevcut kodu bozmadan ek özellikleri sisteme bağlar.
+   ════════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+const DAY=86400000;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function getAll(){return (Array.isArray(window.allWords)&&window.allWords.length)?window.allWords:[];}
+function getCurrent(){try{return (window.words&&window.words[window.idx])||getAll()[0]||null}catch(e){return null}}
+function wordText(w){return typeof w==='string'?w:(w?.word||'')}
+function meanText(w){
+  if(!w) return '';
+  if(Array.isArray(w.meanings)) return w.meanings.slice(0,2).join(', ');
+  return w.tr||w.meaning||w.translation||w.turkish||'';
+}
+function zipf(w){return Number(w?.zipf??w?.freq??0)||0;}
+function statusOf(word){try{return (window.wordStatus||{})[word]||{}}catch(e){return {}}}
+function srsOf(word){try{return JSON.parse(localStorage.getItem('wm_srs2')||'{}')[word] || (window.spacedRepetition||{})[word] || null}catch(e){return null}}
+function saveSRS2(db){localStorage.setItem('wm_srs2', JSON.stringify(db));}
+function loadSRS2(){try{return JSON.parse(localStorage.getItem('wm_srs2')||'{}')}catch(e){return {}}}
+function toast(a,b){ if(typeof window.showToast==='function') window.showToast(a,b||''); else alert(a+'\n'+(b||'')); }
+
+// SM-2 tabanlı SRS 2.0 — eski updateSRS fonksiyonunu güvenli şekilde güçlendirir.
+const oldUpdateSRS = window.updateSRS;
+window.updateSRS = function(word, isCorrect){
+  try{
+    const key=String(word||'').trim(); if(!key) return oldUpdateSRS?.(word,isCorrect);
+    const db=loadSRS2();
+    const item=db[key]||{ease:2.5,interval:0,repetitions:0,lastReview:0,nextReview:Date.now(),history:[]};
+    const quality=isCorrect?5:2;
+    if(quality>=4){
+      item.repetitions += 1;
+      if(item.repetitions===1) item.interval=1;
+      else if(item.repetitions===2) item.interval=3;
+      else item.interval=Math.max(1,Math.round(item.interval*item.ease));
+      item.ease += (0.1 - (5-quality)*(0.08+(5-quality)*0.02));
+      if(item.ease<1.3) item.ease=1.3;
+    }else{
+      item.repetitions=0;
+      item.interval=1;
+      item.ease=Math.max(1.3,item.ease-0.2);
+    }
+    item.lastReview=Date.now();
+    item.nextReview=Date.now()+item.interval*DAY;
+    item.history=(item.history||[]).slice(-14); item.history.push({t:Date.now(),ok:!!isCorrect,q:quality});
+    db[key]=item; saveSRS2(db);
+  }catch(e){console.warn('SRS2 error',e)}
+  try{return oldUpdateSRS?.(word,isCorrect)}catch(e){}
+};
+
+function riskScore(w){
+  const word=wordText(w); if(!word) return 0;
+  const st=statusOf(word); const s=srsOf(word);
+  let risk=20;
+  const attempts=Number(st.attempts||0), correct=Number(st.correct||0);
+  if(attempts>0) risk += Math.max(0, 40 - (correct/attempts)*40);
+  if(attempts===0) risk += 15;
+  if(window.learnedSet && window.learnedSet.has && !window.learnedSet.has(word)) risk += 20;
+  if(s?.nextReview){ const late=Math.max(0, Date.now()-Number(s.nextReview)); risk += Math.min(25, Math.round(late/DAY)*5); }
+  const z=zipf(w); if(z>=5) risk+=12; else if(z>=4) risk+=8; else risk+=3;
+  if(st.pronScore!=null) risk += Math.max(0, 18-Number(st.pronScore)/6);
+  return Math.max(1, Math.min(100, Math.round(risk)));
+}
+function criticalWords(n=5){return getAll().slice().sort((a,b)=>riskScore(b)-riskScore(a)).slice(0,n)}
+
+const scenarios={
+  airport:{title:'🛫 Airport',role:'airport check-in officer',first:'Good morning. May I see your passport and ticket, please?'},
+  cafe:{title:'☕ Coffee Shop',role:'friendly barista',first:'Hi! What would you like to drink today?'},
+  hotel:{title:'🏨 Hotel',role:'hotel receptionist',first:'Welcome to our hotel. Do you have a reservation?'},
+  taxi:{title:'🚕 Taxi',role:'taxi driver',first:'Hello. Where would you like to go?'},
+  interview:{title:'💼 Job Interview',role:'job interviewer',first:'Thanks for coming. Could you briefly introduce yourself?'}
+};
+let activeScenario='airport'; let lifeHistory=[];
+
+window.WMNG={
+  init(){
+    this.addMenuButtons(); this.addFloating(); this.renderSummary();
+    const oldShow=window.showScreen;
+    if(typeof oldShow==='function' && !oldShow._wmng){
+      const wrapped=function(id){ const r=oldShow.apply(this,arguments); if(id==='sc-nextgen') setTimeout(()=>WMNG.renderSummary(),0); return r; };
+      wrapped._wmng=true; window.showScreen=wrapped;
+    }
+    const oldSwitch=window.switchTab;
+    if(typeof oldSwitch==='function' && !oldSwitch._wmng){
+      const wrapped=function(tab){ if(tab==='nextgen'){window.showScreen('sc-nextgen');return;} return oldSwitch.apply(this,arguments); };
+      wrapped._wmng=true; window.switchTab=wrapped;
+    }
+  },
+  addMenuButtons(){
+    const menu=document.querySelector('#sc-menu > div:nth-of-type(2)');
+    if(menu && !$('wmngMenuBtn')){
+      const btn=document.createElement('button'); btn.id='wmngMenuBtn'; btn.onclick=()=>showScreen('sc-nextgen');
+      btn.style.cssText='padding:24px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;border-radius:16px;cursor:pointer;grid-column:1 / -1';
+      btn.innerHTML='<div style="font-size:32px;margin-bottom:8px">🚀</div><div style="font-size:14px;font-weight:800;color:#fff">Premium Koç</div>';
+      menu.appendChild(btn);
+    }
+    const nav=$('bottomNav');
+    if(nav && !$('bn-nextgen')){
+      const b=document.createElement('button'); b.className='bnav-btn'; b.id='bn-nextgen'; b.onclick=()=>switchTab('nextgen'); b.innerHTML='<span class="bico">🚀</span>Koç'; nav.appendChild(b);
+    }
+  },
+  addFloating(){
+    if($('wmngFloat')) return;
+    const b=document.createElement('button'); b.id='wmngFloat'; b.className='wmng-sticky-btn'; b.innerHTML='🚀'; b.onclick=()=>showScreen('sc-nextgen'); document.body.appendChild(b);
+    setInterval(()=>{ const nav=$('bottomNav'); b.style.display=(nav&&nav.style.display!=='none')?'block':'none';},1500);
+  },
+  renderSummary(){
+    const el=$('wmngSummary'); if(!el) return;
+    const all=getAll(); const db=loadSRS2(); const due=Object.values(db).filter(x=>x.nextReview<=Date.now()).length;
+    const learned=(window.learnedSet&&window.learnedSet.size)||0;
+    const avgRisk=all.length?Math.round(criticalWords(Math.min(50,all.length)).reduce((a,w)=>a+riskScore(w),0)/Math.min(50,all.length)):0;
+    el.innerHTML=`<div class="wmng-row"><div><b>📚 Toplam</b><div class="wmng-mini">${all.length} kelime · ${learned} öğrenildi</div></div><div style="font-size:28px;font-weight:900;color:var(--green)">${learned}</div></div>
+    <div class="wmng-scorebar"><span style="width:${all.length?Math.round(learned/all.length*100):0}%"></span></div>
+    <span class="wmng-pill">🔄 Bugün tekrar: ${due}</span><span class="wmng-pill">🔥 Ortalama risk: ${avgRisk}</span><span class="wmng-pill">🧠 SRS 2.0 aktif</span>`;
+  },
+  renderCriticalWords(){
+    const el=$('wmngCriticalList'); if(!el) return;
+    const list=criticalWords(5);
+    if(!list.length){el.innerHTML='<div class="wmng-panel">Önce bir kelime listesi yükle.</div>';return;}
+    el.innerHTML=list.map(w=>`<div class="wmng-word"><div class="risk">${riskScore(w)}</div><div style="flex:1"><div class="w">${esc(wordText(w))}</div><div class="m">${esc(meanText(w))}</div><div class="wmng-mini">Zipf: ${zipf(w)||'-'} · SRS: ${srsOf(wordText(w))?.interval||0} gün</div></div><button class="btn btn-sm btn-blue" onclick="WMNG.practiceWord('${esc(wordText(w)).replace(/'/g,'&#39;')}')">Çalış</button></div>`).join('');
+  },
+  practiceWord(word){
+    try{ const i=window.words.findIndex(w=>String(w.word).toLowerCase()===String(word).toLowerCase()); if(i>=0){window.idx=i; showScreen('sc-word'); window.renderLearn?.(); return;} }catch(e){}
+    toast('Kelime bulundu', word);
+  },
+  renderIntelligence(){
+    const el=$('wmngIntelligence'); if(!el) return;
+    const all=getAll(); const ws=window.wordStatus||{}; const entries=Object.entries(ws);
+    const attempts=entries.reduce((a,[,s])=>a+(s.attempts||0),0); const correct=entries.reduce((a,[,s])=>a+(s.correct||0),0);
+    const success=attempts?Math.round(correct/attempts*100):0;
+    const hard=all.slice().filter(w=>{const s=ws[wordText(w)]||{};return (s.attempts||0)>0 && ((s.correct||0)/(s.attempts||1))<0.5}).slice(0,8);
+    const due=Object.entries(loadSRS2()).filter(([,s])=>s.nextReview<=Date.now()).map(([w])=>w).slice(0,8);
+    const advice=[];
+    if(success<65) advice.push('Quizlerde doğruluk düşük: bugün sadece kritik 5 kelime + SRS tekrar çalış.');
+    if(due.length>10) advice.push('Tekrar kuyruğu birikmiş: yeni kelime eklemeden önce SRS oturumu yap.');
+    if(hard.length>3) advice.push('Bazı kelimeler tekrar tekrar hata veriyor: bu kelimelerle örnek cümle ve telaffuz çalış.');
+    if(!advice.length) advice.push('Gidişat iyi. Zorluğu biraz artırıp konuşma senaryosu çalışabilirsin.');
+    el.innerHTML=`<div style="font-size:20px;font-weight:900;margin-bottom:8px">Genel Durum</div>
+    <div class="wmng-panel"><span class="wmng-pill">Deneme: ${attempts}</span><span class="wmng-pill">Doğruluk: ${success}%</span><span class="wmng-pill">SRS bekleyen: ${due.length}</span></div>
+    <div class="wmng-scorebar"><span style="width:${success}%"></span></div>
+    <h3 style="margin:14px 0 8px">🎯 AI Koç Önerisi</h3>${advice.map(a=>`<div class="wmng-level">${esc(a)}</div>`).join('')}
+    <h3 style="margin:14px 0 8px">⚠️ Zorlanılan Kelimeler</h3><div>${(hard.length?hard:criticalWords(5)).map(w=>`<span class="wmng-pill">${esc(wordText(w))}</span>`).join('')}</div>
+    <h3 style="margin:14px 0 8px">🔄 Bugün Tekrar</h3><div>${(due.length?due:['Henüz yok']).map(w=>`<span class="wmng-pill">${esc(w)}</span>`).join('')}</div>`;
+  },
+  useCurrentSentence(){
+    const cur=getCurrent(); const sent=cur?.sentence||cur?.example||''; $('wmngRewriteInput').value=sent;
+  },
+  async rewriteSentence(){
+    const inp=$('wmngRewriteInput'); const out=$('wmngRewriteResult'); const text=inp.value.trim(); if(!text){toast('Cümle yok','Önce İngilizce cümle yaz.');return;}
+    out.style.display='block'; out.innerHTML='⏳ Hazırlanıyor...';
+    const sys='You are an English teacher. Rewrite the user sentence in three levels: BASIC, NATURAL, NATIVE. Add a short Turkish explanation. Keep it concise.';
+    const prompt=`Sentence: ${text}\n\nReturn exactly with headings BASIC, NATURAL, NATIVE, EXPLANATION.`;
+    try{
+      if(typeof window.callGroqAPI==='function'){
+        const r=await window.callGroqAPI(sys,prompt,900);
+        if(!String(r).startsWith('❌')&&!String(r).startsWith('⏳')){out.innerHTML=String(r).replace(/\n/g,'<br>');return;}
+      }
+    }catch(e){}
+    const fixed=text.replace(/\bI very like\b/ig,'I really like').replace(/\bmore better\b/ig,'better').replace(/\bpeoples\b/ig,'people');
+    out.innerHTML=`<div class="wmng-level"><b>BASIC:</b><br>${esc(fixed)}</div><div class="wmng-level"><b>NATURAL:</b><br>${esc(fixed.replace(/I like/,'I really like'))}</div><div class="wmng-level"><b>NATIVE:</b><br>${esc(fixed.replace(/I really like/,'I’m really into'))}</div><div class="wmng-mini">Not: API key yoksa basit offline düzeltme çalışır. Daha iyi sonuç için Groq API key gir.</div>`;
+  },
+  initLife(){
+    const pills=$('wmngScenarioPills'); if(pills){pills.innerHTML=Object.entries(scenarios).map(([k,v])=>`<button class="scenario-chip ${k===activeScenario?'active':''}" onclick="WMNG.setScenario('${k}')">${v.title}</button>`).join('');}
+    if(!lifeHistory.length) this.setScenario(activeScenario);
+  },
+  setScenario(k){activeScenario=k; lifeHistory=[{role:'ai',text:scenarios[k].first}]; this.initLife(); this.renderLife();},
+  renderLife(){const chat=$('wmngLifeChat'); if(!chat)return; chat.innerHTML=lifeHistory.map(m=>`<div class="wmng-msg ${m.role==='user'?'user':'ai'}">${esc(m.text)}</div>`).join(''); chat.scrollTop=chat.scrollHeight;},
+  async sendLifeMessage(){
+    const inp=$('wmngLifeInput'); const text=inp.value.trim(); if(!text)return; inp.value=''; lifeHistory.push({role:'user',text}); this.renderLife();
+    const sc=scenarios[activeScenario]; lifeHistory.push({role:'ai',text:'⏳ ...'}); this.renderLife();
+    let reply='Good. Can you give me one more detail?';
+    try{
+      if(typeof window.callGroqAPI==='function'){
+        const hist=lifeHistory.filter(x=>x.text!=='⏳ ...').slice(-8).map(x=>`${x.role}: ${x.text}`).join('\n');
+        const r=await window.callGroqAPI(`You are a ${sc.role}. Keep a realistic English role-play. Ask one question at a time. Correct serious mistakes gently in Turkish only after your English reply.`,hist,700);
+        if(!String(r).startsWith('❌')&&!String(r).startsWith('⏳')) reply=r;
+      }
+    }catch(e){}
+    lifeHistory[lifeHistory.length-1]={role:'ai',text:reply}; this.renderLife();
+  },
+  fillCurrentPronMap(){ const c=getCurrent(); if(c){$('wmngPronTarget').value=wordText(c); $('wmngPronSpoken').value='';} },
+  comparePron(target,spoken){
+    target=String(target||'').toLowerCase().trim(); spoken=String(spoken||'').toLowerCase().trim();
+    const similar={v:['f','w'],f:['v'],r:['l'],l:['r'],t:['d'],d:['t'],i:['e','ı'],e:['i','a'],a:['e','ı'],o:['u','a'],u:['o'],c:['k','s'],k:['c'],s:['z'],z:['s'],w:['v']};
+    const arr=[]; const n=Math.max(target.length,spoken.length);
+    for(let i=0;i<n;i++){const t=target[i]||'', sp=spoken[i]||''; if(!t){arr.push({char:sp,status:'extra'});continue;} if(t===sp)arr.push({char:t,status:'ok'}); else if((similar[t]||[]).includes(sp))arr.push({char:t,status:'close'}); else arr.push({char:t,status:'bad'});}
+    return arr;
+  },
+  renderPronMap(){
+    const target=$('wmngPronTarget').value.trim(); const spoken=$('wmngPronSpoken').value.trim(); const out=$('wmngPronResult'); if(!target||!spoken){toast('Eksik bilgi','Hedef ve duyulan kelime gerekli.');return;}
+    const data=this.comparePron(target,spoken); const ok=data.filter(x=>x.status==='ok').length; const score=Math.round(ok/Math.max(target.length,1)*100);
+    out.style.display='block'; out.innerHTML=`<div class="wmng-pmap">${data.map(x=>`<span class="pm-${x.status}">${esc(x.char)}</span>`).join('')}</div><div class="wmng-scorebar"><span style="width:${score}%"></span></div><div class="wmng-mini">Skor: <b>${score}%</b> · Yeşil doğru, sarı yakın, kırmızı sorunlu ses.</div>`;
+  },
+  listenPronMap(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){toast('Destek yok','Bu tarayıcı speech recognition desteklemiyor.');return;}
+    const rec=new SR(); rec.lang='en-US'; rec.interimResults=false; rec.maxAlternatives=1;
+    rec.onresult=e=>{ $('wmngPronSpoken').value=e.results[0][0].transcript; this.renderPronMap(); };
+    rec.onerror=e=>toast('Dinleme hatası',e.error||''); rec.start(); toast('Dinleniyor','Kelimeyi İngilizce söyle.');
+  }
+};
+
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>WMNG.init(),500));
+setTimeout(()=>window.WMNG&&WMNG.init(),1800);
+})();
+</script>
+
 </body></html>
