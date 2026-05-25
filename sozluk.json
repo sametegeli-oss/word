@@ -1,0 +1,724 @@
+{
+  "abandon": {
+    "tr_pron": "ebandın",
+    "meanings": ["terk etmek [f.]", "bırakmak [f.]", "vazgeçmek [f.]"],
+    "cefr": "B2",
+    "zipf": 4.02
+  },
+  "abandoned": {
+    "tr_pron": "ebenndınd",
+    "meanings": ["terk edilmiş"],
+    "cefr": "B1",
+    "zipf": 4.4
+  },
+  "abbreviation": {
+    "tr_pron": "abriyiviyeyşın",
+    "meanings": ["kısaltma"],
+    "cefr": null,
+    "zipf": 3.14
+  },
+  "abide": {
+    "tr_pron": "ebayd",
+    "meanings": ["bağlı kalmak / katlanmak"],
+    "cefr": null,
+    "zipf": 3.59
+  },
+  "abilities": {
+    "tr_pron": "ıbilətiz",
+    "meanings": ["yetenekler"],
+    "cefr": null,
+    "zipf": 4.21
+  },
+  "ability": {
+    "tr_pron": "ebılıti",
+    "meanings": ["hüner [i.]", "kabiliyet [i.]", "yetenek [i.]"],
+    "cefr": "A1",
+    "zipf": 4.96
+  },
+  "able": {
+    "tr_pron": "eybıl",
+    "meanings": ["hünerli [s.]", "kadir [s.]", "gücü yeten [s.]"],
+    "cefr": "A1",
+    "zipf": 5.43
+  },
+  "ablution": {
+    "tr_pron": "ebluşın",
+    "meanings": ["abdest / yıkanma"],
+    "cefr": null,
+    "zipf": 2.11
+  },
+  "abnormalities": {
+    "tr_pron": "abnormələtiz",
+    "meanings": ["anormallikler"],
+    "cefr": null,
+    "zipf": 3.31
+  },
+  "aboard": {
+    "tr_pron": "ebord",
+    "meanings": ["gemide / uçakta / trende"],
+    "cefr": null,
+    "zipf": 4.14
+  },
+  "about": {
+    "tr_pron": "ebaut",
+    "meanings": ["hemen hemen [zf.]", "aşağı yukarı [zf.]", "yaklaşık [zf.]"],
+    "cefr": "A2",
+    "zipf": 6.4
+  },
+  "above": {
+    "tr_pron": "ebuuv",
+    "meanings": ["üzerine [zf.]", "yukarısında [zf.]", "yukarıda [zf.]"],
+    "cefr": "A2",
+    "zipf": 5.2
+  },
+  "abroad": {
+    "tr_pron": "ebrod",
+    "meanings": ["yurt dışında [zf.]", "gurbet [i.]", "yurt dışı [i.]"],
+    "cefr": "A1",
+    "zipf": 4.39
+  },
+  "absent": {
+    "tr_pron": "ebsınt",
+    "meanings": ["hazır bulunmayan [s.]", "mevcut olmayan [s.]", "yok [s.]"],
+    "cefr": "C1",
+    "zipf": 3.98
+  },
+  "absolute": {
+    "tr_pron": "ebsolut",
+    "meanings": ["tam [s.]", "mutlak [s.]", "salt [s.]"],
+    "cefr": "B2",
+    "zipf": 4.54
+  },
+  "absolutely": {
+    "tr_pron": "absolutli",
+    "meanings": ["kesinlikle [zf.]", "mutlaka [zf.]", "tamamen [zf.]"],
+    "cefr": "B1",
+    "zipf": 4.98
+  },
+  "absorb": {
+    "tr_pron": "abzorb",
+    "meanings": ["almak (dikkati/enerjiyi/zamanı/parayı) [f.]", "kavramak (anlamak) [f.]", "emmek [f.]"],
+    "cefr": "B2",
+    "zipf": 3.81
+  },
+  "abstract": {
+    "tr_pron": "abstrakt",
+    "meanings": ["soyutlamak [f.]", "özet [i.]", "soyut [s.]"],
+    "cefr": "B2",
+    "zipf": 4.14
+  },
+  "academic": {
+    "tr_pron": "akademik",
+    "meanings": ["akademik [s.]", "üniversite öğretim görevlisi [i.]", "öğretim görevlisi [i.]"],
+    "cefr": "B1",
+    "zipf": 4.57
+  },
+  "academy": {
+    "tr_pron": "ekadəmi",
+    "meanings": ["akademi [i.]", "yüksekokul [i.]", "yüksek okul [i.]"],
+    "cefr": "C1",
+    "zipf": 4.57
+  },
+  "accent": {
+    "tr_pron": "aksent",
+    "meanings": ["şive [i.]", "aksan [i.]", "vurgulamak [f.]"],
+    "cefr": "B2",
+    "zipf": 4.14
+  },
+  "accept": {
+    "tr_pron": "eksept",
+    "meanings": ["kabullenmek [f.]", "kabul etmek [f.]", "almak [f.]"],
+    "cefr": "A1",
+    "zipf": 4.85
+  },
+  "acceptable": {
+    "tr_pron": "akseptəbıl",
+    "meanings": ["kabul edilir [s.]", "kabul edilebilir [s.]", "makbul [s.]"],
+    "cefr": "B2",
+    "zipf": 4.27
+  },
+  "acceptance": {
+    "tr_pron": "ekseptıns",
+    "meanings": ["kabul [i.]", "alma [i.]", "üstlenme [i.]"],
+    "cefr": "C1",
+    "zipf": 4.16
+  },
+  "access": {
+    "tr_pron": "akses",
+    "meanings": ["erişim [i.]", "erişme [i.]", "giriş [i.]"],
+    "cefr": "B1",
+    "zipf": 5.05
+  },
+  "accident": {
+    "tr_pron": "eksidınt",
+    "meanings": ["rastlantı [i.]", "kaza [i.]", "beklenmedik olay [i.]"],
+    "cefr": "A1",
+    "zipf": 4.71
+  },
+  "accidentally": {
+    "tr_pron": "aksidentəli",
+    "meanings": ["kazara [zf.]", "tesadüfen [zf.]", "hasbelkader [zf.]"],
+    "cefr": "B2",
+    "zipf": 4.22
+  },
+  "accommodate": {
+    "tr_pron": "ekomodeyt",
+    "meanings": ["yaşayacak yer temin etmek [f.]", "kalacak yer vermek [f.]", "telif etmek [f.]"],
+    "cefr": "B2",
+    "zipf": 4.02
+  },
+  "accommodation": {
+    "tr_pron": "ekomıdeyşın",
+    "meanings": ["konaklama [i.]", "kalacak yer [i.]", "konfor [i.]"],
+    "cefr": "B1",
+    "zipf": 4.06
+  },
+  "accompany": {
+    "tr_pron": "ekampıni",
+    "meanings": ["eşlik etmek [f.]", "refakat etmek [f.]", "katılmak [f.]"],
+    "cefr": "B2",
+    "zipf": 3.81
+  },
+  "according to": {
+    "tr_pron": "ekording tu",
+    "meanings": ["göre"],
+    "cefr": "A2",
+    "zipf": 5.28
+  },
+  "account": {
+    "tr_pron": "ekaunt",
+    "meanings": ["hesap [i.]", "açıklamasını yapmak [f.]", "avlamak [f.]"],
+    "cefr": "B1",
+    "zipf": 5.21
+  },
+  "accountable": {
+    "tr_pron": "ekauntəbıl",
+    "meanings": ["mesul [s.]", "hesap verebilir [s.]", "sorumlu [s.]"],
+    "cefr": "C1",
+    "zipf": 3.9
+  },
+  "accountant": {
+    "tr_pron": "akauntınt",
+    "meanings": ["muhasebeci [i.]", "sayışman [i.]", "hesap uzmanı [i.]"],
+    "cefr": "B2",
+    "zipf": 3.76
+  },
+  "accounting": {
+    "tr_pron": "akaunting",
+    "meanings": ["muhasebe [i.]", "saymanlık [i.]", "hesap verme [i.]"],
+    "cefr": "B2",
+    "zipf": 4.29
+  },
+  "accurate": {
+    "tr_pron": "ekyurıt",
+    "meanings": ["doğru [s.]", "kesin [s.]", "dakik [s.]"],
+    "cefr": "B2",
+    "zipf": 4.57
+  },
+  "accused": {
+    "tr_pron": "ekyuzd",
+    "meanings": ["zanlı [i.]", "sanık [i.]", "suçlu [i.]"],
+    "cefr": "C1",
+    "zipf": 4.46
+  },
+  "achieve": {
+    "tr_pron": "açiv",
+    "meanings": ["elde etmek [f.]", "başarmak [f.]", "ulaşmak [f.]"],
+    "cefr": "A1",
+    "zipf": 4.57
+  },
+  "acknowledge": {
+    "tr_pron": "eknolic",
+    "meanings": ["kabullenmek [f.]", "kabul etmek [f.]", "doğruluğunu kabul etmek [f.]"],
+    "cefr": "B2",
+    "zipf": 4.18
+  },
+  "across": {
+    "tr_pron": "ekros",
+    "meanings": ["karşıya [zf.]", "(deniz/okyanus) aşırı [zf.]", "karşı karşıya [zf.]"],
+    "cefr": "A2",
+    "zipf": 5.25
+  },
+  "act": {
+    "tr_pron": "ekt",
+    "meanings": ["davranmak [f.]", "hareket etmek [f.]", "eylem [i.]"],
+    "cefr": "A1",
+    "zipf": 5.3
+  },
+  "action": {
+    "tr_pron": "ekşın",
+    "meanings": ["çalışma [i.]", "davranış [i.]", "aksiyon [i.]"],
+    "cefr": "A2",
+    "zipf": 5.25
+  },
+  "active": {
+    "tr_pron": "ektiv",
+    "meanings": ["faal [s.]", "aktif [s.]", "etkin [s.]"],
+    "cefr": "A1",
+    "zipf": 4.93
+  },
+  "activity": {
+    "tr_pron": "aktiviti",
+    "meanings": ["etkinlik [i.]", "faaliyet [i.]", "meşguliyet [i.]"],
+    "cefr": "A2",
+    "zipf": 4.86
+  },
+  "actor": {
+    "tr_pron": "ektır",
+    "meanings": ["oyuncu [i.]", "erkek oyuncu [i.]", "artist [i.]"],
+    "cefr": "A2",
+    "zipf": 4.65
+  },
+  "actress": {
+    "tr_pron": "ektrıs",
+    "meanings": ["oyuncu [i.]", "artist [i.]", "aktris [i.]"],
+    "cefr": "A2",
+    "zipf": 4.45
+  },
+  "actual": {
+    "tr_pron": "ekçuıl",
+    "meanings": ["aktüel [s.]", "gerçek [s.]", "fiili [s.]"],
+    "cefr": "B2",
+    "zipf": 4.85
+  },
+  "actually": {
+    "tr_pron": "ekçueli",
+    "meanings": ["fiilen [zf.]", "aslında [zf.]", "hem [zf.]"],
+    "cefr": "A1",
+    "zipf": 5.49
+  },
+  "adapt": {
+    "tr_pron": "adapt",
+    "meanings": ["adapte etmek [f.]", "uyarlamak [f.]", "uymak [f.]"],
+    "cefr": "B2",
+    "zipf": 3.98
+  },
+  "adaptation": {
+    "tr_pron": "edepteyşın",
+    "meanings": ["intibak [i.]", "uyum [i.]", "adaptasyon [i.]"],
+    "cefr": "C1",
+    "zipf": 4.01
+  },
+  "add": {
+    "tr_pron": "ed",
+    "meanings": ["toplamak [f.]", "eklemek [f.]", "ilave etmek [f.]"],
+    "cefr": "A2",
+    "zipf": 5.09
+  },
+  "addition": {
+    "tr_pron": "edişın",
+    "meanings": ["ek [i.]", "ilave [i.]", "toplama [i.]"],
+    "cefr": "B1",
+    "zipf": 5.01
+  },
+  "additional": {
+    "tr_pron": "edişınıl",
+    "meanings": ["fazladan [s.]", "ek [s.]", "ilave [s.]"],
+    "cefr": "B2",
+    "zipf": 4.98
+  },
+  "address": {
+    "tr_pron": "edres",
+    "meanings": ["hitap etmek [f.]", "söylev [i.]", "adres [i.]"],
+    "cefr": "A2",
+    "zipf": 4.91
+  },
+  "adequate": {
+    "tr_pron": "edikvıt",
+    "meanings": ["yeterli [s.]", "kafi [s.]", "elverişli [s.]"],
+    "cefr": "B2",
+    "zipf": 4.05
+  },
+  "adjustment": {
+    "tr_pron": "ecustmınt",
+    "meanings": ["ayarlama [i.]", "ayar [i.]", "intibak [i.]"],
+    "cefr": "C1",
+    "zipf": 3.88
+  },
+  "administration": {
+    "tr_pron": "edminıstreyşın",
+    "meanings": ["yönetim [i.]", "idare [i.]"],
+    "cefr": "B2",
+    "zipf": 4.93
+  },
+  "administrative": {
+    "tr_pron": "edministrətiv",
+    "meanings": ["idari [s.]", "yönetimle ilgili [s.]", "yönetsel [s.]"],
+    "cefr": "C1",
+    "zipf": 4.45
+  },
+  "admire": {
+    "tr_pron": "edmayr",
+    "meanings": ["hayranlık duymak [f.]", "hayran olmak [f.]", "beğenmek [f.]"],
+    "cefr": "B1",
+    "zipf": 3.97
+  },
+  "admission": {
+    "tr_pron": "edmişın",
+    "meanings": ["itiraf [i.]", "kabul [i.]", "giriş [i.]"],
+    "cefr": "C1",
+    "zipf": 4.15
+  },
+  "admit": {
+    "tr_pron": "edmit",
+    "meanings": ["itiraf etmek [f.]", "kabul etmek [f.]", "almak [f.]"],
+    "cefr": "B1",
+    "zipf": 4.58
+  },
+  "adopt": {
+    "tr_pron": "edopt",
+    "meanings": ["evlat edinmek [f.]", "benimsemek [f.]", "çalmak [f.]"],
+    "cefr": "B2",
+    "zipf": 4.19
+  },
+  "adult": {
+    "tr_pron": "edalt",
+    "meanings": ["yetişkin [i.]", "er kişi [i.]", "yetişkin kişi [i.]"],
+    "cefr": "A1",
+    "zipf": 4.8
+  },
+  "advance": {
+    "tr_pron": "edvens",
+    "meanings": ["terfi ettirmek [f.]", "avans vermek [f.]", "geliştirmek [f.]"],
+    "cefr": "B2",
+    "zipf": 4.65
+  },
+  "advanced": {
+    "tr_pron": "edvensd",
+    "meanings": ["ileri [s.]", "modern [s.]", "ilerlemiş [s.]"],
+    "cefr": "B1",
+    "zipf": 4.71
+  },
+  "advantage": {
+    "tr_pron": "edventıc",
+    "meanings": ["avantaj [i.]", "fayda [i.]", "yarar [i.]"],
+    "cefr": "A1",
+    "zipf": 4.78
+  },
+  "adventure": {
+    "tr_pron": "edvençur",
+    "meanings": ["macera [i.]", "serüven [i.]", "atılmak [f.]"],
+    "cefr": "A1",
+    "zipf": 4.46
+  },
+  "adverse": {
+    "tr_pron": "edvörs",
+    "meanings": ["olumsuz [s.]", "aksi [s.]", "ters [s.]"],
+    "cefr": "C1",
+    "zipf": 3.89
+  },
+  "advertise": {
+    "tr_pron": "edvırtayz",
+    "meanings": ["reklamını yapmak [f.]", "tanıtım yapmak [f.]", "ilan etmek [f.]"],
+    "cefr": "A1",
+    "zipf": 3.66
+  },
+  "advertisement": {
+    "tr_pron": "advörtayzmınt",
+    "meanings": ["reklam [i.]", "tanıtım [i.]", "duyuru [i.]"],
+    "cefr": "A1",
+    "zipf": 3.84
+  },
+  "advertising": {
+    "tr_pron": "advörtayzing",
+    "meanings": ["reklamcılık [i.]", "reklam [i.]", "ilancılık [i.]"],
+    "cefr": "A1",
+    "zipf": 4.54
+  },
+  "advice": {
+    "tr_pron": "edvays",
+    "meanings": ["nasihat [i.]", "tavsiye [i.]", "öğüt [i.]"],
+    "cefr": "A2",
+    "zipf": 4.88
+  },
+  "advise": {
+    "tr_pron": "edvayz",
+    "meanings": ["öğütlemek [f.]", "öğüt vermek [f.]", "nasihat etmek [f.]"],
+    "cefr": "B1",
+    "zipf": 4.09
+  },
+  "affair": {
+    "tr_pron": "effeyır",
+    "meanings": ["mesele [i.]", "şey [i.]", "iş [i.]"],
+    "cefr": "B2",
+    "zipf": 4.3
+  },
+  "affect": {
+    "tr_pron": "efekt",
+    "meanings": ["etkilemek [f.]", "tesir etmek [i.]", "gibi davranmak [f.]"],
+    "cefr": "A1",
+    "zipf": 4.59
+  },
+  "affection": {
+    "tr_pron": "efekşın",
+    "meanings": ["alaka [i.]", "etkileme [i.]", "meyil [i.]"],
+    "cefr": "C1",
+    "zipf": 3.92
+  },
+  "afford": {
+    "tr_pron": "eford",
+    "meanings": ["parası yetmek [f.]", "satın almaya gücü yetmek [f.]", "bulabilmek [f.]"],
+    "cefr": "B1",
+    "zipf": 4.57
+  },
+  "affordable": {
+    "tr_pron": "efordəbıl",
+    "meanings": ["bütçeye uygun [s.]", "ekonomik [s.]", "düşük maliyetli [s.]"],
+    "cefr": "B2",
+    "zipf": 4.22
+  },
+  "afraid": {
+    "tr_pron": "efreid",
+    "meanings": ["korkmuş [s.]", "korkan [s.]", "ürkmüş [s.]"],
+    "cefr": "A2",
+    "zipf": 4.7
+  },
+  "after": {
+    "tr_pron": "aftı",
+    "meanings": ["sonra [zf.]", "öğleden sonra [i.]", "sonra gelen [s.]"],
+    "cefr": "A1",
+    "zipf": 6.11
+  },
+  "afternoon": {
+    "tr_pron": "aftırnuun",
+    "meanings": ["öğleden sonra [i.]", "bir şeyin orta ve son bölümü [i.]", "son kısım [i.]"],
+    "cefr": "A2",
+    "zipf": 4.72
+  },
+  "afterwards": {
+    "tr_pron": "aftırvördz",
+    "meanings": ["sonradan [zf.]", "sonra [zf.]", "sonraları [zf.]"],
+    "cefr": "B2",
+    "zipf": 4.42
+  },
+  "again": {
+    "tr_pron": "egein",
+    "meanings": ["bir daha [zf.]", "daha [zf.]", "tekrar [zf.]"],
+    "cefr": "A2",
+    "zipf": 5.7
+  },
+  "against": {
+    "tr_pron": "egeinst",
+    "meanings": ["aykırı [ed.]", "karşı [ed.]", "ters olarak [zf.]"],
+    "cefr": "A1",
+    "zipf": 5.68
+  },
+  "age": {
+    "tr_pron": "eyc",
+    "meanings": ["yaş [i.]", "çağ [i.]", "devir [i.]"],
+    "cefr": "A2",
+    "zipf": 5.32
+  },
+  "agency": {
+    "tr_pron": "eycınsi",
+    "meanings": ["acente [i.]", "acenta [i.]", "ajans [i.]"],
+    "cefr": "B2",
+    "zipf": 4.87
+  },
+  "agenda": {
+    "tr_pron": "ecendı",
+    "meanings": ["gündem [i.]", "ajanda [i.]", "görüşülecek işler [i.]"],
+    "cefr": "B2",
+    "zipf": 4.3
+  },
+  "agent": {
+    "tr_pron": "eycınt",
+    "meanings": ["ajan [i.]", "temsilci [i.]", "vekil [i.]"],
+    "cefr": "B1",
+    "zipf": 4.81
+  },
+  "aggressive": {
+    "tr_pron": "egresiv",
+    "meanings": ["agresif [s.]", "saldırgan [s.]", "kavgacı [s.]"],
+    "cefr": "B2",
+    "zipf": 4.32
+  },
+  "ago": {
+    "tr_pron": "ego",
+    "meanings": ["evvel [zf.]", "önce [zf.]"],
+    "cefr": "A2",
+    "zipf": 5.42
+  },
+  "agree": {
+    "tr_pron": "egrii",
+    "meanings": ["aynı fikirde olmak [f.]", "anlaşmak [f.]", "razı olmak [f.]"],
+    "cefr": "A2",
+    "zipf": 4.97
+  },
+  "agreement": {
+    "tr_pron": "egriimınt",
+    "meanings": ["mutabakat [i.]", "antlaşma [i.]", "anlaşma [i.]"],
+    "cefr": "B1",
+    "zipf": 4.88
+  },
+  "agriculture": {
+    "tr_pron": "egrikalçır",
+    "meanings": ["ziraat [i.]", "tarım [i.]", "çiftçilik [i.]"],
+    "cefr": "B2",
+    "zipf": 4.37
+  },
+  "ah": {
+    "tr_pron": "aa",
+    "meanings": ["of [ünl.]", "ya [ünl.]", "vah [ünl.]"],
+    "cefr": "A1",
+    "zipf": 4.63
+  },
+  "ahead": {
+    "tr_pron": "ehed",
+    "meanings": ["ilerde [zf.]", "öndeki [s.]", "ileriye [zf.]"],
+    "cefr": "B1",
+    "zipf": 5.01
+  },
+  "aid": {
+    "tr_pron": "eyd",
+    "meanings": ["yardım etmek [f.]", "yardım [i.]", "yardımcı olmak [f.]"],
+    "cefr": "B2",
+    "zipf": 4.75
+  },
+  "aim": {
+    "tr_pron": "eym",
+    "meanings": ["amaçlamak [f.]", "hedeflemek [f.]", "nişan almak [f.]"],
+    "cefr": "B1",
+    "zipf": 4.51
+  },
+  "air": {
+    "tr_pron": "eyr",
+    "meanings": ["havalandırmak [f.]", "yayına girmek [f.]", "hava [s.]"],
+    "cefr": "A2",
+    "zipf": 5.37
+  },
+  "airline": {
+    "tr_pron": "eyrlayn",
+    "meanings": ["hava yolu [i.]", "havayolu [i.]", "düz hat [i.]"],
+    "cefr": "A1",
+    "zipf": 4.04
+  },
+  "airport": {
+    "tr_pron": "eypoort",
+    "meanings": ["havalimanı [i.]", "havaalanı [i.]", "hava limanı [i.]"],
+    "cefr": "A2",
+    "zipf": 4.84
+  },
+  "alarm": {
+    "tr_pron": "alarm",
+    "meanings": ["alarm [i.]", "telaşa düşürmek [f.]", "korkutmak [f.]"],
+    "cefr": "B1",
+    "zipf": 4.28
+  },
+  "album": {
+    "tr_pron": "elbım",
+    "meanings": ["plak [i.]", "resimlik [i.]", "uzunçalar [i.]"],
+    "cefr": "B1",
+    "zipf": 5.02
+  },
+  "alcohol": {
+    "tr_pron": "alkohol",
+    "meanings": ["alkol [i.]", "ispirto [i.]", "içki [i.]"],
+    "cefr": "B1",
+    "zipf": 4.61
+  },
+  "alert": {
+    "tr_pron": "elört",
+    "meanings": ["alarma geçirmek [f.]", "gözünü açmak [f.]", "ayık kalmak [f.]"],
+    "cefr": "C1",
+    "zipf": 4.33
+  },
+  "alike": {
+    "tr_pron": "elaık",
+    "meanings": ["benzeyen [s.]", "hem [s.]", "birbirine benzer [s.]"],
+    "cefr": "C1",
+    "zipf": 4.13
+  },
+  "alive": {
+    "tr_pron": "elaıv",
+    "meanings": ["diri [s.]", "canlı [s.]", "sağ [s.]"],
+    "cefr": "A1",
+    "zipf": 4.76
+  },
+  "all": {
+    "tr_pron": "ol",
+    "meanings": ["tüm [i.]", "bütün [i.]", "hepsi [zm.]"],
+    "cefr": "A1",
+    "zipf": 6.52
+  },
+  "alliance": {
+    "tr_pron": "elayıns",
+    "meanings": ["antlaşma [i.]", "ittifak [i.]", "pakt [i.]"],
+    "cefr": "C1",
+    "zipf": 4.4
+  },
+  "allocate": {
+    "tr_pron": "elokeyt",
+    "meanings": ["tahsis etmek [f.]", "pay etmek [f.]", "bölüştürmek [f.]"],
+    "cefr": "C1",
+    "zipf": 3.31
+  },
+  "allocation": {
+    "tr_pron": "elokeyşın",
+    "meanings": ["paylaştırma [i.]", "pay ayırma [i.]", "tahsisat [i.]"],
+    "cefr": "C1",
+    "zipf": 3.74
+  },
+  "allow": {
+    "tr_pron": "elov",
+    "meanings": ["izin vermek [f.]", "müsaade etmek [f.]", "kabul etmek [f.]"],
+    "cefr": "A1",
+    "zipf": 5.01
+  },
+  "allowance": {
+    "tr_pron": "elavvıns",
+    "meanings": ["izin [i.]", "müsaade [i.]", "harçlık [i.]"],
+    "cefr": "C1",
+    "zipf": 3.85
+  },
+  "almost": {
+    "tr_pron": "olmost",
+    "meanings": ["hemen hemen [zf.]", "az daha [zf.]", "takriben [zf.]"],
+    "cefr": "A1",
+    "zipf": 5.39
+  },
+  "alone": {
+    "tr_pron": "elon",
+    "meanings": ["yalnız [s.]", "kimsesiz [s.]", "bikes [s.]"],
+    "cefr": "A1",
+    "zipf": 5.16
+  },
+  "along": {
+    "tr_pron": "elong",
+    "meanings": ["boyunca [zf.]", "beraberine [zf.]", "yanına [zf.]"],
+    "cefr": "A1",
+    "zipf": 5.38
+  },
+  "alongside": {
+    "tr_pron": "alongsayd",
+    "meanings": ["yanına [zf.]", "yanı sıra [zf.]", "yan yana [zf.]"],
+    "cefr": "B2",
+    "zipf": 4.45
+  },
+  "already": {
+    "tr_pron": "olredi",
+    "meanings": ["zaten [zf.]", "çoktan [zf.]", "halihazırda [zf.]"],
+    "cefr": "A1",
+    "zipf": 5.55
+  },
+  "also": {
+    "tr_pron": "olso",
+    "meanings": ["ayrıca [zf.]", "yine [zf.]", "da [zf.]"],
+    "cefr": "A2",
+    "zipf": 6.19
+  },
+  "alter": {
+    "tr_pron": "altır",
+    "meanings": ["değiştirmek [f.]", "değişiklik yapmak [f.]", "hadım etmek [f.]"],
+    "cefr": "B2",
+    "zipf": 4.05
+  },
+  "alternative": {
+    "tr_pron": "oltörnətiv",
+    "meanings": ["alternatif [i.]", "çare [i.]", "şık [i.]"],
+    "cefr": "A1",
+    "zipf": 4.71
+  },
+  "although": {
+    "tr_pron": "oldo",
+    "meanings": ["her ne kadar [bağ.]", "rağmen [bağ.]", "gerç
