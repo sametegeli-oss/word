@@ -1,27 +1,24 @@
-# Word Mode — İngilizce Öğrenme Uygulaması
+# WordMode Production Modular Build
 
-AI destekli, offline çalışan PWA kelime öğrenme uygulaması.
+GitHub Pages için modüler paket.
 
-## 🚀 GitHub Pages Deploy
+## Dosya Yapısı
+- `index.html` ana giriş
+- `css/style.css` tüm stiller
+- `js/app.js` tüm JavaScript modülleri
+- `data/sozluk.json` kişisel sözlük verisi
+- `data/firatkaya_simple.json` geniş sözlük verisi varsa burada durur
 
-1. Bu repo'yu fork et veya dosyaları yükle
-2. Settings → Pages → Branch: main → / (root) → Save
-3. `https://KULLANICI.github.io/REPO/` adresinde açılır
+## GitHub'a Yükleme
+Bu klasörün içindeki dosyaları repo köküne yükleyin.
+Ana dosya adı `index.html` olarak hazırdır.
 
-## 📱 Telefona Kurulum
+## Önemli
+Dosyayı `file://` ile değil GitHub Pages veya küçük local server ile açmak daha doğru olur:
 
-**Android:** Chrome → ⋮ → Ana ekrana ekle  
-**iPhone:** Safari → Paylaş → Ana Ekrana Ekle *(Safari zorunlu)*
+```bash
+python -m http.server 8000
+```
 
-## 📁 Dosyalar
-
-| Dosya | Açıklama |
-|---|---|
-| `index.html` | Uygulamanın tamamı |
-| `sw.js` | Service Worker (offline destek) |
-| `manifest.json` | PWA manifest |
-| `.nojekyll` | GitHub Pages Jekyll bypass |
-
-## ⚙️ Kurulum Sonrası
-
-Ayarlar ekranından **Groq API Key** gir (ücretsiz: console.groq.com)
+Sonra:
+`http://localhost:8000`
