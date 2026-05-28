@@ -22,3 +22,20 @@ python -m http.server 8000
 
 Sonra:
 `http://localhost:8000`
+
+
+## Ücretsiz Özellik Paketi
+- Full Dashboard
+- Rule-based Daily AI Coach
+- PDF Mining
+- YouTube/Transcript yapıştırma mining
+- Smart Review Engine v2
+- Shadowing Studio v2
+- PWA manifest + service worker
+
+
+## AI Prompt Fix
+- callAI parametre uyumluluğu düzeltildi.
+- [object Object] çıktısı engellendi.
+- Boş prompt hatası için varsayılan prompt eklendi.
+- `WM_testAI()` debug fonksiyonu eklendi.
