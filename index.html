@@ -4497,52 +4497,269 @@ body.wm-tool-panel-open{overflow:hidden}
 
 
 
-<!-- SAFE WORD BUTTONS TO TOOLS PANEL FIX -->
-<style id="wm-safe-word-buttons-style">
+
+
+
+<!-- FINAL WORD HEADER + TOOLS PANEL UX FIX -->
+<style id="wm-final-word-header-style">
+/* Eski skor alanı tamamen kalksın */
+#mainCard > .score-bar{
+  display:none !important;
+}
+
+/* Ana üst bardaki aktif liste butonu görünmesin; içerik kartında gösterilecek */
+#sc-word .top-bar > button[onclick*="showListSelector"]{
+  display:none !important;
+}
+
+/* Tarih geri okunun yanında düzgün kalsın */
+#sc-word .top-bar{
+  gap:10px !important;
+}
+
+/* Kelime kartının üstüne yeni liste başlığı */
+#wmWordListHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:18px 20px;
+  margin-bottom:18px;
+  border:1px solid var(--border);
+  border-radius:20px;
+  background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(15,23,42,.35));
+}
+
+#wmWordListHeader .wm-list-left{
+  min-width:0;
+}
+
+#wmWordListHeader .wm-list-name{
+  color:#a78bfa;
+  font-size:clamp(20px,4vw,30px);
+  font-weight:900;
+  letter-spacing:-.5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#wmWordListHeader .wm-list-sub{
+  color:var(--muted,#7c85b0);
+  font-size:12px;
+  font-weight:800;
+  margin-top:4px;
+}
+
+#wmWordListHeader .wm-learned-btn{
+  border:1.5px solid rgba(34,197,94,.7);
+  background:rgba(34,197,94,.16);
+  color:#4ade80;
+  border-radius:16px;
+  padding:11px 18px;
+  font-size:15px;
+  font-weight:900;
+  font-family:Nunito,Arial,sans-serif;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+/* Word card içindeki KELİME yazısını aktif liste adına dönüştür */
+.wm-list-chip{
+  display:inline-flex !important;
+  align-items:center;
+  gap:6px;
+  color:#a78bfa !important;
+  background:rgba(124,58,237,.16);
+  border-radius:999px;
+  padding:6px 12px;
+  font-size:13px !important;
+  font-weight:900 !important;
+  letter-spacing:.2px !important;
+  text-transform:none !important;
+}
+
+/* Henüz çalışılmadı yanında Öğrendim */
+.wm-status-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:8px 0 14px 0;
+}
+
+.wm-inline-learned{
+  border:1.5px solid rgba(34,197,94,.75);
+  background:rgba(34,197,94,.12);
+  color:#4ade80;
+  border-radius:999px;
+  padding:7px 14px;
+  font-size:13px;
+  font-weight:900;
+  font-family:Nunito,Arial,sans-serif;
+  cursor:pointer;
+}
+
+/* Ana kart altındaki taşınan butonlar gizli */
 .wm-safe-hidden-button,
 .wm-safe-hidden-row{
   display:none !important;
   visibility:hidden !important;
   pointer-events:none !important;
 }
+
+/* Araç panel kapatma daha anlaşılır */
+#wmToolPanel .wm-tool-close{
+  position:relative;
+}
+#wmToolPanel .wm-tool-close::after{
+  content:"Kapat";
+  position:absolute;
+  right:0;
+  top:46px;
+  font-size:11px;
+  color:#c4b5fd;
+  background:rgba(124,58,237,.20);
+  border:1px solid rgba(124,58,237,.35);
+  border-radius:10px;
+  padding:4px 7px;
+  white-space:nowrap;
+}
+
+/* Özellikler panel içi kapanış butonu */
+#wmFeatureCloseBtn{
+  width:100%;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.07);
+  color:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+  margin:8px 0 4px 0;
+  font-family:Nunito,Arial,sans-serif;
+  font-size:13px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+@media(max-width:520px){
+  #wmWordListHeader{
+    padding:14px 14px;
+    border-radius:17px;
+  }
+  #wmWordListHeader .wm-list-name{
+    font-size:22px;
+  }
+  #wmWordListHeader .wm-learned-btn{
+    padding:9px 12px;
+    font-size:13px;
+  }
+}
 </style>
 
-<script id="wm-safe-word-buttons-script">
+<script id="wm-final-word-header-script">
 (function(){
-  function txt(el){
+  function textOf(el){
     return (el && el.textContent || '').replace(/\s+/g,' ').trim();
   }
 
-  function hideOnlyWordActionButtons(){
+  function currentListName(){
+    var el = document.getElementById('currentListName');
+    var name = el ? textOf(el).replace(/▼/g,'').trim() : '';
+    return name || 'Ana Liste';
+  }
+
+  function wordCountText(){
+    var c = document.getElementById('wordCounter') || document.getElementById('counter');
+    var t = c ? textOf(c) : '';
+    return t || '';
+  }
+
+  function ensureWordHeader(){
+    var main = document.getElementById('mainCard');
+    var wordCard = document.getElementById('wordCard');
+    if(!main || !wordCard) return;
+
+    var hdr = document.getElementById('wmWordListHeader');
+    if(!hdr){
+      hdr = document.createElement('div');
+      hdr.id = 'wmWordListHeader';
+      hdr.innerHTML =
+        '<div class="wm-list-left">' +
+          '<div class="wm-list-name" id="wmActiveListName">Ana Liste</div>' +
+          '<div class="wm-list-sub" id="wmActiveListSub"></div>' +
+        '</div>' +
+        '<button class="wm-learned-btn" onclick="markLearned()">✅ Öğrendim</button>';
+      main.insertBefore(hdr, wordCard);
+    }
+
+    var nameEl = document.getElementById('wmActiveListName');
+    if(nameEl) nameEl.textContent = currentListName();
+
+    var subEl = document.getElementById('wmActiveListSub');
+    if(subEl) subEl.textContent = wordCountText();
+  }
+
+  function fixWordCardLabelAndStatus(){
+    var wordCard = document.getElementById('wordCard');
+    if(!wordCard) return;
+
+    // KELİME etiketini aktif liste adına çevir.
+    var nodes = Array.from(wordCard.querySelectorAll('*')).filter(function(el){
+      return textOf(el).toLowerCase() === 'kelime';
+    });
+    if(nodes.length){
+      var label = nodes[0];
+      label.textContent = currentListName();
+      label.classList.add('wm-list-chip');
+    }
+
+    // Henüz çalışılmadı badge'inin yanına Öğrendim butonu koy.
+    var badges = Array.from(wordCard.querySelectorAll('*')).filter(function(el){
+      return textOf(el).toLowerCase().indexOf('henüz çalışılmadı') > -1;
+    });
+    if(badges.length){
+      var badge = badges[0];
+
+      if(!badge.parentElement.classList.contains('wm-status-row')){
+        var row = document.createElement('div');
+        row.className = 'wm-status-row';
+        badge.parentNode.insertBefore(row, badge);
+        row.appendChild(badge);
+      }
+
+      var row = badge.parentElement;
+      if(!row.querySelector('.wm-inline-learned')){
+        var btn = document.createElement('button');
+        btn.className = 'wm-inline-learned';
+        btn.type = 'button';
+        btn.textContent = '✅ Öğrendim';
+        btn.onclick = function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
+          if(typeof markLearned === 'function') markLearned();
+        };
+        row.appendChild(btn);
+      }
+    }
+  }
+
+  function hideMovedMainButtons(){
     var wordScreen = document.getElementById('sc-word');
     if(!wordScreen) return;
 
-    var affectedButtons = [];
-
     Array.from(wordScreen.querySelectorAll('button')).forEach(function(btn){
-      var t = txt(btn).toLowerCase();
+      var t = textOf(btn).toLowerCase();
       var oc = (btn.getAttribute('onclick') || '').toLowerCase();
       var id = btn.id || '';
 
-      var shouldHide = false;
-
-      if(t.indexOf('kelime listesi') > -1 && oc.indexOf('showlist') > -1) shouldHide = true;
-      if(t.indexOf('ezberlenecekler') > -1 && oc.indexOf('opentolearnmodal') > -1) shouldHide = true;
-      if(id === 'featuresToggleBtn' || (t.indexOf('özellikler') > -1 && oc.indexOf('togglefeatures') > -1)) shouldHide = true;
-
-      // Büyük butonlar daha önce istenmişti: bunlar da araç panelinde
-      if(t.indexOf('yapay zekaya sor') > -1 && oc.indexOf('openaskaiscreen') > -1) shouldHide = true;
-      if(t.indexOf('flashcard') > -1 && oc.indexOf('openflashcardmode') > -1) shouldHide = true;
-      if(t.indexOf('akıllı tekrar') > -1 && (oc.indexOf('startreviewmode') > -1 || oc.indexOf('startsrs') > -1)) shouldHide = true;
-
-      if(shouldHide){
-        btn.classList.add('wm-safe-hidden-button');
-        affectedButtons.push(btn);
-      }
+      if(t.indexOf('kelime listesi') > -1 && oc.indexOf('showlist') > -1) btn.classList.add('wm-safe-hidden-button');
+      if(t.indexOf('ezberlenecekler') > -1 && oc.indexOf('opentolearnmodal') > -1) btn.classList.add('wm-safe-hidden-button');
+      if(id === 'featuresToggleBtn' || (t.indexOf('özellikler') > -1 && oc.indexOf('togglefeatures') > -1)) btn.classList.add('wm-safe-hidden-button');
+      if(t.indexOf('yapay zekaya sor') > -1 && oc.indexOf('openaskaiscreen') > -1) btn.classList.add('wm-safe-hidden-button');
+      if(t.indexOf('flashcard') > -1 && oc.indexOf('openflashcardmode') > -1) btn.classList.add('wm-safe-hidden-button');
+      if(t.indexOf('akıllı tekrar') > -1 && (oc.indexOf('startreviewmode') > -1 || oc.indexOf('startsrs') > -1)) btn.classList.add('wm-safe-hidden-button');
     });
 
-    // Sadece doğrudan bu üç butonun olduğu küçük grid satırını gizle.
-    // mainCard veya wordCard gibi büyük parent'lara kesinlikle dokunma.
     var featuresBtn = document.getElementById('featuresToggleBtn');
     if(featuresBtn && featuresBtn.parentElement && featuresBtn.parentElement.id !== 'mainCard'){
       var parent = featuresBtn.parentElement;
@@ -4551,39 +4768,52 @@ body.wm-tool-panel-open{overflow:hidden}
       }
     }
 
-    // Flashcard + Akıllı Tekrar'ın olduğu küçük grid satırını gizle.
-    affectedButtons.forEach(function(btn){
-      var parent = btn.parentElement;
-      if(!parent || parent.id === 'mainCard' || parent.id === 'sc-word') return;
-      var text = txt(parent).toLowerCase();
-      if(text.indexOf('flashcard') > -1 && text.indexOf('akıllı tekrar') > -1){
-        parent.classList.add('wm-safe-hidden-row');
+    Array.from(wordScreen.querySelectorAll('div')).forEach(function(div){
+      if(div.id === 'mainCard' || div.id === 'wordCard' || div.id === 'sc-word') return;
+      var t = textOf(div).toLowerCase();
+      if(t.indexOf('flashcard') > -1 && t.indexOf('akıllı tekrar') > -1 && div.querySelector('button')){
+        div.classList.add('wm-safe-hidden-row');
       }
     });
   }
 
-  function ensureToolButtons(){
+  function ensurePanelButtons(){
     var list = document.querySelector('#wmToolPanel .wm-tool-list');
     if(!list) return;
 
     if(!document.getElementById('wmToolWordListBtn')){
       list.insertAdjacentHTML('afterbegin',
-        '<button id="wmToolFeaturesBtn" class="wm-tool-card" onclick="wmToolAction(\'features\')"><span class="wm-tool-ico s">🎯</span><span><span class="wm-tool-name">Özellikler</span><span class="wm-tool-desc">Kelime ekranı özelliklerini aç</span></span><span class="wm-tool-arrow">›</span></button>' +
-        '<button id="wmToolToLearnBtn" class="wm-tool-card" onclick="wmToolAction(\'toLearn\')"><span class="wm-tool-ico m">📌</span><span><span class="wm-tool-name">Ezberlenecekler</span><span class="wm-tool-desc">Tekrar listeni yönet</span></span><span class="wm-tool-arrow">›</span></button>' +
-        '<button id="wmToolWordListBtn" class="wm-tool-card" onclick="wmToolAction(\'wordList\')"><span class="wm-tool-ico p">📋</span><span><span class="wm-tool-name">Kelime Listesi</span><span class="wm-tool-desc">Tüm kelimeleri görüntüle</span></span><span class="wm-tool-arrow">›</span></button>'
+        '<button id="wmToolWordListBtn" class="wm-tool-card" onclick="wmToolAction(\\'wordList\\')"><span class="wm-tool-ico p">📋</span><span><span class="wm-tool-name">Kelime Listesi</span><span class="wm-tool-desc">Tüm kelimeleri görüntüle</span></span><span class="wm-tool-arrow">›</span></button>' +
+        '<button id="wmToolToLearnBtn" class="wm-tool-card" onclick="wmToolAction(\\'toLearn\\')"><span class="wm-tool-ico m">📌</span><span><span class="wm-tool-name">Ezberlenecekler</span><span class="wm-tool-desc">Tekrar listeni yönet</span></span><span class="wm-tool-arrow">›</span></button>' +
+        '<button id="wmToolFeaturesBtn" class="wm-tool-card" onclick="wmToolAction(\\'features\\')"><span class="wm-tool-ico s">🎯</span><span><span class="wm-tool-name">Özellikler</span><span class="wm-tool-desc">Aç / kapat</span></span><span class="wm-tool-arrow">›</span></button>'
       );
     }
 
     if(!document.getElementById('wmToolFlashcardBtn')){
       list.insertAdjacentHTML('beforeend',
-        '<button id="wmToolFlashcardBtn" class="wm-tool-card" onclick="wmToolAction(\'flashcard\')"><span class="wm-tool-ico s">🎴</span><span><span class="wm-tool-name">Flashcard</span><span class="wm-tool-desc">Kartla hızlı çalışma</span></span><span class="wm-tool-arrow">›</span></button>' +
-        '<button id="wmToolSmartReviewBtn" class="wm-tool-card" onclick="wmToolAction(\'smartReview\')"><span class="wm-tool-ico r">🔄</span><span><span class="wm-tool-name">Akıllı Tekrar</span><span class="wm-tool-desc">SRS tekrar çalışması</span></span><span class="wm-tool-arrow">›</span></button>' +
-        '<button id="wmToolAIAskBtn" class="wm-tool-card" onclick="wmToolAction(\'askAI\')"><span class="wm-tool-ico p">❓</span><span><span class="wm-tool-name">AI Sor</span><span class="wm-tool-desc">Yapay zekaya soru sor</span></span><span class="wm-tool-arrow">›</span></button>'
+        '<button id="wmToolFlashcardBtn" class="wm-tool-card" onclick="wmToolAction(\\'flashcard\\')"><span class="wm-tool-ico s">🎴</span><span><span class="wm-tool-name">Flashcard</span><span class="wm-tool-desc">Kartla hızlı çalışma</span></span><span class="wm-tool-arrow">›</span></button>' +
+        '<button id="wmToolSmartReviewBtn" class="wm-tool-card" onclick="wmToolAction(\\'smartReview\\')"><span class="wm-tool-ico r">🔄</span><span><span class="wm-tool-name">Akıllı Tekrar</span><span class="wm-tool-desc">SRS tekrar çalışması</span></span><span class="wm-tool-arrow">›</span></button>' +
+        '<button id="wmToolAIAskBtn" class="wm-tool-card" onclick="wmToolAction(\\'askAI\\')"><span class="wm-tool-ico p">❓</span><span><span class="wm-tool-name">AI Sor</span><span class="wm-tool-desc">Yapay zekaya soru sor</span></span><span class="wm-tool-arrow">›</span></button>'
       );
     }
   }
 
-  var previousAction = window.wmToolAction;
+  function ensureFeatureCloseButton(){
+    var row = document.getElementById('actRow');
+    if(!row || document.getElementById('wmFeatureCloseBtn')) return;
+
+    var btn = document.createElement('button');
+    btn.id = 'wmFeatureCloseBtn';
+    btn.type = 'button';
+    btn.textContent = '▲ Özellikleri Kapat';
+    btn.onclick = function(){
+      row.style.display = 'none';
+      window.scrollTo({top:0, behavior:'smooth'});
+    };
+    row.insertBefore(btn, row.firstChild);
+  }
+
+  var prevAction = window.wmToolAction;
   window.wmToolAction = function(type){
     if(type === 'wordList'){
       if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
@@ -4599,13 +4829,19 @@ body.wm-tool-panel-open{overflow:hidden}
     if(type === 'features'){
       if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
       if(typeof showScreen === 'function') showScreen('sc-word');
+
       setTimeout(function(){
         var row = document.getElementById('actRow');
         if(row){
-          row.classList.remove('wm-safe-hidden-row');
-          row.style.display = '';
+          if(getComputedStyle(row).display === 'none'){
+            row.style.display = '';
+            ensureFeatureCloseButton();
+            row.scrollIntoView({behavior:'smooth', block:'start'});
+          }else{
+            row.style.display = 'none';
+            window.scrollTo({top:0, behavior:'smooth'});
+          }
         }
-        window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
       },120);
       return;
     }
@@ -4629,21 +4865,22 @@ body.wm-tool-panel-open{overflow:hidden}
       if(typeof switchTab === 'function') return switchTab('ai');
     }
 
-    if(typeof previousAction === 'function') return previousAction.apply(this, arguments);
+    if(typeof prevAction === 'function') return prevAction.apply(this, arguments);
   };
 
   function run(){
-    // Önce yanlışlıkla eklenmiş eski sınıfı büyük kartlardan temizle
     ['mainCard','wordCard','sc-word'].forEach(function(id){
       var el = document.getElementById(id);
       if(el){
-        el.classList.remove('wm-main-word-button-removed');
-        el.classList.remove('wm-word-main-removed');
+        el.classList.remove('wm-main-word-button-removed','wm-word-main-removed','wm-safe-hidden-row');
       }
     });
 
-    hideOnlyWordActionButtons();
-    ensureToolButtons();
+    ensureWordHeader();
+    fixWordCardLabelAndStatus();
+    hideMovedMainButtons();
+    ensurePanelButtons();
+    ensureFeatureCloseButton();
   }
 
   document.addEventListener('DOMContentLoaded', function(){
