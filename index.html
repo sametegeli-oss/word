@@ -4895,9 +4895,20 @@ body.wm-tool-panel-open{overflow:hidden}
 </script>
 
 
-<!-- FORCE HIDE OLD WORD ACTION BUTTONS -->
-<style id="wm-force-hide-old-word-actions">
-/* Kelime ekranındaki eski butonlar kesin kaldırıldı; karşılıkları Araçlar panelinde */
+
+
+
+<!-- SAFE OLD WORD ACTION BUTTON HIDE - NO OBSERVER -->
+<style id="wm-safe-hide-old-actions-v2">
+/* Eski büyük kelime ekranı butonları: sayfayı kilitlemeden gizlenir */
+#sc-word .wm-action-hide-v2,
+#sc-word .wm-action-row-hide-v2{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+
+/* Bu butonlar Araçlar panelinde kalacak */
 #sc-word button[onclick="showList()"],
 #sc-word button[onclick="openToLearnModal()"],
 #sc-word #featuresToggleBtn,
@@ -4906,25 +4917,16 @@ body.wm-tool-panel-open{overflow:hidden}
 #sc-word button[onclick="openAskAIScreen()"],
 #sc-word #btnReview{
   display:none !important;
-  visibility:hidden !important;
-  pointer-events:none !important;
-}
-
-/* Bu butonların bulunduğu boş satırları da kapat */
-.wm-old-action-row-hidden{
-  display:none !important;
-  visibility:hidden !important;
-  pointer-events:none !important;
 }
 </style>
 
-<script id="wm-force-hide-old-word-actions-script">
+<script id="wm-safe-hide-old-actions-v2-script">
 (function(){
   function textOf(el){
     return (el && el.textContent || '').replace(/\s+/g,' ').trim().toLowerCase();
   }
 
-  function forceHideOldWordActions(){
+  function hideOldActionButtonsOnce(){
     var wordScreen = document.getElementById('sc-word');
     if(!wordScreen) return;
 
@@ -4940,56 +4942,39 @@ body.wm-tool-panel-open{overflow:hidden}
 
     selectors.forEach(function(sel){
       wordScreen.querySelectorAll(sel).forEach(function(btn){
-        btn.style.setProperty('display','none','important');
-        btn.style.setProperty('visibility','hidden','important');
-        btn.style.setProperty('pointer-events','none','important');
-        btn.classList.add('wm-old-action-hidden');
+        btn.classList.add('wm-action-hide-v2');
       });
     });
 
-    // Kelime Listesi + Ezberlenecekler + Özellikler satırı
     var featuresBtn = document.getElementById('featuresToggleBtn');
     if(featuresBtn && featuresBtn.parentElement && featuresBtn.parentElement.id !== 'mainCard'){
-      featuresBtn.parentElement.classList.add('wm-old-action-row-hidden');
+      featuresBtn.parentElement.classList.add('wm-action-row-hide-v2');
     }
 
-    // Flashcard + Akıllı Tekrar satırı ve Yapay Zekaya Sor tek satırı
     Array.from(wordScreen.querySelectorAll('div')).forEach(function(div){
       if(div.id === 'mainCard' || div.id === 'wordCard' || div.id === 'sc-word') return;
       var t = textOf(div);
-      if(
-        (t.indexOf('kelime listesi') > -1 && t.indexOf('ezberlenecekler') > -1 && t.indexOf('özellikler') > -1) ||
-        (t.indexOf('flashcard') > -1 && t.indexOf('akıllı tekrar') > -1) ||
-        (t === '❓ yapay zekaya sor' || t === 'yapay zekaya sor')
-      ){
-        div.classList.add('wm-old-action-row-hidden');
-      }
-    });
 
-    // Eğer tek başına Yapay Zekaya Sor button parent boş görünüyorsa gizle
-    wordScreen.querySelectorAll('button[onclick="openAskAIScreen()"]').forEach(function(btn){
-      var parent = btn.parentElement;
-      if(parent && parent.id !== 'mainCard' && parent.id !== 'wordCard'){
-        parent.classList.add('wm-old-action-row-hidden');
+      if(
+        (t.indexOf('flashcard') > -1 && t.indexOf('akıllı tekrar') > -1 && div.querySelector('button')) ||
+        (t.indexOf('kelime listesi') > -1 && t.indexOf('ezberlenecekler') > -1 && t.indexOf('özellikler') > -1 && div.querySelector('button'))
+      ){
+        div.classList.add('wm-action-row-hide-v2');
+      }
+
+      if((t === '❓ yapay zekaya sor' || t === 'yapay zekaya sor') && div.querySelector('button')){
+        div.classList.add('wm-action-row-hide-v2');
       }
     });
   }
 
   document.addEventListener('DOMContentLoaded', function(){
-    forceHideOldWordActions();
-    setTimeout(forceHideOldWordActions,300);
-    setTimeout(forceHideOldWordActions,1000);
-    setTimeout(forceHideOldWordActions,2500);
+    hideOldActionButtonsOnce();
+    setTimeout(hideOldActionButtonsOnce, 700);
+    setTimeout(hideOldActionButtonsOnce, 2000);
   });
 
-  setInterval(forceHideOldWordActions,1000);
-
-  // Dinamik yeniden çizim olursa da yakala
-  var mo = new MutationObserver(function(){ forceHideOldWordActions(); });
-  document.addEventListener('DOMContentLoaded', function(){
-    var sc = document.getElementById('sc-word');
-    if(sc) mo.observe(sc, {childList:true, subtree:true, attributes:true});
-  });
+  // Sürekli MutationObserver yok; sayfayı kilitlemez.
 })();
 </script>
 
