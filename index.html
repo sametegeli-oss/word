@@ -5060,6 +5060,213 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
+
+
+<!-- FINAL FIX: Sağ araçlar içinden açılan sağlam Özellikler çekmecesi -->
+<style id="featureDrawerFinalFixCSS">
+  /* Kelime ekranındaki eski geniş Özellikler butonunu kaldır; özellikler sağdaki Araçlar panelinden açılacak */
+  #featuresToggleBtn{display:none!important;}
+
+  /* Eski içerik içi kapatma butonu karışıklık yapmasın */
+  #wmFeatureCloseBtn{display:none!important;}
+
+  #actRow.feature-drawer{
+    position:fixed!important;
+    top:0!important;
+    right:0!important;
+    bottom:0!important;
+    left:auto!important;
+    width:min(430px,94vw)!important;
+    height:100vh!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    padding:14px!important;
+    background:var(--card,#151927)!important;
+    border-left:1px solid var(--border,rgba(255,255,255,.14))!important;
+    box-shadow:-22px 0 55px rgba(0,0,0,.48)!important;
+    z-index:2147483600!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    box-sizing:border-box!important;
+    transform:translateX(110%)!important;
+    transition:transform .22s ease!important;
+  }
+  #actRow.feature-drawer.open{
+    display:block!important;
+    transform:translateX(0)!important;
+  }
+  #featureDrawerOverlay{
+    position:fixed!important;
+    inset:0!important;
+    z-index:2147483590!important;
+    background:rgba(0,0,0,.56)!important;
+    backdrop-filter:blur(3px)!important;
+  }
+  #actRow.feature-drawer .feature-drawer-head{
+    position:sticky!important;
+    top:-14px!important;
+    z-index:3!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:12px!important;
+    margin:-14px -14px 14px -14px!important;
+    padding:18px 14px!important;
+    background:var(--card,#151927)!important;
+    border-bottom:1px solid var(--border,rgba(255,255,255,.14))!important;
+  }
+  #actRow.feature-drawer .feature-category{
+    display:block!important;
+    background:var(--bg2,rgba(148,163,184,.08))!important;
+    border:1px solid var(--border,rgba(255,255,255,.13))!important;
+    border-radius:16px!important;
+    margin:0 0 10px 0!important;
+    overflow:hidden!important;
+  }
+  #actRow.feature-drawer .feature-header{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    min-height:54px!important;
+    padding:0 14px!important;
+    cursor:pointer!important;
+    user-select:none!important;
+  }
+  #actRow.feature-drawer .feature-content{
+    display:none!important;
+    height:auto!important;
+    max-height:none!important;
+    opacity:1!important;
+    visibility:visible!important;
+    overflow:visible!important;
+    padding:0 14px 14px 14px!important;
+  }
+  #actRow.feature-drawer .feature-category.open .feature-content{
+    display:block!important;
+  }
+  #actRow.feature-drawer .feature-category.open .feature-arrow{
+    transform:rotate(180deg)!important;
+  }
+  #actRow.feature-drawer .feature-content > div{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+    padding-top:0!important;
+  }
+  #actRow.feature-drawer .feature-content button,
+  #actRow.feature-drawer .act-btn{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-height:46px!important;
+    width:100%!important;
+    visibility:visible!important;
+    opacity:1!important;
+    border-radius:12px!important;
+    font-size:13px!important;
+    font-weight:900!important;
+    white-space:normal!important;
+    line-height:1.2!important;
+  }
+  body.wm-feature-drawer-open{overflow:hidden!important;}
+  @media(max-width:520px){
+    #actRow.feature-drawer{width:94vw!important;}
+    #actRow.feature-drawer .feature-content > div{grid-template-columns:1fr 1fr!important;}
+  }
+</style>
+<script id="featureDrawerFinalFixJS">
+(function(){
+  function byId(id){return document.getElementById(id);}
+
+  function ensureOverlay(){
+    var overlay=byId('featureDrawerOverlay');
+    if(!overlay){
+      overlay=document.createElement('div');
+      overlay.id='featureDrawerOverlay';
+      overlay.className='feature-drawer-overlay';
+      overlay.style.display='none';
+      overlay.onclick=closeFeatureDrawer;
+      document.body.appendChild(overlay);
+    }
+    return overlay;
+  }
+
+  function moveDrawerToBody(){
+    var drawer=byId('actRow');
+    if(drawer && drawer.parentElement!==document.body) document.body.appendChild(drawer);
+    var bad=byId('wmFeatureCloseBtn');
+    if(bad) bad.remove();
+    ensureOverlay();
+  }
+
+  function ensureToolFeaturesButton(){
+    var list=document.querySelector('#wmToolPanel .wm-tool-list');
+    if(!list || byId('wmToolFeaturesBtn')) return;
+    list.insertAdjacentHTML('afterbegin',
+      '<button id="wmToolFeaturesBtn" class="wm-tool-card" onclick="wmToolAction(\'features\')"><span class="wm-tool-ico s">🎯</span><span><span class="wm-tool-name">Özellikler</span><span class="wm-tool-desc">Tüm özellik düğmeleri</span></span><span class="wm-tool-arrow">›</span></button>'
+    );
+  }
+
+  window.openFeatureDrawer=function(){
+    moveDrawerToBody();
+    var drawer=byId('actRow');
+    var overlay=ensureOverlay();
+    if(!drawer) return;
+    drawer.classList.add('feature-drawer');
+    drawer.style.display='block';
+    overlay.style.display='block';
+    document.body.classList.add('wm-feature-drawer-open');
+
+    // İlk açılışta ilk iki kategori açık olsun; böylece düğmeler hemen görünür.
+    var cats=[].slice.call(drawer.querySelectorAll('.feature-category'));
+    if(!cats.some(function(c){return c.classList.contains('open');})){
+      cats.slice(0,2).forEach(function(c){c.classList.add('open');});
+    }
+
+    requestAnimationFrame(function(){drawer.classList.add('open');});
+  };
+
+  window.closeFeatureDrawer=function(){
+    var drawer=byId('actRow');
+    var overlay=byId('featureDrawerOverlay');
+    if(!drawer) return;
+    drawer.classList.remove('open');
+    if(overlay) overlay.style.display='none';
+    document.body.classList.remove('wm-feature-drawer-open');
+    setTimeout(function(){ if(!drawer.classList.contains('open')) drawer.style.display='none'; },230);
+  };
+
+  window.toggleFeatures=function(){
+    var drawer=byId('actRow');
+    if(drawer && drawer.classList.contains('open')) closeFeatureDrawer();
+    else openFeatureDrawer();
+  };
+
+  window.toggleFeatureCategory=function(header){
+    var cat=header && header.closest ? header.closest('.feature-category') : null;
+    if(!cat) return;
+    cat.classList.toggle('open');
+  };
+
+  var oldAction=window.wmToolAction;
+  window.wmToolAction=function(type){
+    if(type==='features'){
+      if(typeof wmCloseToolPanel==='function') wmCloseToolPanel();
+      setTimeout(openFeatureDrawer,80);
+      return;
+    }
+    if(typeof oldAction==='function') return oldAction.apply(this,arguments);
+  };
+
+  document.addEventListener('keydown',function(e){if(e.key==='Escape') closeFeatureDrawer();});
+  document.addEventListener('DOMContentLoaded',function(){moveDrawerToBody(); ensureToolFeaturesButton();});
+  setTimeout(function(){moveDrawerToBody(); ensureToolFeaturesButton();},400);
+  setTimeout(function(){moveDrawerToBody(); ensureToolFeaturesButton();},1400);
+  setInterval(ensureToolFeaturesButton,2000);
+})();
+</script>
+
 </body></html>
 
 
