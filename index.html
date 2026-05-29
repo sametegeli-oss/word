@@ -4491,180 +4491,96 @@ body.wm-tool-panel-open{overflow:hidden}
 </script>
 
 
-<!-- WORD SCREEN BUTTON CLEANUP + TOOL PANEL EXTENSION -->
-<style id="wm-word-button-cleanup-style">
-.wm-word-main-removed{
-  display:none !important;
-  visibility:hidden !important;
-  pointer-events:none !important;
-}
-</style>
-<script id="wm-word-button-cleanup-script">
-(function(){
-  function textOf(el){
-    return (el && el.textContent || '').replace(/\s+/g,' ').trim();
-  }
-
-  function removeWordScreenMainButtons(){
-    var wordScreen = document.getElementById('sc-word');
-    if(!wordScreen) return;
-
-    Array.from(wordScreen.querySelectorAll('button')).forEach(function(btn){
-      var t = textOf(btn).toLowerCase();
-      var oc = (btn.getAttribute('onclick') || '').toLowerCase();
-
-      if((t.indexOf('yapay zekaya sor') > -1 || t === '❓ yapay zekaya sor') && oc.indexOf('openaskaiscreen') > -1){
-        btn.classList.add('wm-word-main-removed');
-      }
-
-      if(t.indexOf('flashcard') > -1 && oc.indexOf('openflashcardmode') > -1){
-        btn.classList.add('wm-word-main-removed');
-      }
-
-      if(t.indexOf('akıllı tekrar') > -1 && (oc.indexOf('startreviewmode') > -1 || oc.indexOf('startsrs') > -1)){
-        btn.classList.add('wm-word-main-removed');
-      }
-    });
-
-    Array.from(wordScreen.querySelectorAll('div')).forEach(function(div){
-      var t = textOf(div).toLowerCase();
-      if(t === '🎴 flashcard 🔄 akıllı tekrar' || t === 'flashcard akıllı tekrar'){
-        div.classList.add('wm-word-main-removed');
-      }
-    });
-  }
-
-  function addExtraToolPanelButtons(){
-    var list = document.querySelector('#wmToolPanel .wm-tool-list');
-    if(!list || document.getElementById('wmToolFlashcardBtn')) return;
-
-    var html = ''
-      + '<button id="wmToolFlashcardBtn" class="wm-tool-card" onclick="wmToolAction(\'flashcard\')">'
-      + '<span class="wm-tool-ico s">🎴</span>'
-      + '<span><span class="wm-tool-name">Flashcard</span><span class="wm-tool-desc">Kartla hızlı çalışma</span></span>'
-      + '<span class="wm-tool-arrow">›</span></button>'
-      + '<button id="wmToolSmartReviewBtn" class="wm-tool-card" onclick="wmToolAction(\'smartReview\')">'
-      + '<span class="wm-tool-ico r">🔄</span>'
-      + '<span><span class="wm-tool-name">Akıllı Tekrar</span><span class="wm-tool-desc">SRS tekrar çalışması</span></span>'
-      + '<span class="wm-tool-arrow">›</span></button>'
-      + '<button id="wmToolAIAskBtn" class="wm-tool-card" onclick="wmToolAction(\'askAI\')">'
-      + '<span class="wm-tool-ico p">❓</span>'
-      + '<span><span class="wm-tool-name">AI Sor</span><span class="wm-tool-desc">Yapay zekaya soru sor</span></span>'
-      + '<span class="wm-tool-arrow">›</span></button>';
-
-    list.insertAdjacentHTML('beforeend', html);
-  }
-
-  var oldAction = window.wmToolAction;
-  window.wmToolAction = function(type){
-    if(type === 'flashcard'){
-      if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
-      if(typeof openFlashcardMode === 'function') return openFlashcardMode();
-      if(typeof showScreen === 'function') return showScreen('sc-flashcard');
-    }
-
-    if(type === 'smartReview'){
-      if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
-      if(typeof startReviewMode === 'function') return startReviewMode();
-      if(typeof startSRSSession === 'function') return startSRSSession();
-      if(typeof showScreen === 'function') return showScreen('sc-srs');
-    }
-
-    if(type === 'askAI'){
-      if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
-      if(typeof openAskAIScreen === 'function') return openAskAIScreen();
-      if(typeof switchTab === 'function') return switchTab('ai');
-    }
-
-    if(typeof oldAction === 'function') return oldAction.apply(this, arguments);
-  };
-
-  document.addEventListener('DOMContentLoaded', function(){
-    removeWordScreenMainButtons();
-    addExtraToolPanelButtons();
-    setTimeout(removeWordScreenMainButtons, 500);
-    setTimeout(addExtraToolPanelButtons, 500);
-    setTimeout(removeWordScreenMainButtons, 1500);
-    setTimeout(addExtraToolPanelButtons, 1500);
-  });
-
-  setInterval(function(){
-    removeWordScreenMainButtons();
-    addExtraToolPanelButtons();
-  }, 2500);
-})();
-</script>
 
 
-<!-- MAIN WORD BUTTONS TOOLS PANEL MOVE FIX -->
-<style id="wm-main-word-buttons-move-style">
-.wm-main-word-button-removed{
+
+
+
+
+<!-- SAFE WORD BUTTONS TO TOOLS PANEL FIX -->
+<style id="wm-safe-word-buttons-style">
+.wm-safe-hidden-button,
+.wm-safe-hidden-row{
   display:none !important;
   visibility:hidden !important;
   pointer-events:none !important;
 }
 </style>
 
-<script id="wm-main-word-buttons-move-script">
+<script id="wm-safe-word-buttons-script">
 (function(){
   function txt(el){
     return (el && el.textContent || '').replace(/\s+/g,' ').trim();
   }
 
-  function hideMainWordButtons(){
+  function hideOnlyWordActionButtons(){
     var wordScreen = document.getElementById('sc-word');
     if(!wordScreen) return;
+
+    var affectedButtons = [];
 
     Array.from(wordScreen.querySelectorAll('button')).forEach(function(btn){
       var t = txt(btn).toLowerCase();
       var oc = (btn.getAttribute('onclick') || '').toLowerCase();
       var id = btn.id || '';
 
-      // Ana kart altındaki büyük butonlar artık araç panelinde
-      if(t.indexOf('kelime listesi') > -1 && oc.indexOf('showlist') > -1){
-        btn.classList.add('wm-main-word-button-removed');
-      }
-      if(t.indexOf('ezberlenecekler') > -1 && oc.indexOf('opentolearnmodal') > -1){
-        btn.classList.add('wm-main-word-button-removed');
-      }
-      if(id === 'featuresToggleBtn' || (t.indexOf('özellikler') > -1 && oc.indexOf('togglefeatures') > -1)){
-        btn.classList.add('wm-main-word-button-removed');
+      var shouldHide = false;
+
+      if(t.indexOf('kelime listesi') > -1 && oc.indexOf('showlist') > -1) shouldHide = true;
+      if(t.indexOf('ezberlenecekler') > -1 && oc.indexOf('opentolearnmodal') > -1) shouldHide = true;
+      if(id === 'featuresToggleBtn' || (t.indexOf('özellikler') > -1 && oc.indexOf('togglefeatures') > -1)) shouldHide = true;
+
+      // Büyük butonlar daha önce istenmişti: bunlar da araç panelinde
+      if(t.indexOf('yapay zekaya sor') > -1 && oc.indexOf('openaskaiscreen') > -1) shouldHide = true;
+      if(t.indexOf('flashcard') > -1 && oc.indexOf('openflashcardmode') > -1) shouldHide = true;
+      if(t.indexOf('akıllı tekrar') > -1 && (oc.indexOf('startreviewmode') > -1 || oc.indexOf('startsrs') > -1)) shouldHide = true;
+
+      if(shouldHide){
+        btn.classList.add('wm-safe-hidden-button');
+        affectedButtons.push(btn);
       }
     });
 
-    // Üç butonun bulunduğu grid boş kalmasın diye konteyneri de gizle
-    Array.from(wordScreen.querySelectorAll('div')).forEach(function(div){
-      var t = txt(div).toLowerCase();
-      if(
-        t.indexOf('kelime listesi') > -1 &&
-        t.indexOf('ezberlenecekler') > -1 &&
-        t.indexOf('özellikler') > -1 &&
-        div.querySelector && div.querySelector('#featuresToggleBtn')
-      ){
-        div.classList.add('wm-main-word-button-removed');
+    // Sadece doğrudan bu üç butonun olduğu küçük grid satırını gizle.
+    // mainCard veya wordCard gibi büyük parent'lara kesinlikle dokunma.
+    var featuresBtn = document.getElementById('featuresToggleBtn');
+    if(featuresBtn && featuresBtn.parentElement && featuresBtn.parentElement.id !== 'mainCard'){
+      var parent = featuresBtn.parentElement;
+      if(parent.querySelector('button[onclick*="showList"]') && parent.querySelector('button[onclick*="openToLearnModal"]')){
+        parent.classList.add('wm-safe-hidden-row');
+      }
+    }
+
+    // Flashcard + Akıllı Tekrar'ın olduğu küçük grid satırını gizle.
+    affectedButtons.forEach(function(btn){
+      var parent = btn.parentElement;
+      if(!parent || parent.id === 'mainCard' || parent.id === 'sc-word') return;
+      var text = txt(parent).toLowerCase();
+      if(text.indexOf('flashcard') > -1 && text.indexOf('akıllı tekrar') > -1){
+        parent.classList.add('wm-safe-hidden-row');
       }
     });
   }
 
-  function addWordManagementToPanel(){
+  function ensureToolButtons(){
     var list = document.querySelector('#wmToolPanel .wm-tool-list');
-    if(!list || document.getElementById('wmToolWordListBtn')) return;
+    if(!list) return;
 
-    var html = ''
-      + '<button id="wmToolWordListBtn" class="wm-tool-card" onclick="wmToolAction(\'wordList\')">'
-      + '<span class="wm-tool-ico p">📋</span>'
-      + '<span><span class="wm-tool-name">Kelime Listesi</span><span class="wm-tool-desc">Tüm kelimeleri görüntüle</span></span>'
-      + '<span class="wm-tool-arrow">›</span></button>'
-      + '<button id="wmToolToLearnBtn" class="wm-tool-card" onclick="wmToolAction(\'toLearn\')">'
-      + '<span class="wm-tool-ico m">📌</span>'
-      + '<span><span class="wm-tool-name">Ezberlenecekler</span><span class="wm-tool-desc">Tekrar listeni yönet</span></span>'
-      + '<span class="wm-tool-arrow">›</span></button>'
-      + '<button id="wmToolFeaturesBtn" class="wm-tool-card" onclick="wmToolAction(\'features\')">'
-      + '<span class="wm-tool-ico s">🎯</span>'
-      + '<span><span class="wm-tool-name">Özellikler</span><span class="wm-tool-desc">Kelime ekranı özelliklerini aç</span></span>'
-      + '<span class="wm-tool-arrow">›</span></button>';
+    if(!document.getElementById('wmToolWordListBtn')){
+      list.insertAdjacentHTML('afterbegin',
+        '<button id="wmToolFeaturesBtn" class="wm-tool-card" onclick="wmToolAction(\'features\')"><span class="wm-tool-ico s">🎯</span><span><span class="wm-tool-name">Özellikler</span><span class="wm-tool-desc">Kelime ekranı özelliklerini aç</span></span><span class="wm-tool-arrow">›</span></button>' +
+        '<button id="wmToolToLearnBtn" class="wm-tool-card" onclick="wmToolAction(\'toLearn\')"><span class="wm-tool-ico m">📌</span><span><span class="wm-tool-name">Ezberlenecekler</span><span class="wm-tool-desc">Tekrar listeni yönet</span></span><span class="wm-tool-arrow">›</span></button>' +
+        '<button id="wmToolWordListBtn" class="wm-tool-card" onclick="wmToolAction(\'wordList\')"><span class="wm-tool-ico p">📋</span><span><span class="wm-tool-name">Kelime Listesi</span><span class="wm-tool-desc">Tüm kelimeleri görüntüle</span></span><span class="wm-tool-arrow">›</span></button>'
+      );
+    }
 
-    list.insertAdjacentHTML('afterbegin', html);
+    if(!document.getElementById('wmToolFlashcardBtn')){
+      list.insertAdjacentHTML('beforeend',
+        '<button id="wmToolFlashcardBtn" class="wm-tool-card" onclick="wmToolAction(\'flashcard\')"><span class="wm-tool-ico s">🎴</span><span><span class="wm-tool-name">Flashcard</span><span class="wm-tool-desc">Kartla hızlı çalışma</span></span><span class="wm-tool-arrow">›</span></button>' +
+        '<button id="wmToolSmartReviewBtn" class="wm-tool-card" onclick="wmToolAction(\'smartReview\')"><span class="wm-tool-ico r">🔄</span><span><span class="wm-tool-name">Akıllı Tekrar</span><span class="wm-tool-desc">SRS tekrar çalışması</span></span><span class="wm-tool-arrow">›</span></button>' +
+        '<button id="wmToolAIAskBtn" class="wm-tool-card" onclick="wmToolAction(\'askAI\')"><span class="wm-tool-ico p">❓</span><span><span class="wm-tool-name">AI Sor</span><span class="wm-tool-desc">Yapay zekaya soru sor</span></span><span class="wm-tool-arrow">›</span></button>'
+      );
+    }
   }
 
   var previousAction = window.wmToolAction;
@@ -4684,36 +4600,60 @@ body.wm-tool-panel-open{overflow:hidden}
       if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
       if(typeof showScreen === 'function') showScreen('sc-word');
       setTimeout(function(){
-        var btn = document.getElementById('featuresToggleBtn');
         var row = document.getElementById('actRow');
-        if(row && getComputedStyle(row).display === 'none'){
-          if(typeof toggleFeatures === 'function') toggleFeatures();
-          else row.style.display = '';
-        }else if(btn && typeof toggleFeatures === 'function'){
-          // kapalıysa aç, açıksa dokunma
-          if(row && row.style.display === 'none') toggleFeatures();
+        if(row){
+          row.classList.remove('wm-safe-hidden-row');
+          row.style.display = '';
         }
         window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
       },120);
       return;
     }
 
+    if(type === 'flashcard'){
+      if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
+      if(typeof openFlashcardMode === 'function') return openFlashcardMode();
+      if(typeof showScreen === 'function') return showScreen('sc-flashcard');
+    }
+
+    if(type === 'smartReview'){
+      if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
+      if(typeof startReviewMode === 'function') return startReviewMode();
+      if(typeof startSRSSession === 'function') return startSRSSession();
+      if(typeof showScreen === 'function') return showScreen('sc-srs');
+    }
+
+    if(type === 'askAI'){
+      if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
+      if(typeof openAskAIScreen === 'function') return openAskAIScreen();
+      if(typeof switchTab === 'function') return switchTab('ai');
+    }
+
     if(typeof previousAction === 'function') return previousAction.apply(this, arguments);
   };
 
+  function run(){
+    // Önce yanlışlıkla eklenmiş eski sınıfı büyük kartlardan temizle
+    ['mainCard','wordCard','sc-word'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el){
+        el.classList.remove('wm-main-word-button-removed');
+        el.classList.remove('wm-word-main-removed');
+      }
+    });
+
+    hideOnlyWordActionButtons();
+    ensureToolButtons();
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
-    hideMainWordButtons();
-    addWordManagementToPanel();
-    setTimeout(hideMainWordButtons,500);
-    setTimeout(addWordManagementToPanel,500);
-    setTimeout(hideMainWordButtons,1500);
-    setTimeout(addWordManagementToPanel,1500);
+    run();
+    setTimeout(run,500);
+    setTimeout(run,1500);
+    setTimeout(run,3000);
   });
 
-  setInterval(function(){
-    hideMainWordButtons();
-    addWordManagementToPanel();
-  },2500);
+  setInterval(run,2500);
 })();
 </script>
 
