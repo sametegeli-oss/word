@@ -4595,6 +4595,128 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
+
+<!-- MAIN WORD BUTTONS TOOLS PANEL MOVE FIX -->
+<style id="wm-main-word-buttons-move-style">
+.wm-main-word-button-removed{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+</style>
+
+<script id="wm-main-word-buttons-move-script">
+(function(){
+  function txt(el){
+    return (el && el.textContent || '').replace(/\s+/g,' ').trim();
+  }
+
+  function hideMainWordButtons(){
+    var wordScreen = document.getElementById('sc-word');
+    if(!wordScreen) return;
+
+    Array.from(wordScreen.querySelectorAll('button')).forEach(function(btn){
+      var t = txt(btn).toLowerCase();
+      var oc = (btn.getAttribute('onclick') || '').toLowerCase();
+      var id = btn.id || '';
+
+      // Ana kart altındaki büyük butonlar artık araç panelinde
+      if(t.indexOf('kelime listesi') > -1 && oc.indexOf('showlist') > -1){
+        btn.classList.add('wm-main-word-button-removed');
+      }
+      if(t.indexOf('ezberlenecekler') > -1 && oc.indexOf('opentolearnmodal') > -1){
+        btn.classList.add('wm-main-word-button-removed');
+      }
+      if(id === 'featuresToggleBtn' || (t.indexOf('özellikler') > -1 && oc.indexOf('togglefeatures') > -1)){
+        btn.classList.add('wm-main-word-button-removed');
+      }
+    });
+
+    // Üç butonun bulunduğu grid boş kalmasın diye konteyneri de gizle
+    Array.from(wordScreen.querySelectorAll('div')).forEach(function(div){
+      var t = txt(div).toLowerCase();
+      if(
+        t.indexOf('kelime listesi') > -1 &&
+        t.indexOf('ezberlenecekler') > -1 &&
+        t.indexOf('özellikler') > -1 &&
+        div.querySelector && div.querySelector('#featuresToggleBtn')
+      ){
+        div.classList.add('wm-main-word-button-removed');
+      }
+    });
+  }
+
+  function addWordManagementToPanel(){
+    var list = document.querySelector('#wmToolPanel .wm-tool-list');
+    if(!list || document.getElementById('wmToolWordListBtn')) return;
+
+    var html = ''
+      + '<button id="wmToolWordListBtn" class="wm-tool-card" onclick="wmToolAction(\'wordList\')">'
+      + '<span class="wm-tool-ico p">📋</span>'
+      + '<span><span class="wm-tool-name">Kelime Listesi</span><span class="wm-tool-desc">Tüm kelimeleri görüntüle</span></span>'
+      + '<span class="wm-tool-arrow">›</span></button>'
+      + '<button id="wmToolToLearnBtn" class="wm-tool-card" onclick="wmToolAction(\'toLearn\')">'
+      + '<span class="wm-tool-ico m">📌</span>'
+      + '<span><span class="wm-tool-name">Ezberlenecekler</span><span class="wm-tool-desc">Tekrar listeni yönet</span></span>'
+      + '<span class="wm-tool-arrow">›</span></button>'
+      + '<button id="wmToolFeaturesBtn" class="wm-tool-card" onclick="wmToolAction(\'features\')">'
+      + '<span class="wm-tool-ico s">🎯</span>'
+      + '<span><span class="wm-tool-name">Özellikler</span><span class="wm-tool-desc">Kelime ekranı özelliklerini aç</span></span>'
+      + '<span class="wm-tool-arrow">›</span></button>';
+
+    list.insertAdjacentHTML('afterbegin', html);
+  }
+
+  var previousAction = window.wmToolAction;
+  window.wmToolAction = function(type){
+    if(type === 'wordList'){
+      if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
+      if(typeof showList === 'function') return showList();
+      if(typeof showScreen === 'function') return showScreen('sc-list');
+    }
+
+    if(type === 'toLearn'){
+      if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
+      if(typeof openToLearnModal === 'function') return openToLearnModal();
+    }
+
+    if(type === 'features'){
+      if(typeof wmCloseToolPanel === 'function') wmCloseToolPanel();
+      if(typeof showScreen === 'function') showScreen('sc-word');
+      setTimeout(function(){
+        var btn = document.getElementById('featuresToggleBtn');
+        var row = document.getElementById('actRow');
+        if(row && getComputedStyle(row).display === 'none'){
+          if(typeof toggleFeatures === 'function') toggleFeatures();
+          else row.style.display = '';
+        }else if(btn && typeof toggleFeatures === 'function'){
+          // kapalıysa aç, açıksa dokunma
+          if(row && row.style.display === 'none') toggleFeatures();
+        }
+        window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+      },120);
+      return;
+    }
+
+    if(typeof previousAction === 'function') return previousAction.apply(this, arguments);
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    hideMainWordButtons();
+    addWordManagementToPanel();
+    setTimeout(hideMainWordButtons,500);
+    setTimeout(addWordManagementToPanel,500);
+    setTimeout(hideMainWordButtons,1500);
+    setTimeout(addWordManagementToPanel,1500);
+  });
+
+  setInterval(function(){
+    hideMainWordButtons();
+    addWordManagementToPanel();
+  },2500);
+})();
+</script>
+
 </body></html>
 
 
