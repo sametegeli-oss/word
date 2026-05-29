@@ -4391,6 +4391,105 @@
   <script src="js/app.js"></script>
 <script src="js/free_features.js"></script>
 <script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
+
+<!-- RIGHT SLIDE PANEL TOOLS FIX -->
+<style id="wm-slide-panel-style">
+.ff-fabs,.ff-fab-stack,#voiceCompareLauncher,#smngLauncherFixed,#wmQuickActions{
+  display:none!important;visibility:hidden!important;pointer-events:none!important;
+}
+#wmToolPanelHandle{
+  position:fixed;right:10px;bottom:92px;z-index:999980;
+  width:52px;height:52px;border:0;border-radius:18px;
+  background:linear-gradient(135deg,#22c55e,#2563eb);color:#fff;
+  font-size:24px;font-weight:900;box-shadow:0 14px 34px rgba(0,0,0,.45);cursor:pointer;
+}
+#wmToolPanelBackdrop{
+  position:fixed;inset:0;z-index:999981;background:rgba(0,0,0,.46);
+  backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .22s ease;
+}
+#wmToolPanel{
+  position:fixed;top:0;right:0;width:min(82vw,340px);height:100dvh;z-index:999982;
+  background:linear-gradient(180deg,rgba(15,20,34,.98),rgba(8,12,22,.98));
+  color:var(--text,#e8eaf6);border-left:1px solid rgba(255,255,255,.10);
+  box-shadow:-20px 0 50px rgba(0,0,0,.55);transform:translateX(105%);
+  transition:transform .24s ease;padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  box-sizing:border-box;display:flex;flex-direction:column;gap:12px;
+}
+body.wm-tool-panel-open #wmToolPanel{transform:translateX(0)}
+body.wm-tool-panel-open #wmToolPanelBackdrop{opacity:1;pointer-events:auto}
+body.wm-tool-panel-open{overflow:hidden}
+.wm-tool-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.wm-tool-title{font-size:24px;font-weight:900;letter-spacing:-.4px}
+.wm-tool-sub{color:var(--muted,#7c85b0);font-size:13px;font-weight:700;margin-bottom:8px}
+.wm-tool-close{border:0;width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.08);color:#fff;font-size:22px;cursor:pointer}
+.wm-tool-list{display:flex;flex-direction:column;gap:10px;overflow:auto;padding-right:2px;flex:1}
+.wm-tool-card{
+  width:100%;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);
+  color:var(--text,#e8eaf6);border-radius:18px;padding:14px;cursor:pointer;
+  display:grid;grid-template-columns:48px 1fr 22px;align-items:center;gap:12px;text-align:left;
+  font-family:Nunito,Arial,sans-serif;
+}
+.wm-tool-card:active{transform:scale(.985)}
+.wm-tool-ico{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:25px}
+.wm-tool-name{display:block;font-size:16px;font-weight:900;margin-bottom:3px}
+.wm-tool-desc{display:block;font-size:12px;color:var(--sub,#a0a8c8);line-height:1.35;font-weight:700}
+.wm-tool-arrow{font-size:24px;color:var(--muted,#7c85b0)}
+.wm-tool-panel .p{background:linear-gradient(135deg,#14b8a6,#2563eb)}
+.wm-tool-panel .s{background:linear-gradient(135deg,#7c3aed,#4f46e5)}
+.wm-tool-panel .m{background:linear-gradient(135deg,#22c55e,#16a34a)}
+.wm-tool-panel .r{background:linear-gradient(135deg,#f97316,#dc2626)}
+.wm-tool-panel .a{background:linear-gradient(135deg,#64748b,#334155)}
+.wm-tool-bottom{border-top:1px solid rgba(255,255,255,.10);padding-top:12px}
+.wm-tool-bottom button{width:100%;border:0;border-radius:16px;background:rgba(255,255,255,.08);color:#fff;padding:14px;font-weight:900;font-family:Nunito,Arial,sans-serif;cursor:pointer}
+@media(max-width:520px){
+  #wmToolPanelHandle{right:8px;bottom:86px;width:48px;height:48px;font-size:22px;border-radius:16px}
+  #wmToolPanel{width:min(88vw,320px)}
+}
+</style>
+
+<div id="wmToolPanelBackdrop" onclick="wmCloseToolPanel()" aria-hidden="true"></div>
+<button id="wmToolPanelHandle" onclick="wmOpenToolPanel()" title="Araçlar" aria-label="Araçlar panelini aç">☰</button>
+
+<aside id="wmToolPanel" class="wm-tool-panel" aria-hidden="true">
+  <div class="wm-tool-head">
+    <div><div class="wm-tool-title">Araçlar</div><div class="wm-tool-sub">Hızlı erişim paneli</div></div>
+    <button class="wm-tool-close" onclick="wmCloseToolPanel()" aria-label="Kapat">×</button>
+  </div>
+  <div class="wm-tool-list">
+    <button class="wm-tool-card" onclick="wmToolAction('panel')"><span class="wm-tool-ico p">📊</span><span><span class="wm-tool-name">Panel</span><span class="wm-tool-desc">Dashboard ve istatistikler</span></span><span class="wm-tool-arrow">›</span></button>
+    <button class="wm-tool-card" onclick="wmToolAction('voice')"><span class="wm-tool-ico s">〰️</span><span><span class="wm-tool-name">Ses</span><span class="wm-tool-desc">Ses ve telaffuz araçları</span></span><span class="wm-tool-arrow">›</span></button>
+    <button class="wm-tool-card" onclick="wmToolAction('mining')"><span class="wm-tool-ico m">⛏️</span><span><span class="wm-tool-name">Mining</span><span class="wm-tool-desc">PDF, transcript ve cümle çıkarma</span></span><span class="wm-tool-arrow">›</span></button>
+    <button class="wm-tool-card" onclick="wmToolAction('review')"><span class="wm-tool-ico r">🧠</span><span><span class="wm-tool-name">Tekrar</span><span class="wm-tool-desc">Akıllı tekrar oturumu</span></span><span class="wm-tool-arrow">›</span></button>
+    <button class="wm-tool-card" onclick="wmToolAction('shadow')"><span class="wm-tool-ico s">🎧</span><span><span class="wm-tool-name">Shadow</span><span class="wm-tool-desc">Shadowing çalışmaları</span></span><span class="wm-tool-arrow">›</span></button>
+    <button class="wm-tool-card" onclick="wmToolAction('settings')"><span class="wm-tool-ico a">⚙️</span><span><span class="wm-tool-name">Ayarlar</span><span class="wm-tool-desc">Uygulama ayarları</span></span><span class="wm-tool-arrow">›</span></button>
+  </div>
+  <div class="wm-tool-bottom"><button onclick="wmCloseToolPanel()">× Kapat</button></div>
+</aside>
+
+<script id="wm-slide-panel-script">
+(function(){
+  window.wmOpenToolPanel=function(){document.body.classList.add('wm-tool-panel-open');var p=document.getElementById('wmToolPanel');if(p)p.setAttribute('aria-hidden','false')};
+  window.wmCloseToolPanel=function(){document.body.classList.remove('wm-tool-panel-open');var p=document.getElementById('wmToolPanel');if(p)p.setAttribute('aria-hidden','true')};
+  function openIf(fn,args){if(typeof window[fn]==='function'){window[fn].apply(window,args||[]);return true}return false}
+  window.wmToolAction=function(type){
+    wmCloseToolPanel();
+    if(type==='panel'){if(openIf('ffOpen',['dash']))return;if(openIf('switchTab',['stats']))return}
+    if(type==='voice'){if(openIf('vcOpenOverlay'))return;if(openIf('openPronCoach'))return;var panel=document.getElementById('pronunPanel');if(panel){panel.style.display='';return}}
+    if(type==='mining'){if(openIf('ffOpen',['mine']))return;if(openIf('smngOpenOverlay'))return;if(openIf('openSentenceMining'))return}
+    if(type==='review'){if(openIf('ffOpen',['rev']))return;if(openIf('startReviewMode'))return;if(openIf('startSRSSession'))return}
+    if(type==='shadow'){if(openIf('ffOpen',['shad']))return;if(openIf('openShadowMode'))return;if(openIf('openShadowingStudio'))return}
+    if(type==='settings'){if(openIf('switchTab',['settings']))return}
+    alert('Bu bölüm henüz yüklenmedi.');
+  };
+  function removeOldFloaters(){
+    ['voiceCompareLauncher','smngLauncherFixed','wmQuickActions','ffFabs','ffFabStack'].forEach(function(id){var el=document.getElementById(id);if(el)el.remove()});
+    document.querySelectorAll('.ff-fabs,.ff-fab-stack').forEach(function(el){el.remove()});
+  }
+  document.addEventListener('DOMContentLoaded',function(){removeOldFloaters();setTimeout(removeOldFloaters,500);setTimeout(removeOldFloaters,1500)});
+  setInterval(removeOldFloaters,2500);
+})();
+</script>
+
 </body></html>
 
 
