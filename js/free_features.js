@@ -199,3 +199,94 @@ function markOverlayClosed(){
 
 document.addEventListener('DOMContentLoaded',cleanDOM);
 })();
+
+
+
+/* QUICK ACTIONS CLEAN UI */
+(function(){
+'use strict';
+function ensureQuickActions(){
+  if(document.getElementById('wmQuickActions')) return;
+  var box=document.createElement('div');
+  box.id='wmQuickActions';
+  box.innerHTML='<div class="wmqa-head"><div class="wmqa-title">⚡ Hızlı İşlemler</div><button class="wmqa-toggle" onclick="wmToggleQuickActions()">Gizle</button></div><div class="wmqa-grid"><button class="wmqa-btn wmqa-mine" onclick="wmOpenQuickAction(\'mine\')"><span>⛏️</span>Mining</button><button class="wmqa-btn wmqa-review" onclick="wmOpenQuickAction(\'review\')"><span>🧠</span>Tekrar</button><button class="wmqa-btn wmqa-shadow" onclick="wmOpenQuickAction(\'shadow\')"><span>🎧</span>Shadow</button><button class="wmqa-btn wmqa-dash" onclick="wmOpenQuickAction(\'dash\')"><span>📊</span>Panel</button></div>';
+  document.body.appendChild(box);
+}
+window.wmToggleQuickActions=function(){
+  var box=document.getElementById('wmQuickActions'); if(!box) return;
+  box.classList.toggle('collapsed');
+  var btn=box.querySelector('.wmqa-toggle');
+  if(btn) btn.textContent=box.classList.contains('collapsed')?'⚡':'Gizle';
+};
+window.wmOpenQuickAction=function(type){
+  if(type==='mine'){ if(typeof ffOpen==='function') return ffOpen('mine'); if(typeof smngOpenOverlay==='function') return smngOpenOverlay(); if(typeof openSentenceMining==='function') return openSentenceMining(); }
+  if(type==='review'){ if(typeof ffOpen==='function') return ffOpen('rev'); if(typeof openSmartReview==='function') return openSmartReview(); }
+  if(type==='shadow'){ if(typeof ffOpen==='function') return ffOpen('shad'); if(typeof openShadowingStudio==='function') return openShadowingStudio(); }
+  if(type==='dash'){ if(typeof ffOpen==='function') return ffOpen('dash'); if(typeof openDashboard==='function') return openDashboard(); }
+  alert('Bu bölüm henüz yüklenmedi.');
+};
+function hookOverlay(){
+  ['ffOpen','smngOpenOverlay','vcOpenOverlay'].forEach(function(name){
+    var old=window[name];
+    if(typeof old==='function' && !old.__qaHooked){
+      var wrapped=function(){document.body.classList.add('ff-overlay-open');return old.apply(this,arguments);};
+      wrapped.__qaHooked=true; window[name]=wrapped;
+    }
+  });
+  ['ffClose','smngCloseOverlay','vcCloseOverlay'].forEach(function(name){
+    var old=window[name];
+    if(typeof old==='function' && !old.__qaHooked){
+      var wrapped=function(){
+        var r=old.apply(this,arguments);
+        setTimeout(function(){
+          var anyOpen=Array.prototype.slice.call(document.querySelectorAll('.ff-ov,.ff-overlay,#voiceCompareOverlay,#smngOverlay')).some(function(el){return el.classList.contains('active');});
+          if(!anyOpen) document.body.classList.remove('ff-overlay-open');
+        },80);
+        return r;
+      };
+      wrapped.__qaHooked=true; window[name]=wrapped;
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded',function(){ensureQuickActions();setTimeout(hookOverlay,500);});
+setTimeout(function(){ensureQuickActions();hookOverlay();},1200);
+})();
+
+
+
+/* ═════════ DUPLICATE BUTTON CLEANUP JS ═════════ */
+(function(){
+  'use strict';
+
+  function removeDuplicateLaunchers(){
+    [
+      'wmQuickActions',
+      'smngLauncherFixed',
+      'voiceCompareLauncher',
+      'ffFabs',
+      'ffFabStack'
+    ].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.remove();
+    });
+
+    document.querySelectorAll('.ff-fabs,.ff-fab-stack').forEach(function(el){
+      el.remove();
+    });
+  }
+
+  // Hızlı işlem kartını yeniden oluşturan fonksiyonları etkisizleştir
+  window.ensureQuickActions = function(){};
+  window.wmToggleQuickActions = function(){};
+  window.wmOpenQuickAction = function(type){
+    alert('Bu özellik ilgili kendi ekranından açılmalı.');
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    removeDuplicateLaunchers();
+    setTimeout(removeDuplicateLaunchers, 500);
+    setTimeout(removeDuplicateLaunchers, 1500);
+  });
+
+  setInterval(removeDuplicateLaunchers, 2000);
+})();

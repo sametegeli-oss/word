@@ -31218,3 +31218,42 @@ function markOverlayClosed(){
 
 document.addEventListener('DOMContentLoaded',cleanDOM);
 })();
+
+
+
+/* ═════════ DUPLICATE BUTTON CLEANUP JS ═════════ */
+(function(){
+  'use strict';
+
+  function removeDuplicateLaunchers(){
+    [
+      'wmQuickActions',
+      'smngLauncherFixed',
+      'voiceCompareLauncher',
+      'ffFabs',
+      'ffFabStack'
+    ].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.remove();
+    });
+
+    document.querySelectorAll('.ff-fabs,.ff-fab-stack').forEach(function(el){
+      el.remove();
+    });
+  }
+
+  // Hızlı işlem kartını yeniden oluşturan fonksiyonları etkisizleştir
+  window.ensureQuickActions = function(){};
+  window.wmToggleQuickActions = function(){};
+  window.wmOpenQuickAction = function(type){
+    alert('Bu özellik ilgili kendi ekranından açılmalı.');
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    removeDuplicateLaunchers();
+    setTimeout(removeDuplicateLaunchers, 500);
+    setTimeout(removeDuplicateLaunchers, 1500);
+  });
+
+  setInterval(removeDuplicateLaunchers, 2000);
+})();
