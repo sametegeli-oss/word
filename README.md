@@ -39,3 +39,9 @@ Sonra:
 - [object Object] çıktısı engellendi.
 - Boş prompt hatası için varsayılan prompt eklendi.
 - `WM_testAI()` debug fonksiyonu eklendi.
+
+
+## Mobile AI Button Fix
+- Mining / Ses / Panel / Tekrar / Shadow düğmeleri mobilde çakışmayacak şekilde hizalandı.
+- Overlay açıkken yüzen düğmeler gizlenir.
+- AI `[object Object]` cevabı son katmanda temizlenir.

@@ -4146,3 +4146,136 @@ button.pron-speaking{
 
 /* Production modular build additions */
 .github-note{font-size:12px;color:var(--muted,#7c85b0)}
+
+
+/* FREE FEATURES */
+.ff-fabs{position:fixed;right:14px;bottom:82px;z-index:999990;display:flex;flex-direction:column;gap:8px}
+.ff-fab{border:0;border-radius:15px;padding:10px 12px;font-weight:900;color:#fff;box-shadow:0 8px 24px #0008;cursor:pointer}
+.ff-fab:nth-child(1){background:linear-gradient(135deg,#14b8a6,#2563eb)}
+.ff-fab:nth-child(2){background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16}
+.ff-fab:nth-child(3){background:linear-gradient(135deg,#f97316,#dc2626)}
+.ff-fab:nth-child(4){background:linear-gradient(135deg,#7c3aed,#4f46e5)}
+.ff-ov{display:none;position:fixed;inset:0;z-index:999989;background:var(--bg,#0a0d14);color:var(--text,#e8eaf6);overflow:auto;padding:14px 14px 90px}
+.ff-ov.active{display:block}.ff-wrap{max-width:860px;margin:auto}.ff-top{display:flex;gap:10px;align-items:center;margin-bottom:14px}.ff-top h2{flex:1;margin:0}
+.ff-close,.ff-btn,.ff-mini{border:0;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer}
+.ff-close,.ff-ghost{background:var(--bg3,#1c2130);color:var(--text,#e8eaf6);border:1px solid var(--border,#252d42)}
+.ff-card{background:var(--card,#161b28);border:1.5px solid var(--border,#252d42);border-radius:18px;padding:16px;margin-bottom:14px}
+.ff-title{font-size:20px;font-weight:900;margin-bottom:8px}.ff-sub{font-size:13px;color:var(--muted,#7c85b0);line-height:1.55;margin-bottom:12px}
+.ff-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.ff-btn{flex:1;min-width:135px}
+.ff-green{background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16}.ff-blue{background:linear-gradient(135deg,#3b82f6,#2563eb);color:white}.ff-purple{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white}.ff-orange{background:linear-gradient(135deg,#f97316,#ea580c);color:white}
+.ff-input,.ff-text{width:100%;background:var(--bg2,#131720);border:1.5px solid var(--border,#252d42);border-radius:14px;color:var(--text,#e8eaf6);font:15px Nunito,Arial;padding:13px;outline:none}.ff-text{min-height:160px;resize:vertical;line-height:1.6}
+.ff-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.ff-stat{background:var(--bg2,#131720);border:1px solid var(--border,#252d42);border-radius:14px;padding:13px;text-align:center}.ff-stat b{display:block;font-size:25px;color:#86efac}.ff-stat span{font-size:10px;color:var(--muted,#7c85b0);font-weight:900}
+.ff-list{display:flex;flex-direction:column;gap:8px}.ff-item{background:var(--bg2,#131720);border:1.5px solid var(--border,#252d42);border-radius:14px;padding:12px;display:flex;gap:10px;align-items:flex-start}.ff-body{flex:1}.ff-w{font-size:18px;font-weight:900;color:var(--green,#22c55e)}.ff-m{font-size:13px;color:var(--sub,#a0a8c8);line-height:1.5;margin-top:3px}
+.ff-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.ff-chip{font-size:10px;font-weight:900;border-radius:999px;padding:3px 8px;background:#1e3a5f;color:#93c5fd}.ff-mini{font-size:11px}.ff-canvas{width:100%;height:100px;background:#070b16;border:1px solid #1f2a44;border-radius:14px;margin-top:10px}
+.ff-pill{padding:8px 12px;border-radius:999px;border:1px solid var(--border,#252d42);background:var(--bg2,#131720);color:var(--sub,#a0a8c8);font-weight:900;cursor:pointer}.ff-pill.active{background:#1e3a5f;color:#93c5fd;border-color:#3b82f6}
+@media(max-width:560px){.ff-grid{grid-template-columns:repeat(2,1fr)}.ff-fabs{right:8px;bottom:78px}.ff-fab{font-size:11px;padding:9px}.ff-item{flex-direction:column}}
+
+
+/* SCREEN ISOLATION FIX */
+.ff-ov,
+#voiceCompareOverlay{
+  isolation:isolate !important;
+  contain:layout style paint !important;
+  backdrop-filter:blur(4px);
+}
+
+.ff-ov.active,
+#voiceCompareOverlay.active{
+  display:block !important;
+}
+
+.ff-ov:not(.active),
+#voiceCompareOverlay:not(.active){
+  display:none !important;
+  pointer-events:none !important;
+}
+
+.ff-wrap{
+  position:relative;
+  z-index:2;
+}
+
+canvas{
+  max-width:100%;
+}
+
+/* FINAL MOBILE BUTTON COLLISION FIX */
+.ff-fabs,.ff-fab-stack{
+  position:fixed!important;
+  left:10px!important;
+  right:10px!important;
+  bottom:78px!important;
+  z-index:999990!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,1fr)!important;
+  gap:6px!important;
+  pointer-events:none!important;
+}
+.ff-fabs .ff-fab,.ff-fab-stack .ff-fab{
+  width:100%!important;
+  min-width:0!important;
+  padding:8px 2px!important;
+  border-radius:12px!important;
+  font-size:10.5px!important;
+  line-height:1.1!important;
+  pointer-events:auto!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#smngLauncherFixed,#voiceCompareLauncher{
+  position:fixed!important;
+  bottom:124px!important;
+  width:auto!important;
+  max-width:calc(50vw - 18px)!important;
+  padding:8px 10px!important;
+  border-radius:12px!important;
+  font-size:11px!important;
+  line-height:1.1!important;
+  white-space:nowrap!important;
+  z-index:999991!important;
+}
+#smngLauncherFixed{left:10px!important;right:auto!important;}
+#voiceCompareLauncher{right:10px!important;left:auto!important;}
+
+body.ff-overlay-open #smngLauncherFixed,
+body.ff-overlay-open #voiceCompareLauncher,
+body.ff-overlay-open .ff-fabs,
+body.ff-overlay-open .ff-fab-stack{
+  display:none!important;
+}
+
+.chat-actions,.ai-actions,.message-actions{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:8px!important;
+}
+.chat-input-row,.conv-input-row{
+  display:grid!important;
+  grid-template-columns:1fr auto!important;
+  gap:8px!important;
+  align-items:end!important;
+}
+.chat-input,.sentence-input{min-width:0!important;}
+.chat-send,.chat-mic{min-width:64px!important;}
+
+.chat-msg button,.conv-msg button,.ai-box button{
+  max-width:100%!important;
+  margin-top:6px!important;
+}
+body{padding-bottom:150px!important;}
+.bottom-nav{z-index:999980!important;}
+
+.ff-ov,.ff-overlay,#voiceCompareOverlay,#smngOverlay{
+  isolation:isolate!important;
+  contain:layout style paint!important;
+}
+.ff-ov:not(.active),.ff-overlay:not(.active),#voiceCompareOverlay:not(.active),#smngOverlay:not(.active){
+  pointer-events:none!important;
+}
+
+@media(max-width:420px){
+  .ff-fabs,.ff-fab-stack{bottom:72px!important;}
+  .ff-fabs .ff-fab,.ff-fab-stack .ff-fab{font-size:10px!important;padding:7px 1px!important;}
+  #smngLauncherFixed,#voiceCompareLauncher{bottom:116px!important;font-size:10.5px!important;padding:8px!important;}
+}

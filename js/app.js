@@ -30992,3 +30992,229 @@ window.WM_loadSozlukExternal = async function(){
 document.addEventListener("DOMContentLoaded", ()=>{
   window.WM_loadSozlukExternal?.();
 });
+
+
+
+/* ═════════ AI PROMPT COMPATIBILITY FIX ═════════
+   Sorun: Farklı bölümler callAI fonksiyonunu farklı imzalarla çağırıyor.
+   Bu adaptör:
+   - string/object cevapları temizler
+   - systemPrompt/userPrompt sırası karışsa bile düzeltir
+   - boş prompt hatasını engeller
+   - [object Object] çıktısını engeller
+*/
+(function(){
+  'use strict';
+
+  function extractAIText(res){
+    if(res == null) return '';
+    if(typeof res === 'string') return res;
+    if(Array.isArray(res)) return res.map(extractAIText).filter(Boolean).join('\n');
+    if(typeof res === 'object'){
+      return res.text || res.content || res.answer || res.message ||
+             res.output || res.result || res.response ||
+             res.choices?.[0]?.message?.content ||
+             res.choices?.[0]?.text ||
+             res.data?.text ||
+             res.data?.content ||
+             JSON.stringify(res, null, 2);
+    }
+    return String(res);
+  }
+
+  window.WM_extractAIText = extractAIText;
+
+  function normalizeArgs(args){
+    let systemPrompt = '';
+    let userPrompt = '';
+    let aiType = 'chat';
+
+    if(args.length === 1 && typeof args[0] === 'object'){
+      const o = args[0] || {};
+      systemPrompt = o.systemPrompt || o.system || o.role || '';
+      userPrompt = o.userPrompt || o.prompt || o.message || o.userMessage || o.content || '';
+      aiType = o.aiType || o.type || o.modelType || 'chat';
+    } else if(args.length >= 2) {
+      // Eski beklenen format: callAI(systemPrompt, userMessage, aiType)
+      systemPrompt = args[0];
+      userPrompt = args[1];
+      aiType = args[2] || 'chat';
+
+      // Bazı bölümler ters gönderebilir: kısa system / uzun prompt kontrolü
+      if(typeof systemPrompt === 'object') systemPrompt = extractAIText(systemPrompt);
+      if(typeof userPrompt === 'object') userPrompt = extractAIText(userPrompt);
+    } else {
+      userPrompt = args[0] || '';
+    }
+
+    systemPrompt = String(systemPrompt || '').trim();
+    userPrompt = String(userPrompt || '').trim();
+
+    if(!systemPrompt){
+      systemPrompt = 'Sen Türkçe konuşan kullanıcıya İngilizce öğreten uzman, sade ve anlaşılır bir öğretmensin.';
+    }
+    if(!userPrompt){
+      userPrompt = 'Kullanıcıya İngilizce öğrenme konusunda kısa ve faydalı bir açıklama yap.';
+    }
+
+    return {systemPrompt, userPrompt, aiType};
+  }
+
+  const originalCallAI = window.callAI;
+
+  window.callAI = async function(){
+    const n = normalizeArgs(Array.from(arguments));
+
+    try{
+      if(typeof originalCallAI === 'function'){
+        const res = await originalCallAI(n.systemPrompt, n.userPrompt, n.aiType);
+        return extractAIText(res).replace(/\[object Object\]/g,'').trim();
+      }
+    }catch(err){
+      console.warn('Original callAI failed, trying fallback:', err);
+      // devam edip fallback dene
+    }
+
+    // Fallback: mevcut API fonksiyonlarından birini bul
+    const candidates = [
+      window.callOpenRouterAPI,
+      window.callGroqAPI,
+      window.callOpenAIAPI,
+      window.callGeminiAPI
+    ].filter(fn => typeof fn === 'function');
+
+    for(const fn of candidates){
+      try{
+        const res = await fn(n.systemPrompt, n.userPrompt, 1200);
+        const txt = extractAIText(res).replace(/\[object Object\]/g,'').trim();
+        if(txt) return txt;
+      }catch(e){
+        console.warn('AI fallback candidate failed:', e);
+      }
+    }
+
+    throw new Error('AI bağlantısı çalışmadı. API anahtarını ve model ayarlarını kontrol et.');
+  };
+
+  window.WM_safeAI = async function(userPrompt, systemPrompt, aiType){
+    return await window.callAI(
+      systemPrompt || 'Sen uzman bir İngilizce öğretmenisin. Cevaplarını Türkçe ve anlaşılır ver.',
+      userPrompt || 'Kısa bir açıklama yap.',
+      aiType || 'chat'
+    );
+  };
+
+  window.WM_renderAIText = function(target, res){
+    const el = typeof target === 'string' ? document.getElementById(target) : target;
+    if(!el) return;
+    const text = extractAIText(res).replace(/\[object Object\]/g,'').trim();
+    el.innerHTML = text ? text.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])).replace(/\n/g,'<br>') : 'AI boş cevap döndürdü.';
+  };
+
+})();
+
+/* AI prompt error debug helper */
+window.WM_testAI = async function(){
+  try{
+    const res = await window.WM_safeAI('Hello kelimesini Türkçe açıkla.');
+    console.log('AI TEST OK:', res);
+    alert('AI çalışıyor: ' + String(res).slice(0,120));
+  }catch(e){
+    console.error('AI TEST FAILED:', e);
+    alert('AI hatası: ' + (e.message || e));
+  }
+};
+
+
+
+/* FINAL AI OBJECT + OVERLAY FIX */
+(function(){
+'use strict';
+function extractAIText(res){
+  if(res==null) return '';
+  if(typeof res==='string') return res;
+  if(Array.isArray(res)) return res.map(extractAIText).filter(Boolean).join('\n');
+  if(typeof res==='object'){
+    return res.text || res.content || res.answer || res.message ||
+      res.output || res.result || res.response ||
+      (res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content) ||
+      (res.choices && res.choices[0] && res.choices[0].text) ||
+      (res.data && (res.data.text || res.data.content)) ||
+      JSON.stringify(res,null,2);
+  }
+  return String(res);
+}
+window.WM_extractAIText = extractAIText;
+
+function cleanDOM(){
+  if(!document.body) return;
+  var walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+  var nodes=[];
+  while(walker.nextNode()){
+    var n=walker.currentNode;
+    if(n.nodeValue && n.nodeValue.indexOf('[object Object]')>-1) nodes.push(n);
+  }
+  nodes.forEach(function(n){
+    n.nodeValue=n.nodeValue.replace(/\[object Object\]/g,'AI cevabı metne çevrilemedi. Lütfen tekrar sor.');
+  });
+}
+setInterval(cleanDOM,1000);
+
+var previousCallAI=window.callAI;
+window.callAI=async function(){
+  var args=Array.prototype.slice.call(arguments);
+  var systemPrompt='', userPrompt='', aiType='chat';
+
+  if(args.length===1 && typeof args[0]==='object'){
+    var o=args[0]||{};
+    systemPrompt=o.systemPrompt||o.system||'';
+    userPrompt=o.userPrompt||o.prompt||o.message||o.content||'';
+    aiType=o.aiType||o.type||'chat';
+  }else{
+    systemPrompt=args[0]||'';
+    userPrompt=args[1]||'';
+    aiType=args[2]||'chat';
+  }
+
+  systemPrompt=extractAIText(systemPrompt).trim() || 'Sen Türkçe konuşan kullanıcıya İngilizce öğreten uzman bir öğretmensin.';
+  userPrompt=extractAIText(userPrompt).trim() || 'Kısa ve faydalı bir açıklama yap.';
+
+  if(typeof previousCallAI==='function'){
+    var res=await previousCallAI(systemPrompt,userPrompt,aiType);
+    return extractAIText(res).replace(/\[object Object\]/g,'').trim();
+  }
+  throw new Error('AI bağlantısı bulunamadı.');
+};
+
+window.WM_setAIHTML=function(el,res){
+  if(typeof el==='string') el=document.getElementById(el);
+  if(!el) return;
+  var text=extractAIText(res).replace(/\[object Object\]/g,'').trim() || 'AI boş cevap döndürdü.';
+  el.innerHTML=text.replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}).replace(/\n/g,'<br>');
+};
+
+function markOverlayOpen(){document.body && document.body.classList.add('ff-overlay-open');}
+function markOverlayClosed(){
+  setTimeout(function(){
+    var any=Array.prototype.slice.call(document.querySelectorAll('.ff-ov,.ff-overlay,#voiceCompareOverlay,#smngOverlay')).some(function(el){
+      return el.classList.contains('active');
+    });
+    if(!any) document.body.classList.remove('ff-overlay-open');
+  },80);
+}
+
+['ffOpen','smngOpenOverlay','vcOpenOverlay'].forEach(function(name){
+  var old=window[name];
+  if(typeof old==='function'){
+    window[name]=function(){markOverlayOpen();return old.apply(this,arguments);};
+  }
+});
+['ffClose','smngCloseOverlay','vcCloseOverlay'].forEach(function(name){
+  var old=window[name];
+  if(typeof old==='function'){
+    window[name]=function(){var r=old.apply(this,arguments);markOverlayClosed();return r;};
+  }
+});
+
+document.addEventListener('DOMContentLoaded',cleanDOM);
+})();
