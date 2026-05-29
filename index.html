@@ -4894,6 +4894,105 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
+
+<!-- FORCE HIDE OLD WORD ACTION BUTTONS -->
+<style id="wm-force-hide-old-word-actions">
+/* Kelime ekranındaki eski butonlar kesin kaldırıldı; karşılıkları Araçlar panelinde */
+#sc-word button[onclick="showList()"],
+#sc-word button[onclick="openToLearnModal()"],
+#sc-word #featuresToggleBtn,
+#sc-word button[onclick="openFlashcardMode()"],
+#sc-word button[onclick="startReviewMode()"],
+#sc-word button[onclick="openAskAIScreen()"],
+#sc-word #btnReview{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+
+/* Bu butonların bulunduğu boş satırları da kapat */
+.wm-old-action-row-hidden{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+</style>
+
+<script id="wm-force-hide-old-word-actions-script">
+(function(){
+  function textOf(el){
+    return (el && el.textContent || '').replace(/\s+/g,' ').trim().toLowerCase();
+  }
+
+  function forceHideOldWordActions(){
+    var wordScreen = document.getElementById('sc-word');
+    if(!wordScreen) return;
+
+    var selectors = [
+      'button[onclick="showList()"]',
+      'button[onclick="openToLearnModal()"]',
+      '#featuresToggleBtn',
+      'button[onclick="openFlashcardMode()"]',
+      'button[onclick="startReviewMode()"]',
+      'button[onclick="openAskAIScreen()"]',
+      '#btnReview'
+    ];
+
+    selectors.forEach(function(sel){
+      wordScreen.querySelectorAll(sel).forEach(function(btn){
+        btn.style.setProperty('display','none','important');
+        btn.style.setProperty('visibility','hidden','important');
+        btn.style.setProperty('pointer-events','none','important');
+        btn.classList.add('wm-old-action-hidden');
+      });
+    });
+
+    // Kelime Listesi + Ezberlenecekler + Özellikler satırı
+    var featuresBtn = document.getElementById('featuresToggleBtn');
+    if(featuresBtn && featuresBtn.parentElement && featuresBtn.parentElement.id !== 'mainCard'){
+      featuresBtn.parentElement.classList.add('wm-old-action-row-hidden');
+    }
+
+    // Flashcard + Akıllı Tekrar satırı ve Yapay Zekaya Sor tek satırı
+    Array.from(wordScreen.querySelectorAll('div')).forEach(function(div){
+      if(div.id === 'mainCard' || div.id === 'wordCard' || div.id === 'sc-word') return;
+      var t = textOf(div);
+      if(
+        (t.indexOf('kelime listesi') > -1 && t.indexOf('ezberlenecekler') > -1 && t.indexOf('özellikler') > -1) ||
+        (t.indexOf('flashcard') > -1 && t.indexOf('akıllı tekrar') > -1) ||
+        (t === '❓ yapay zekaya sor' || t === 'yapay zekaya sor')
+      ){
+        div.classList.add('wm-old-action-row-hidden');
+      }
+    });
+
+    // Eğer tek başına Yapay Zekaya Sor button parent boş görünüyorsa gizle
+    wordScreen.querySelectorAll('button[onclick="openAskAIScreen()"]').forEach(function(btn){
+      var parent = btn.parentElement;
+      if(parent && parent.id !== 'mainCard' && parent.id !== 'wordCard'){
+        parent.classList.add('wm-old-action-row-hidden');
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    forceHideOldWordActions();
+    setTimeout(forceHideOldWordActions,300);
+    setTimeout(forceHideOldWordActions,1000);
+    setTimeout(forceHideOldWordActions,2500);
+  });
+
+  setInterval(forceHideOldWordActions,1000);
+
+  // Dinamik yeniden çizim olursa da yakala
+  var mo = new MutationObserver(function(){ forceHideOldWordActions(); });
+  document.addEventListener('DOMContentLoaded', function(){
+    var sc = document.getElementById('sc-word');
+    if(sc) mo.observe(sc, {childList:true, subtree:true, attributes:true});
+  });
+})();
+</script>
+
 </body></html>
 
 
