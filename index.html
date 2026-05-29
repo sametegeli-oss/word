@@ -4935,8 +4935,132 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
-</body></html>
 
+
+<!-- FIX: Özellikler çekmecesini gerçek viewport'a taşı -->
+<style id="featureDrawerViewportFixCSS">
+  #actRow.feature-drawer{
+    position:fixed!important;
+    top:0!important;
+    right:0!important;
+    bottom:0!important;
+    left:auto!important;
+    width:min(430px,94vw)!important;
+    max-width:94vw!important;
+    height:100vh!important;
+    height:100dvh!important;
+    margin:0!important;
+    padding:14px!important;
+    z-index:2147483600!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    box-sizing:border-box!important;
+    transform:translateX(110%)!important;
+    transition:transform .22s ease!important;
+  }
+  #actRow.feature-drawer.open{
+    display:block!important;
+    transform:translateX(0)!important;
+  }
+  #featureDrawerOverlay{
+    position:fixed!important;
+    inset:0!important;
+    z-index:2147483590!important;
+  }
+  body.wm-feature-drawer-open{
+    overflow:hidden!important;
+    touch-action:none;
+  }
+  body.wm-feature-drawer-open #wmToolFab,
+  body.wm-feature-drawer-open .wm-tool-fab,
+  body.wm-feature-drawer-open .bottom-nav,
+  body.wm-feature-drawer-open #bottomNav{
+    pointer-events:none!important;
+  }
+  @media(max-width:520px){
+    #actRow.feature-drawer{width:94vw!important;}
+  }
+</style>
+<script id="featureDrawerViewportFixJS">
+(function(){
+  function byId(id){return document.getElementById(id);}
+
+  function moveDrawerToBody(){
+    var drawer=byId('actRow');
+    var overlay=byId('featureDrawerOverlay');
+    if(drawer && drawer.parentElement !== document.body){
+      document.body.appendChild(drawer);
+    }
+    if(overlay && overlay.parentElement !== document.body){
+      document.body.appendChild(overlay);
+    }
+  }
+
+  window.openFeatureDrawer=function(){
+    moveDrawerToBody();
+    var drawer=byId('actRow');
+    var overlay=byId('featureDrawerOverlay');
+    if(!drawer) return;
+    drawer.classList.add('feature-drawer');
+    drawer.style.display='block';
+    drawer.style.position='fixed';
+    drawer.style.top='0';
+    drawer.style.right='0';
+    drawer.style.bottom='0';
+    drawer.style.height='100dvh';
+    drawer.style.zIndex='2147483600';
+    if(overlay){
+      overlay.style.display='block';
+      overlay.style.position='fixed';
+      overlay.style.zIndex='2147483590';
+    }
+    document.body.classList.add('wm-feature-drawer-open');
+    requestAnimationFrame(function(){drawer.classList.add('open');});
+    var firstCat=drawer.querySelector('.feature-category');
+    if(firstCat && !drawer.querySelector('.feature-category.open')) firstCat.classList.add('open');
+  };
+
+  window.closeFeatureDrawer=function(){
+    var drawer=byId('actRow');
+    var overlay=byId('featureDrawerOverlay');
+    if(!drawer) return;
+    drawer.classList.remove('open');
+    if(overlay) overlay.style.display='none';
+    document.body.classList.remove('wm-feature-drawer-open');
+    setTimeout(function(){
+      if(!drawer.classList.contains('open')) drawer.style.display='none';
+    },230);
+  };
+
+  window.toggleFeatures=function(){
+    var drawer=byId('actRow');
+    if(drawer && drawer.classList.contains('open')) closeFeatureDrawer();
+    else openFeatureDrawer();
+  };
+
+  // Sağ araç panelindeki "Özellikler" de artık aynı çekmeceyi açsın.
+  var oldToolAction=window.wmToolAction;
+  window.wmToolAction=function(type){
+    if(type==='features'){
+      if(typeof wmCloseToolPanel==='function') wmCloseToolPanel();
+      if(typeof showScreen==='function') showScreen('sc-word');
+      setTimeout(openFeatureDrawer,80);
+      return;
+    }
+    if(typeof oldToolAction==='function') return oldToolAction.apply(this,arguments);
+  };
+
+  document.addEventListener('DOMContentLoaded',function(){
+    moveDrawerToBody();
+    var overlay=byId('featureDrawerOverlay');
+    if(overlay) overlay.onclick=closeFeatureDrawer;
+  });
+  setTimeout(moveDrawerToBody,500);
+  setTimeout(moveDrawerToBody,1500);
+})();
+</script>
+
+</body></html>
 
 
 
