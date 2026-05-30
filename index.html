@@ -5496,6 +5496,147 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
+
+
+<!-- WM AI MODAL BUTTON FIX: Kelime Açıklama + Kelime İlişkileri sonuç gösterme -->
+<script id="wm-ai-modal-button-fix-20260530">
+(function(){
+  function txt(el){ return (el && el.textContent || '').replace(/\s+/g,' ').trim(); }
+  function isWordLike(s){ return /^[A-Za-z][A-Za-z'\-]{1,40}$/.test(String(s||'').trim()); }
+  function firstString(){
+    for(var i=0;i<arguments.length;i++){
+      var v=arguments[i];
+      if(typeof v === 'string' && v.trim() && v.trim().toLowerCase()!=='undefined') return v.trim();
+    }
+    return '';
+  }
+  function fromObj(o){
+    if(!o || typeof o !== 'object') return '';
+    return firstString(o.word,o.en,o.english,o.term,o.name,o.title,o.text);
+  }
+  function currentWord(){
+    // 1) Global değişkenlerden dene
+    var names=['currentWord','selectedWord','activeWord','currentItem','selectedItem'];
+    for(var i=0;i<names.length;i++){
+      var v=window[names[i]];
+      var r=typeof v==='string' ? v : fromObj(v);
+      if(isWordLike(r)) return r;
+    }
+    var idxNames=['currentIndex','wordIndex','idx','currentWordIndex'];
+    var listNames=['words','wordList','allWords','filteredWords','currentWords','data'];
+    for(var a=0;a<idxNames.length;a++){
+      var ix=window[idxNames[a]];
+      if(typeof ix==='number' && ix>=0){
+        for(var b=0;b<listNames.length;b++){
+          var arr=window[listNames[b]];
+          if(Array.isArray(arr) && arr[ix]){
+            var rr=typeof arr[ix]==='string' ? arr[ix] : fromObj(arr[ix]);
+            if(isWordLike(rr)) return rr;
+          }
+        }
+      }
+    }
+    // 2) Açık modal başlığı: ambitious gibi
+    var modalCandidates=Array.from(document.querySelectorAll('[role="dialog"],.modal,.ai-modal,.popup,.word-ai-modal,.wm-modal,div[style*="fixed"]'));
+    for(var m=modalCandidates.length-1;m>=0;m--){
+      var hs=modalCandidates[m].querySelectorAll('h1,h2,h3,.modal-title,.title');
+      for(var h=0;h<hs.length;h++){
+        var ht=txt(hs[h]);
+        if(isWordLike(ht)) return ht;
+      }
+    }
+    // 3) Kelime kartındaki en uygun tek İngilizce kelime
+    var card=document.getElementById('wordCard') || document.getElementById('mainCard');
+    if(card){
+      var els=Array.from(card.querySelectorAll('*'));
+      var bad=/^(kelime|cümle|türkçe|henüz|çalışılmadı|öğrenildi|aktif|liste|wikipedia|çeviri|yok|a1|a2|b1|b2|c1|c2)$/i;
+      for(var e=0;e<els.length;e++){
+        var t=txt(els[e]);
+        if(isWordLike(t) && !bad.test(t) && t.length>2) return t;
+      }
+    }
+    return '';
+  }
+  function currentTranslation(){
+    var names=['currentWord','selectedWord','activeWord','currentItem','selectedItem'];
+    for(var i=0;i<names.length;i++){
+      var o=window[names[i]];
+      if(o && typeof o==='object'){
+        var r=firstString(o.translation,o.tr,o.turkish,o.meaning,o.mean);
+        if(r) return r;
+      }
+    }
+    return '';
+  }
+  function resultBox(btn){
+    var root=btn.closest('[role="dialog"],.modal,.ai-modal,.popup,.word-ai-modal,.wm-modal,div[style*="fixed"]') || btn.parentElement || document.body;
+    var box=root.querySelector('#wmAIResultBox');
+    if(!box){
+      box=document.createElement('div');
+      box.id='wmAIResultBox';
+      box.style.cssText='margin:18px 0 0 0;padding:16px;border:1px solid rgba(148,163,184,.25);border-radius:16px;background:rgba(15,23,42,.72);color:var(--text,#e5e7eb);font-size:15px;line-height:1.65;max-height:42vh;overflow:auto;white-space:pre-wrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)';
+      (btn.closest('div') || root).insertAdjacentElement('afterend',box);
+    }
+    return box;
+  }
+  function objectToText(x){
+    if(x == null) return '';
+    if(typeof x === 'string') return x;
+    if(typeof x === 'object'){
+      var direct=firstString(x.content,x.text,x.answer,x.message,x.result,x.output,x.response,x.aiResponse,x.data);
+      if(direct) return direct;
+      if(x.choices && x.choices[0]){
+        var c=x.choices[0];
+        var cc=firstString(c.text, c.message && c.message.content, c.delta && c.delta.content);
+        if(cc) return cc;
+      }
+      try{return JSON.stringify(x,null,2);}catch(e){return String(x);}
+    }
+    return String(x);
+  }
+  async function askAI(kind, btn){
+    var word=currentWord();
+    var tr=currentTranslation();
+    var box=resultBox(btn);
+    if(!word){ box.textContent='Kelime bulunamadı. Lütfen kelime kartı açıkken tekrar deneyin.'; return; }
+    box.textContent='⏳ '+word+' için hazırlanıyor...';
+    var system='Sen deneyimli bir İngilizce öğretmenisin. Türkçe açıkla. Cevabı kısa, net ve maddeli yaz. Gereksiz uzun yazma.';
+    var user = kind==='relations'
+      ? ('Kelime: "'+word+'"'+(tr?' (Türkçe: '+tr+')':'')+'\nBu kelimenin kelime ilişkilerini yaz: eş anlamlılar, zıt anlamlılar, birlikte kullanılan kelimeler, phrasal/collocation örnekleri ve 3 kısa örnek cümle.')
+      : ('Kelime: "'+word+'"'+(tr?' (Türkçe: '+tr+')':'')+'\nBu kelimeyi Türkçe açıkla: anlamı, kullanım yeri, seviye, yaygın hatalar ve 3 kısa örnek cümle ver.');
+    try{
+      var res;
+      if(typeof window.callAI === 'function'){
+        // Mevcut app.js konsolunda görünen imza: callAI(systemPrompt, userMessage, type)
+        res = await window.callAI(system,user, kind==='relations'?'relationships':'explain');
+      }else if(typeof window.callGroqAPI === 'function'){
+        res = await window.callGroqAPI(system,user,1500);
+      }else{
+        throw new Error('callAI fonksiyonu bulunamadı');
+      }
+      var out=objectToText(res).trim();
+      if(!out || out==='{}') throw new Error('AI boş cevap döndürdü');
+      box.textContent=out;
+    }catch(err){
+      console.error('[WM AI button fix]',err);
+      box.textContent='❌ Sonuç alınamadı: '+(err && err.message ? err.message : err)+'\n\nNot: API cevabı konsolda başarılı görünüyorsa sorun cevap nesnesinin ekrana yazdırılmamasıdır. Bu yama cevabı burada göstermeye çalışır.';
+    }
+  }
+  document.addEventListener('click',function(e){
+    var btn=e.target.closest('button');
+    if(!btn) return;
+    var t=txt(btn).toLowerCase();
+    if(t.indexOf('kelime açıklama')>-1 || t.indexOf('açıklama')>-1 && t.indexOf('kelime')>-1){
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      askAI('explain',btn);
+    }else if(t.indexOf('kelime ilişk')>-1 || t.indexOf('ilişkileri')>-1 || t.indexOf('ilişki')>-1){
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      askAI('relations',btn);
+    }
+  },true);
+})();
+</script>
+
 </body></html>
 
 
