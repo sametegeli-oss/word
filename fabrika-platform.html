@@ -4496,10 +4496,33 @@ function persist() {
   _persistTimer = setTimeout(() => persistNow(), 500);
 }
 
-// Asıl yazma işlemi - batch ile tüm değişen veriyi tek transaction'da yazar
+// Her koleksiyonun son yazılan hash'ini tut - sadece değişeni Firestore'a yaz
+let _lastPersistedHashes = {
+  definitions: null,
+  instances: null,
+  tasks: null,
+  orders: null,
+  notifications: null,
+  comments: null,
+  roles: null,
+  meta: null
+};
+
+// Basit hash: koleksiyondaki tüm id'lerin ve son güncellemenin md5 benzeri özeti
+function hashCollection(items) {
+  if (!items || items.length === 0) return 'empty';
+  // Her kaydın id + size kombinasyonu
+  return items.map(it => {
+    if (!it) return '';
+    const id = String(it.id || '');
+    const json = JSON.stringify(it);
+    return id + ':' + json.length + ':' + (json.charCodeAt(0) || 0) + (json.charCodeAt(json.length-1) || 0);
+  }).sort().join('|') + ':' + items.length;
+}
+
+// Asıl yazma işlemi - SADECE değişen koleksiyonları yazar
 async function persistNow() {
   if (_persistInProgress) {
-    // Bir yazma sürüyorsa, tamamlanınca tekrar dene
     setTimeout(persistNow, 200);
     return;
   }
@@ -4510,14 +4533,8 @@ async function persistNow() {
 
   _persistInProgress = true;
   const db = window.fb.db;
-  const batch = window.fb.writeBatch(db);
-  let count = 0;
 
   try {
-    // Tüm definitions, instances, tasks, orders, notifications'ı yaz
-    // (Bu yaklaşım kaba ama güvenli - real-time listener'lar conflict önler)
-
-    // Önceki state ile karşılaştırarak değişenleri bul - basit hash
     const collections = {
       definitions: state.definitions || [],
       instances: state.instances || [],
@@ -4528,40 +4545,83 @@ async function persistNow() {
       roles: state.roles || []
     };
 
-    // Sadece son N saniyede değişen kayıtları yaz mantığı yerine,
-    // her seferinde değişen state'i write et (Firestore otomatik diff yapmıyor)
-    // Performans için: tüm koleksiyonlar 500'den az kayıt - sığar
-
+    // 1) Her koleksiyon için: hash değişti mi?
+    const changedCollections = {};
     for (const [colName, items] of Object.entries(collections)) {
-      for (const item of items) {
-        if (!item.id) continue;
-        batch.set(window.fb.doc(db, colName, String(item.id)), sanitize(item));
-        count++;
-        // Batch limit: 500 yazma/batch
-        if (count >= 450) {
-          await batch.commit();
-          console.log(`[Firestore] Batch yazıldı: ${count} kayıt`);
-          count = 0;
-          // Yeni batch başlat
-          batch._mutations = []; // Bu hack - daha temiz çözüm var ama şimdilik...
-        }
+      const hash = hashCollection(items);
+      if (_lastPersistedHashes[colName] !== hash) {
+        changedCollections[colName] = items;
+        _lastPersistedHashes[colName] = hash;
       }
     }
 
-    if (count > 0) {
-      await batch.commit();
-    }
-
-    // Meta verileri (history, productionLog, stationAssignments) ayrı yaz
-    await window.fb.setDoc(window.fb.doc(db, 'meta', 'main'), {
+    // 2) Meta için hash
+    const metaPayload = {
       history: state.history || [],
       productionLog: state.productionLog || [],
       stationAssignments: state.stationAssignments || []
-    });
+    };
+    const metaHash = hashCollection(metaPayload.history) + '|' + hashCollection(metaPayload.productionLog);
 
-    console.log(`[Firestore] Persisted: ${count} kayıt + meta`);
+    if (Object.keys(changedCollections).length === 0 && _lastPersistedHashes.meta === metaHash) {
+      // Hiçbir şey değişmedi
+      _persistInProgress = false;
+      return;
+    }
+
+    // 3) Değişen koleksiyonları yaz (ayrı ayrı, batch yerine)
+    // Her koleksiyon için yazma denenir; biri fail olursa diğerleri etkilenmez
+    let writeCount = 0;
+    let failedCollections = [];
+
+    for (const [colName, items] of Object.entries(changedCollections)) {
+      try {
+        const batch = window.fb.writeBatch(db);
+        let count = 0;
+        for (const item of items) {
+          if (!item || !item.id) continue;
+          batch.set(window.fb.doc(db, colName, String(item.id)), sanitize(item));
+          count++;
+          if (count >= 450) break;  // Batch limit
+        }
+        if (count > 0) {
+          await batch.commit();
+          writeCount += count;
+        }
+      } catch (e) {
+        // Bu koleksiyon yazılamadı (büyük olasılıkla yetki yok)
+        // Hash'i geri al ki bir sonraki seferinde tekrar denenebilsin
+        _lastPersistedHashes[colName] = null;
+        failedCollections.push({ name: colName, error: e.message || e.code });
+        console.warn(`[Firestore] ${colName} yazılamadı (yetki yok olabilir):`, e.code || e.message);
+      }
+    }
+
+    // 4) Meta verileri ayrı yaz
+    if (_lastPersistedHashes.meta !== metaHash) {
+      try {
+        await window.fb.setDoc(window.fb.doc(db, 'meta', 'main'), metaPayload);
+        _lastPersistedHashes.meta = metaHash;
+      } catch (e) {
+        _lastPersistedHashes.meta = null;
+        failedCollections.push({ name: 'meta', error: e.message });
+        console.warn('[Firestore] meta yazılamadı:', e.code || e.message);
+      }
+    }
+
+    if (writeCount > 0) {
+      console.log(`[Firestore] Persisted: ${writeCount} kayıt (${Object.keys(changedCollections).join(', ')})`);
+    }
+
+    // Sadece tüm yazımlar fail olduysa kullanıcıya bildir
+    if (failedCollections.length > 0 && writeCount === 0) {
+      console.error('[Firestore] Tüm yazımlar fail:', failedCollections);
+      if (typeof notify === 'function') {
+        notify('Veri kaydedilemedi: yetki sorunu', 'error');
+      }
+    }
   } catch (e) {
-    console.error('[Firestore] Yazma hatası:', e);
+    console.error('[Firestore] Beklenmedik hata:', e);
     if (typeof notify === 'function') notify('Veri kaydedilemedi: ' + (e.message || e.code), 'error');
   } finally {
     _persistInProgress = false;
