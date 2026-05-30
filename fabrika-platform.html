@@ -937,6 +937,26 @@
   }
   .notif-item.unread { background: rgba(74,158,255,0.05); }
   .notif-time { font-family: var(--mono); font-size: 10px; color: var(--text-mute); margin-top: 2px; }
+  .notif-pop-foot {
+    padding: 8px 14px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    background: var(--panel-2);
+    position: sticky;
+    bottom: 0;
+  }
+  .notif-see-all {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 6px 10px;
+    font-weight: 500;
+  }
+  .notif-see-all:hover {
+    text-decoration: underline;
+  }
 
   .toast-container {
     position: fixed; bottom: 20px; right: 20px;
@@ -2621,6 +2641,11 @@
     background: var(--panel-2);
     border: 1px solid var(--border);
     border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .user-info:hover {
+    background: var(--panel-3);
   }
   .user-info-role {
     font-size: 18px;
@@ -2667,6 +2692,299 @@
     .user-info-name { font-size: 11px; }
     .user-info-sub { font-size: 9px; }
     .logout-btn { width: 26px; height: 26px; }
+  }
+
+  /* ============================================ */
+  /* BİLDİRİMLER SAYFASI                            */
+  /* ============================================ */
+  .notif-page {
+    padding: 20px 28px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .notif-page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .notif-page-head h2 {
+    margin: 0;
+    font-size: 22px;
+  }
+  .notif-page-head p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .notif-page-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .notif-page-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .notif-page-filters .filter-chip {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .notif-page-filters .filter-chip .count {
+    background: var(--panel-3);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    margin-left: 4px;
+  }
+  .notif-page-list {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .notif-page-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .notif-page-item:hover {
+    background: var(--panel-2);
+  }
+  .notif-page-item.unread {
+    background: rgba(74,158,255,0.05);
+  }
+  .notif-page-item:last-child {
+    border-bottom: none;
+  }
+  .notif-page-item-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .notif-page-item-dot.unread {
+    background: var(--accent);
+  }
+  .notif-page-item-dot.read {
+    background: var(--border);
+  }
+  .notif-page-item-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .notif-page-item-msg {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .notif-page-item-time {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .notif-page-item-link {
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+  .notif-page-item-mark {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .notif-page-item-mark:hover {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .empty-mini {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  /* ============================================ */
+  /* PROFİLİM SAYFASI                               */
+  /* ============================================ */
+  .profile-page {
+    padding: 20px 28px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .profile-head {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  .profile-avatar {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .profile-info h1 {
+    margin: 0;
+    font-size: 22px;
+  }
+  .profile-sub {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .profile-roles {
+    font-size: 13px;
+    color: var(--text);
+    margin-top: 8px;
+  }
+  .profile-absence {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(245,158,11,0.1);
+    color: var(--amber);
+    border-radius: 4px;
+    font-size: 12px;
+    display: inline-block;
+  }
+  .profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .profile-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .profile-card h3 {
+    margin: 0 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .profile-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .profile-stat {
+    background: var(--panel-2);
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+  }
+  .profile-stat-num {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .profile-stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+  .profile-kv {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .profile-kv-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .profile-kv-row:last-child {
+    border-bottom: none;
+  }
+  .profile-kv-row span {
+    color: var(--text-dim);
+  }
+  .profile-kv-row b {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .profile-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .profile-section h3 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .profile-instance-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .profile-instance {
+    padding: 12px;
+    background: var(--panel-2);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .profile-instance:hover {
+    background: var(--panel-3);
+  }
+  .profile-instance-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    font-size: 13px;
+  }
+  .profile-instance-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .profile-instance-id {
+    font-family: var(--mono);
+  }
+  @media (max-width: 768px) {
+    .notif-page, .profile-page {
+      padding: 14px;
+    }
+    .profile-head {
+      flex-direction: column;
+      text-align: center;
+      padding: 18px;
+    }
+    .profile-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
 </style>
 </head>
@@ -2732,6 +3050,9 @@
     <button onclick="markAllRead()">Tümünü okundu işaretle</button>
   </div>
   <div id="notif-list"></div>
+  <div class="notif-pop-foot">
+    <button onclick="openNotificationsPage()" class="notif-see-all">Tüm bildirimleri gör →</button>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modal">
@@ -4676,13 +4997,13 @@ function renderRoleSwitch() {
     const taskCount = state.tasks.filter(t => t.assignee === u.id && t.status === 'open').length;
 
     c.innerHTML = `
-      <div class="user-info">
+      <div class="user-info" onclick="openProfilePage()" title="Profilime git">
         <span class="user-info-role">${roleLabel}</span>
         <div class="user-info-text">
           <span class="user-info-name">${u.name}</span>
           <span class="user-info-sub">${roleText}${taskCount ? ` • ${taskCount} görev` : ''}</span>
         </div>
-        <button class="logout-btn" onclick="window.doLogout()" title="Çıkış">⏻</button>
+        <button class="logout-btn" onclick="event.stopPropagation();window.doLogout()" title="Çıkış">⏻</button>
       </div>
     `;
     return;
@@ -4747,6 +5068,8 @@ function renderView() {
   else if (state.currentTop === 'production') renderProductionView(v);
   else if (state.currentTop === 'calendar') renderCalendarView(v);
   else if (state.currentTop === 'reports') renderReportsView(v);
+  else if (state.currentTop === 'notifications') renderNotificationsView(v);
+  else if (state.currentTop === 'profile') renderProfileView(v);
   else renderAdminView(v);
 }
 
@@ -8935,6 +9258,290 @@ function setReportTab(tab) {
 function setReportRange(range) {
   state.reportRange = range;
   renderReportsView(document.getElementById('view'));
+}
+
+// ============== BİLDİRİMLER SAYFASI ==============
+
+function openNotificationsPage() {
+  // Popup'ı kapat
+  document.getElementById('notif-pop').classList.remove('show');
+  state.currentTop = 'notifications';
+  state.selected = null;
+  state.notifFilter = 'all';
+  renderAll();
+}
+
+function setNotifFilter(filter) {
+  state.notifFilter = filter;
+  renderNotificationsView(document.getElementById('view'));
+}
+
+function renderNotificationsView(v) {
+  const me = state.currentUser;
+  const filter = state.notifFilter || 'all';
+
+  // Kullanıcının tüm bildirimleri
+  let allNotifs = (state.notifications || []).filter(n => n.userId === me);
+
+  // Filtre uygula
+  let filtered = allNotifs;
+  if (filter === 'unread') filtered = allNotifs.filter(n => !n.read);
+  if (filter === 'read') filtered = allNotifs.filter(n => n.read);
+
+  // Yeniden eskiye sırala
+  filtered = [...filtered].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+
+  const unreadCount = allNotifs.filter(n => !n.read).length;
+
+  v.innerHTML = `
+    <div class="notif-page">
+      <div class="notif-page-head">
+        <div>
+          <h2>🔔 Bildirimler</h2>
+          <p>Tüm bildirim geçmişiniz</p>
+        </div>
+        <div class="notif-page-actions">
+          ${unreadCount > 0 ? `<button class="ghost-btn" onclick="markAllRead(); renderAll();">${unreadCount} bildirimi okundu işaretle</button>` : ''}
+          <button class="danger-btn" onclick="clearReadNotifications()">Okunmuşları sil</button>
+        </div>
+      </div>
+
+      <div class="notif-page-filters">
+        <button class="filter-chip ${filter==='all'?'active':''}" onclick="setNotifFilter('all')">Tümü <span class="count">${allNotifs.length}</span></button>
+        <button class="filter-chip ${filter==='unread'?'active':''}" onclick="setNotifFilter('unread')">Okunmamış <span class="count">${unreadCount}</span></button>
+        <button class="filter-chip ${filter==='read'?'active':''}" onclick="setNotifFilter('read')">Okunmuş <span class="count">${allNotifs.length - unreadCount}</span></button>
+      </div>
+
+      <div class="notif-page-list">
+        ${filtered.length === 0 ? `<div class="empty"><div class="empty-icon">🔔</div><div>${filter === 'unread' ? 'Okunmamış bildirim yok' : filter === 'read' ? 'Okunmuş bildirim yok' : 'Henüz bildiriminiz yok'}</div></div>` :
+        filtered.map(n => `
+          <div class="notif-page-item ${n.read ? '' : 'unread'}" onclick="handleNotifClick('${n.id}', '${n.instanceId||''}')">
+            <div class="notif-page-item-dot ${n.read ? 'read' : 'unread'}"></div>
+            <div class="notif-page-item-body">
+              <div class="notif-page-item-msg">${escapeHtml(n.message || '')}</div>
+              <div class="notif-page-item-time">${formatAge(n.ts || 0)}${n.instanceId ? ` · <span class="notif-page-item-link">${n.instanceId}</span>` : ''}</div>
+            </div>
+            ${!n.read ? '<button class="notif-page-item-mark" onclick="event.stopPropagation();markNotifRead(\'' + n.id + '\');renderAll();">Okundu</button>' : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function markNotifRead(notifId) {
+  const n = state.notifications.find(x => x.id === notifId);
+  if (n) { n.read = true; persist(); }
+}
+
+function handleNotifClick(notifId, instanceId) {
+  markNotifRead(notifId);
+  if (instanceId) {
+    state.currentTop = 'work';
+    state.selected = { type: 'instance', id: instanceId };
+    renderAll();
+  } else {
+    renderAll();
+  }
+}
+
+function clearReadNotifications() {
+  if (!confirm('Okunmuş bildirimler silinsin mi?')) return;
+  const me = state.currentUser;
+  state.notifications = state.notifications.filter(n => n.userId !== me || !n.read);
+  persist();
+  renderAll();
+  notify('Okunmuş bildirimler silindi', 'success');
+}
+
+// ============== PROFİLİM SAYFASI ==============
+
+function openProfilePage() {
+  state.currentTop = 'profile';
+  state.selected = null;
+  renderAll();
+}
+
+function renderProfileView(v) {
+  const u = getUser(state.currentUser);
+  if (!u) {
+    v.innerHTML = '<div class="empty">Kullanıcı bulunamadı</div>';
+    return;
+  }
+
+  // Kullanıcının açtığı talepler
+  const myInstances = state.instances.filter(i => i.ownerId === u.id);
+  const activeInst = myInstances.filter(i => i.status === 'active' || i.status === 'in_progress');
+  const completedInst = myInstances.filter(i => i.status === 'completed');
+  const cancelledInst = myInstances.filter(i => i.status === 'cancelled' || i.status === 'rejected');
+
+  // Kullanıcının yaptığı onaylar (geçmiş)
+  const myCompletedTasks = state.tasks.filter(t => t.assignee === u.id && t.status === 'closed');
+
+  // Aktif vekil dönemi var mı
+  const activeAbsence = (u.absences || []).find(a => isAbsenceActive(a));
+
+  const roleLabels = u.roles.map(r => {
+    const labels = { worker: '👷 Çalışan', manager: '👔 Müdür', hr: '🧑‍💼 İK', admin: '⚙️ Admin', operator: '🏭 Operatör' };
+    return labels[r] || r;
+  }).join(' · ');
+
+  v.innerHTML = `
+    <div class="profile-page">
+      <div class="profile-head">
+        <div class="profile-avatar">${u.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()}</div>
+        <div class="profile-info">
+          <h1>${escapeHtml(u.name)}</h1>
+          <div class="profile-sub">${escapeHtml(u.email || u.id+'@fabrika.com')}</div>
+          <div class="profile-roles">${roleLabels}</div>
+          ${activeAbsence ? `<div class="profile-absence">🔁 İzinde: ${activeAbsence.from} → ${activeAbsence.to}${activeAbsence.delegateTo ? ' (Vekil: '+escapeHtml(getUser(activeAbsence.delegateTo)?.name || '')+')' : ''}</div>` : ''}
+        </div>
+      </div>
+
+      <div class="profile-grid">
+        <div class="profile-card">
+          <h3>📋 Talep Özeti</h3>
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <div class="profile-stat-num">${myInstances.length}</div>
+              <div class="profile-stat-label">Toplam</div>
+            </div>
+            <div class="profile-stat">
+              <div class="profile-stat-num">${activeInst.length}</div>
+              <div class="profile-stat-label">Devam Eden</div>
+            </div>
+            <div class="profile-stat">
+              <div class="profile-stat-num">${completedInst.length}</div>
+              <div class="profile-stat-label">Tamamlanan</div>
+            </div>
+            <div class="profile-stat">
+              <div class="profile-stat-num">${cancelledInst.length}</div>
+              <div class="profile-stat-label">İptal/Red</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-card">
+          <h3>✅ Yaptığım Onaylar</h3>
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <div class="profile-stat-num">${myCompletedTasks.length}</div>
+              <div class="profile-stat-label">Toplam Onay</div>
+            </div>
+            <div class="profile-stat">
+              <div class="profile-stat-num">${myCompletedTasks.filter(t => t.action === 'approve').length}</div>
+              <div class="profile-stat-label">Onayladım</div>
+            </div>
+            <div class="profile-stat">
+              <div class="profile-stat-num">${myCompletedTasks.filter(t => t.action === 'reject').length}</div>
+              <div class="profile-stat-label">Reddettim</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-card">
+          <h3>🪪 Bilgilerim</h3>
+          <div class="profile-kv">
+            <div class="profile-kv-row"><span>Kullanıcı Adı</span><b>${u.id}</b></div>
+            <div class="profile-kv-row"><span>İşe Giriş</span><b>${u.hireDate || '—'}</b></div>
+            <div class="profile-kv-row"><span>Müdür</span><b>${u.manager ? escapeHtml(getUser(u.manager)?.name || u.manager) : '—'}</b></div>
+            ${u.stations && u.stations.length ? `<div class="profile-kv-row"><span>İstasyonlar</span><b>${u.stations.join(', ')}</b></div>` : ''}
+          </div>
+          <button class="ghost-btn" style="width:100%;margin-top:12px;" onclick="openChangePassword()">🔑 Şifre Değiştir</button>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <h3>📜 Son Taleplerim</h3>
+        ${myInstances.length === 0 ? '<div class="empty-mini">Henüz talep açmadınız</div>' : `
+          <div class="profile-instance-list">
+            ${[...myInstances].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,10).map(inst => {
+              const def = state.definitions.find(d => d.id === inst.defId);
+              const statusLabel = {
+                active: '<span class="badge-tag" style="background:rgba(74,158,255,0.15);color:var(--accent);">DEVAM EDİYOR</span>',
+                in_progress: '<span class="badge-tag" style="background:rgba(74,158,255,0.15);color:var(--accent);">DEVAM EDİYOR</span>',
+                completed: '<span class="badge-tag" style="background:rgba(34,197,94,0.15);color:var(--green);">TAMAMLANDI</span>',
+                cancelled: '<span class="badge-tag" style="background:rgba(148,163,184,0.15);color:var(--text-dim);">İPTAL</span>',
+                rejected: '<span class="badge-tag" style="background:rgba(248,113,113,0.15);color:var(--red);">REDDEDİLDİ</span>'
+              }[inst.status] || inst.status;
+              return `
+                <div class="profile-instance" onclick="state.currentTop='work';state.selected={type:'instance',id:'${inst.id}'};renderAll();">
+                  <div class="profile-instance-head">
+                    <span>${def?.icon || '📄'} <b>${escapeHtml(def?.name || 'Süreç')}</b></span>
+                    ${statusLabel}
+                  </div>
+                  <div class="profile-instance-meta">
+                    <span class="profile-instance-id">${inst.id}</span>
+                    <span>${formatAge(inst.createdAt)}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function openChangePassword() {
+  openModal({
+    title: '🔑 Şifre Değiştir',
+    body: `
+      <div class="form-field">
+        <label>Mevcut Şifre <span class="req">*</span></label>
+        <input type="password" id="cp-current" placeholder="••••••••">
+      </div>
+      <div class="form-field">
+        <label>Yeni Şifre <span class="req">*</span></label>
+        <input type="password" id="cp-new" placeholder="En az 6 karakter">
+      </div>
+      <div class="form-field">
+        <label>Yeni Şifre (Tekrar) <span class="req">*</span></label>
+        <input type="password" id="cp-new2" placeholder="Yeni şifre tekrar">
+      </div>
+      <div style="font-size:11px;color:var(--text-mute);padding:8px;background:var(--panel-2);border-radius:4px;">
+        Not: Şifre değişikliği Firebase üzerinden yapılır. İnternet bağlantısı gerekli.
+      </div>
+    `,
+    foot: `
+      <button class="ghost-btn" onclick="closeModal()">İptal</button>
+      <button class="btn approve" style="flex:0;padding:7px 14px;" onclick="changePassword()">Şifreyi Değiştir</button>
+    `
+  });
+}
+
+async function changePassword() {
+  const cur = document.getElementById('cp-current').value;
+  const newp = document.getElementById('cp-new').value;
+  const new2 = document.getElementById('cp-new2').value;
+
+  if (!cur || !newp || !new2) { notify('Tüm alanları doldurun', 'error'); return; }
+  if (newp.length < 6) { notify('Yeni şifre en az 6 karakter olmalı', 'error'); return; }
+  if (newp !== new2) { notify('Yeni şifreler aynı değil', 'error'); return; }
+
+  const user = window.fb.auth.currentUser;
+  if (!user) { notify('Oturum yok', 'error'); return; }
+
+  try {
+    // Önce mevcut şifreyle yeniden giriş yap (reauthenticate gerekiyor)
+    await window.fb.signInWithEmailAndPassword(window.fb.auth, user.email, cur);
+
+    // Şifre güncelle - Firebase SDK üzerinden
+    // updatePassword fonksiyonu gerekli ama ESM'e eklemedik, dinamik import:
+    const { updatePassword } = await import("https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js");
+    await updatePassword(window.fb.auth.currentUser, newp);
+
+    closeModal();
+    notify('✓ Şifre değiştirildi', 'success');
+  } catch (e) {
+    console.error('[changePassword]', e);
+    if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+      notify('Mevcut şifre hatalı', 'error');
+    } else {
+      notify('Hata: ' + (e.message || e.code), 'error');
+    }
+  }
 }
 
 function renderReportsView(v) {
