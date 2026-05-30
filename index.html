@@ -6101,6 +6101,129 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
+
+
+<!-- WM REPAIR12: rebuilt learned logic + locked active list title -->
+<style id="wm-repair12-style">
+  .wm-r12-learned-badge{background:#16a34a!important;color:#fff!important;border-color:rgba(34,197,94,.45)!important;box-shadow:0 0 0 1px rgba(34,197,94,.25),0 8px 20px rgba(22,163,74,.28)!important}
+  .wm-r12-notlearned-badge{background:#64748b!important;color:#fff!important}
+</style>
+<script id="wm-repair12-script">
+(function(){
+  if(window.__WM_REPAIR12__) return; window.__WM_REPAIR12__=true;
+  function q(s,r){return (r||document).querySelector(s)}
+  function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
+  function text(el){return (el&&(el.innerText||el.textContent)||'').replace(/\s+/g,' ').trim()}
+  function clean(s){return String(s==null?'':s).replace(/▼/g,'').replace(/^[←▶◀✕×\s]+/,'').replace(/\b\d+\s*\/\s*\d+\s*kelime\b/ig,'').replace(/\b\d+\s*kelime\b/ig,'').replace(/\s+/g,' ').trim()}
+  function fold(s){return clean(s).toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i')}
+  function isWord(s){s=clean(s);var f=fold(s);return /^[A-Za-z][A-Za-z'’\-]{1,45}$/.test(s)&&!/^(undefined|null|kelime|play|slow|fast|speed|media|aktif|liste|ceviri|yok|henuz|henuz|calisilmadi|çalisilmadi|sonraki|ogrenildi|ögrenildi|öğrenildi|aciklama|açıklama|iliski|ilişki)$/.test(f)}
+  function isGoodList(s){s=clean(s);var f=fold(s);if(!s)return false;if(/^\d{5,}$/.test(s))return false;if(s.length>36)return false;if(/[.!?]/.test(s))return false;if(s.split(/\s+/).length>4)return false;if(/^(undefined|null|aktif liste|liste degistir|liste değiştir|ana liste|kelime|play|slow|fast|speed|media|bugun|bugün|telaffuz|istatistik|ai|ai sor|liste|geri|sonraki|ogrenildi|öğrenildi|henuz calisilmadi|henüz çalışılmadı)$/.test(f))return false;return true}
+
+  function getLockedList(){
+    var keys=['wm.r12.activeList','wm.hf11.list','wm.goodListName','wm.activeListName','activeListName','currentListName'];
+    for(var i=0;i<keys.length;i++){try{var v=localStorage.getItem(keys[i]); if(isGoodList(v)) return clean(v)}catch(e){}}
+    var el=q('#currentListName'); if(el&&isGoodList(text(el))) return clean(text(el));
+    return 'Ana Liste';
+  }
+  var lockedList=getLockedList();
+  function lockListName(name){
+    if(isGoodList(name)){lockedList=clean(name);try{['wm.r12.activeList','wm.hf11.list','wm.goodListName','wm.activeListName'].forEach(function(k){localStorage.setItem(k,lockedList)})}catch(e){}}
+    return lockedList;
+  }
+  function forceListName(){
+    var name=lockedList||getLockedList()||'Ana Liste';
+    ['#currentListName','#wmActiveListName','#wmListSwitchName'].forEach(function(sel){var el=q(sel); if(el && clean(text(el))!==name) el.textContent=name;});
+  }
+  function captureListNameFromNode(node){
+    if(!node) return;
+    var root=node.closest&&node.closest('#listSelectorModal,#multiListContainer,.list-selector,.list-manager,[id*="listSelector"],[id*="ListSelector"],[class*="list-selector"],[class*="ListSelector"],[role="dialog"],.modal,.popup,select');
+    if(!root) return;
+    var val='';
+    if(node.tagName==='OPTION') val=node.textContent||node.value;
+    else if(node.tagName==='SELECT') {var opt=node.options&&node.options[node.selectedIndex]; val=opt?(opt.textContent||opt.value):node.value;}
+    else {
+      var btn=node.closest('button,[role="button"],li,.list-item,.ml-item,.card,div')||node;
+      var lines=(btn.innerText||btn.textContent||'').split(/\n+/).map(clean).filter(Boolean);
+      for(var i=0;i<lines.length;i++){var line=lines[i].replace(/\b(seç|sec|sil|düzenle|duzenle|aktif|liste değiştir|liste degistir)\b/ig,'').trim(); if(isGoodList(line)){val=line;break;}}
+    }
+    if(isGoodList(val)){lockListName(val); setTimeout(forceListName,20); setTimeout(forceListName,250);}
+  }
+
+  function visibleWord(){
+    var card=q('#wordCard')||q('#mainCard')||q('#sc-word')||document.body;
+    var cands=[];
+    qa('*',card).forEach(function(el){
+      if(el.children&&el.children.length>2) return;
+      var t=clean(text(el)); if(!isWord(t)) return;
+      var st=getComputedStyle(el), r=el.getBoundingClientRect();
+      if(r.width<5||r.height<5) return;
+      var color=st.color||'', cls=String(el.className||''), id=String(el.id||'');
+      var score=(parseFloat(st.fontSize)||0)*3+(parseInt(st.fontWeight)||400)/20;
+      if(/word|term|vocab/i.test(cls+' '+id)) score+=120;
+      if(/rgb\(34,\s*197,\s*94\)|rgb\(22,\s*163,\s*74\)|rgb\(16,\s*185,\s*129\)|#22c55e|#16a34a/i.test(color)) score+=150;
+      if(/^H[1-3]$/.test(el.tagName)) score+=80;
+      cands.push({t:t,score:score});
+    });
+    cands.sort(function(a,b){return b.score-a.score});
+    return cands[0]?cands[0].t:'';
+  }
+  function getLearnedMap(){try{var o=JSON.parse(localStorage.getItem('wm.r12.learnedMap')||'{}');return o&&typeof o==='object'?o:{}}catch(e){return {}}}
+  function setLearnedMap(o){try{localStorage.setItem('wm.r12.learnedMap',JSON.stringify(o))}catch(e){}}
+  function isLearned(w){var m=getLearnedMap();return !!m[fold(w)]}
+  function appArrays(){return ['words','wordList','allWords','filteredWords','currentWords','data','items','vocab','wordData','activeWords','loadedWords','listWords'].map(function(n){return window[n]}).filter(Array.isArray)}
+  function objWord(o){return o&&typeof o==='object'&&(o.word||o.en||o.english||o.term||o.title||o.name||o.kelime)}
+  function markObject(o,w){if(o&&typeof o==='object'){o.learned=true;o.isLearned=true;o.status='learned';o.state='learned';o.mastered=true;o.lastReviewed=Date.now();o.learnedAt=Date.now();if(w&&!o.word)o.word=w;}}
+  function persistLearned(w){
+    if(!isWord(w)) return false; var fw=fold(w), now=Date.now();
+    var map=getLearnedMap(); map[fw]={word:w,learned:true,learnedAt:now}; setLearnedMap(map);
+    appArrays().forEach(function(arr){arr.forEach(function(o){var ow=typeof o==='string'?o:objWord(o); if(fold(ow)===fw) markObject(o,w);});});
+    try{var raw=JSON.parse(localStorage.getItem('learnedWords')||'[]'); if(!Array.isArray(raw)) raw=[]; var found=false; raw.forEach(function(x){var ow=typeof x==='string'?x:objWord(x); if(fold(ow)===fw){found=true; markObject(x,w);}}); if(!found) raw.push({word:w,learned:true,isLearned:true,status:'learned',learnedAt:now,date:now}); localStorage.setItem('learnedWords',JSON.stringify(raw.slice(-3000)));}catch(e){}
+    try{var st=JSON.parse(localStorage.getItem('wordStats')||'{}'); if(!st||typeof st!=='object') st={}; st[w]=Object.assign(st[w]||{},{learned:true,isLearned:true,status:'learned',lastReviewed:now,learnedAt:now}); localStorage.setItem('wordStats',JSON.stringify(st));}catch(e){}
+    try{var pr=JSON.parse(localStorage.getItem('progress')||'{}'); if(!pr||typeof pr!=='object') pr={}; pr[fw]=Object.assign(pr[fw]||{},{learned:true,isLearned:true,status:'learned',lastReviewed:now,learnedAt:now}); localStorage.setItem('progress',JSON.stringify(pr));}catch(e){}
+    return true;
+  }
+  function statusNodes(){
+    var root=q('#wordCard')||q('#mainCard')||q('#sc-word')||document;
+    return qa('*',root).filter(function(el){var f=fold(text(el)); return /henuz calisilmadi|henüz çalışılmadı|ogrenildi|ögrenildi|öğrenildi/.test(f)&&!/wm-image-learned-btn/.test(String(el.className||''));});
+  }
+  function repaintLearnedState(){
+    var w=visibleWord(); if(!w) return;
+    var learned=isLearned(w);
+    statusNodes().forEach(function(el){
+      el.textContent=learned?'✅ Öğrenildi':'❌ Henüz çalışılmadı';
+      el.classList.toggle('wm-r12-learned-badge',learned);
+      el.classList.toggle('wm-r12-notlearned-badge',!learned);
+    });
+  }
+  var baseNext=window.nextWord;
+  function runNext(){try{if(typeof baseNext==='function') return baseNext.call(window); if(typeof window.nextWord==='function'&&window.nextWord!==learnCurrent) return window.nextWord();}catch(e){console.warn('[R12 next]',e)}}
+  function learnCurrent(){
+    var beforeList=lockedList||getLockedList(); lockListName(beforeList);
+    var w=visibleWord();
+    if(w) persistLearned(w);
+    repaintLearnedState(); forceListName();
+    setTimeout(function(){runNext(); [40,120,300,700,1200].forEach(function(ms){setTimeout(function(){lockListName(beforeList); forceListName(); repaintLearnedState(); bindButtons();},ms);});},180);
+    return false;
+  }
+  function bindButtons(){
+    forceListName(); repaintLearnedState();
+    qa('button,[role="button"],.wm-image-learned-btn,.wm-learned-btn').forEach(function(b){var f=fold(text(b)); if(/ogrenildi|ögrenildi|öğrenildi|ogrendim|ögrendim|öğrendim/.test(f)||b.classList.contains('wm-image-learned-btn')||b.classList.contains('wm-learned-btn')){b.onclick=function(ev){if(ev){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation&&ev.stopImmediatePropagation();}return learnCurrent();};}});
+  }
+  window.markLearned=learnCurrent;
+  window.addLearnedWord=function(w){if(isWord(w)) return persistLearned(clean(w)); return learnCurrent();};
+  document.addEventListener('click',function(e){
+    captureListNameFromNode(e.target);
+    var b=e.target.closest&&e.target.closest('button,[role="button"],.wm-image-learned-btn,.wm-learned-btn');
+    if(b){var f=fold(text(b)); if(/ogrenildi|ögrenildi|öğrenildi|ogrendim|ögrendim|öğrendim/.test(f)||b.classList.contains('wm-image-learned-btn')||b.classList.contains('wm-learned-btn')){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation&&e.stopImmediatePropagation();learnCurrent();}}
+  },true);
+  document.addEventListener('change',function(e){captureListNameFromNode(e.target)},true);
+  var obs=new MutationObserver(function(){clearTimeout(window.__wmr12to); window.__wmr12to=setTimeout(function(){forceListName(); repaintLearnedState(); bindButtons();},60);});
+  function start(){bindButtons();forceListName();repaintLearnedState();try{obs.observe(q('#sc-word')||document.body,{childList:true,subtree:true,characterData:true})}catch(e){};}
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+  setInterval(function(){forceListName();repaintLearnedState();bindButtons();},900);
+})();
+</script>
+
 </body></html>
 
 

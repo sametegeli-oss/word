@@ -4297,6 +4297,8 @@ function defaultRoles() {
         workflows_view_assigned: true,
         workflows_approve: true,
         workflows_withdraw_own: true,
+        admin_view: true,
+        admin_processes_view: true,
         production_view: true,
         production_view_all: true,
         production_create_order: true,
@@ -4381,6 +4383,28 @@ function getUserRoleLabels(userIdOrUser) {
     const role = (state.roles || []).find(r => r.id === roleId);
     return role || { id: roleId, name: roleId, icon: '?', color: '#666', isBuiltIn: false };
   });
+}
+
+// Rolleri öncelik sırasına göre dizer (primary rol ilk gelir).
+// Bilinen roller önceliklendirilir, diğerleri (özel roller) sona eklenir.
+const ROLE_PRIORITY = ['admin', 'hr', 'manager', 'kalite_sefi', 'operator', 'worker'];
+function getUserRoleLabelsSorted(userIdOrUser) {
+  const labels = getUserRoleLabels(userIdOrUser);
+  return labels.slice().sort((a, b) => {
+    let ia = ROLE_PRIORITY.indexOf(a.id); if (ia === -1) ia = ROLE_PRIORITY.length;
+    let ib = ROLE_PRIORITY.indexOf(b.id); if (ib === -1) ib = ROLE_PRIORITY.length;
+    return ia - ib;
+  });
+}
+// İkon: ilk (primary) rolden. İsim: tüm roller " · " ile birleşik.
+function getUserRoleDisplay(userIdOrUser) {
+  const sorted = getUserRoleLabelsSorted(userIdOrUser);
+  if (!sorted.length) return { icon: '👤', text: '—', roles: [] };
+  return {
+    icon: (sorted[0].icon && sorted[0].icon !== '?') ? sorted[0].icon : '👤',
+    text: sorted.map(r => r.name).join(' · '),
+    roles: sorted
+  };
 }
 
 // Varsayılan veri
@@ -4559,7 +4583,8 @@ async function persistNow() {
     const metaPayload = {
       history: state.history || [],
       productionLog: state.productionLog || [],
-      stationAssignments: state.stationAssignments || []
+      stationAssignments: state.stationAssignments || [],
+      roleVersion: state.roleVersion || 0
     };
     const metaHash = hashCollection(metaPayload.history) + '|' + hashCollection(metaPayload.productionLog);
 
@@ -4695,6 +4720,34 @@ async function loadStateFromFirestore() {
       for (const r of state.roles) {
         await window.fb.setDoc(window.fb.doc(db, 'roles', r.id), sanitize(r));
       }
+    }
+
+    // ---- Built-in rol yetki migration (tek seferlik) ----
+    // Kod güncellendiğinde built-in rollerin (worker/manager/hr/admin/operator)
+    // yetkilerini güncel defaultRoles() ile eşitler. Özel rollere ve admin'in
+    // değiştirdiği isim/ikon/renk alanlarına DOKUNMAZ; sadece permissions yenilenir.
+    const ROLE_PERM_VERSION = 2;
+    let _currentRoleVersion = 0;
+    if (metaSnap.exists()) _currentRoleVersion = metaSnap.data().roleVersion || 0;
+    state.roleVersion = _currentRoleVersion;
+    if (_currentRoleVersion < ROLE_PERM_VERSION) {
+      console.log(`[Firestore] Rol yetki migration: v${_currentRoleVersion} → v${ROLE_PERM_VERSION}`);
+      const defaults = defaultRoles();
+      let _changed = 0;
+      for (const def of defaults) {
+        const existing = state.roles.find(r => r.id === def.id && r.isBuiltIn);
+        if (existing) {
+          existing.permissions = def.permissions; // sadece yetkileri yenile
+          await window.fb.setDoc(window.fb.doc(db, 'roles', existing.id), sanitize(existing));
+          _changed++;
+        }
+      }
+      state.roleVersion = ROLE_PERM_VERSION;
+      console.log(`[Firestore] ${_changed} built-in rol yetkileri güncellendi`);
+      // Versiyonu meta'ya yaz ki tekrar çalışmasın
+      try {
+        await window.fb.setDoc(window.fb.doc(db, 'meta', 'main'), { roleVersion: ROLE_PERM_VERSION }, { merge: true });
+      } catch (e) { console.warn('[Firestore] roleVersion yazılamadı:', e); }
     }
 
     // Meta
@@ -5981,12 +6034,9 @@ function renderRoleSwitch() {
       c.innerHTML = '';
       return;
     }
-    const roleLabel = u.roles.includes('admin') ? '⚙️' :
-                      u.roles.includes('hr') ? '🧑‍💼' :
-                      u.roles.includes('manager') ? '👔' : '👷';
-    const roleText = u.roles.includes('admin') ? 'Admin' :
-                     u.roles.includes('hr') ? 'İK' :
-                     u.roles.includes('manager') ? 'Müdür' : 'Çalışan';
+    const _rd = getUserRoleDisplay(u);
+    const roleLabel = _rd.icon;
+    const roleText = _rd.text;
 
     const taskCount = state.tasks.filter(t => t.assignee === u.id && t.status === 'open').length;
 
@@ -6135,7 +6185,7 @@ function renderSidebarHTML() {
     return '<div class="empty"><div class="empty-icon">⚠</div><div>Hiç kullanıcı yok</div></div>';
   }
   const initials = u.name.split(' ').map(x=>x[0]).join('').slice(0,2);
-  const roleLabel = u.roles.map(r => ({worker:'Çalışan',manager:'Yönetici',hr:'İK',admin:'Sistem Yöneticisi',operator:'Operatör'}[r] || r)).join(' · ');
+  const roleLabel = getUserRoleDisplay(u).text;
   const myInst = state.instances.filter(i => i.ownerId === state.currentUser);
   const myTasks = state.tasks.filter(t => t.assignee === state.currentUser && t.status === 'open');
   const today = new Date(); today.setHours(0,0,0,0);
@@ -7839,7 +7889,7 @@ function renderProcessesAdmin(c) {
             <td><span style="font-family:var(--mono);">${usage}</span> talep</td>
             <td class="actions">
               ${canEdit ? `<button class="ghost-btn" onclick="toggleActive('${d.id}')">${d.active?'Pasifleştir':'Aktifleştir'}</button>` : ''}
-              ${canEdit ? `<button class="ghost-btn" onclick="openDesigner('${d.id}')">Düzenle</button>` : '<button class="ghost-btn" onclick="openDesigner(\''+d.id+'\')">Görüntüle</button>'}
+              ${canEdit ? `<button class="ghost-btn" onclick="openDesigner('${d.id}')">Düzenle</button>` : `<button class="ghost-btn" onclick="openProcessViewer('${d.id}')">Görüntüle</button>`}
               ${canEdit ? `<button class="danger-btn" onclick="deleteProcess('${d.id}')">Sil</button>` : ''}
             </td>
           </tr>`;
@@ -8972,6 +9022,37 @@ function openDesigner(defId) {
 function closeDesigner() {
   state.designerProcessId = null;
   renderAdminContent();
+}
+
+// Salt-okunur süreç görüntüleyici (düzenleme yetkisi olmayanlar için).
+// Akış diyagramı + form önizlemesini düzenlenemez şekilde modalde gösterir.
+function openProcessViewer(defId) {
+  const def = getDef(defId);
+  if (!def) { notify('Süreç bulunamadı', 'error'); return; }
+  const humanSteps = def.steps.filter(s => s.type === 'human').length;
+  const systemSteps = def.steps.filter(s => s.type === 'system').length;
+  const usage = state.instances.filter(i => i.defId === def.id).length;
+  openModal({
+    title: `${def.icon || '📄'} ${def.name}`,
+    wide: true,
+    body: `
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;">${escapeHtml(def.description || 'Açıklama yok')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        <span class="badge-tag ${def.active?'active':'inactive'}">${def.active?'Aktif':'Pasif'}</span>
+        <span class="badge-tag human-step">${humanSteps} insan adımı</span>
+        <span class="badge-tag system-step">${systemSteps} sistem adımı</span>
+        <span class="badge-tag" style="background:var(--panel-2);color:var(--text-dim);border:1px solid var(--border-hi);">${def.fields.length} form alanı</span>
+        <span class="badge-tag" style="background:var(--panel-2);color:var(--text-dim);border:1px solid var(--border-hi);">${usage} talep açılmış</span>
+      </div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600;margin-bottom:8px;">Süreç Akışı</div>
+      <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:18px;overflow:auto;">
+        ${renderProcessPreview(def)}
+      </div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600;margin-bottom:8px;">Talep Formu</div>
+      ${renderFormPreview(def)}
+    `,
+    foot: `<button class="ghost-btn" onclick="closeModal()">Kapat</button>`
+  });
 }
 
 // -------- SÜREÇ TASARIMCISI --------
