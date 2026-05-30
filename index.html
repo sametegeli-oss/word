@@ -6040,6 +6040,203 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
+<script>
+/* WM FINAL PATCH 3: AI ilişkiler görünür + aktif liste adı + ayarlar kaldırma */
+(function(){
+  if(window.__WM_FINAL_PATCH3__) return; window.__WM_FINAL_PATCH3__=true;
+  function q(s,r){return (r||document).querySelector(s)}
+  function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
+  function txt(el){return (el&&el.textContent||'').replace(/\s+/g,' ').trim()}
+  function esc(s){return String(s||'').replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]})}
+  function clean(s){return String(s||'').replace(/▼/g,'').replace(/\s+/g,' ').trim()}
+  function badName(s){s=clean(s); return !s || /^(aktif liste|ana liste|kelime|undefined|null|liste değiştir)$/i.test(s)}
+
+  function parseAI(x){
+    if(x==null) return '';
+    if(typeof x==='string') return x;
+    if(typeof x==='object'){
+      try{
+        if(x.choices && x.choices[0]){
+          var c=x.choices[0];
+          if(typeof c.text==='string') return c.text;
+          if(c.message && typeof c.message.content==='string') return c.message.content;
+          if(c.delta && typeof c.delta.content==='string') return c.delta.content;
+        }
+        var keys=['content','text','answer','message','result','output','response','aiResponse','data','reply'];
+        for(var i=0;i<keys.length;i++){
+          var v=x[keys[i]];
+          if(typeof v==='string' && v.trim()) return v;
+          if(v && typeof v==='object'){
+            var r=parseAI(v); if(r) return r;
+          }
+        }
+        return JSON.stringify(x,null,2);
+      }catch(e){return String(x)}
+    }
+    return String(x);
+  }
+
+  function currentWord(){
+    if(typeof window.wmGetCurrentWordSafe==='function'){
+      var w=clean(window.wmGetCurrentWordSafe()); if(w && !/^undefined$/i.test(w)) return w;
+    }
+    var candidates=['#wordCard .word','#wordCard .word-text','#wordCard .main-word','#wordCard h1','#wordCard h2','.word-card .word','.word-card h1'];
+    for(var i=0;i<candidates.length;i++){
+      var el=q(candidates[i]); var t=clean(txt(el));
+      if(/^[A-Za-z][A-Za-z'\- ]{1,60}$/.test(t) && !/undefined/i.test(t)) return t;
+    }
+    if(Array.isArray(window.words) && typeof window.idx==='number' && window.words[window.idx]){
+      var o=window.words[window.idx]; return clean(o.word||o.en||o.english||o.title||'');
+    }
+    if(Array.isArray(window.words) && typeof window.currentIndex==='number' && window.words[window.currentIndex]){
+      var o2=window.words[window.currentIndex]; return clean(o2.word||o2.en||o2.english||o2.title||'');
+    }
+    return '';
+  }
+
+  function modalRoot(btn){
+    return btn && btn.closest && (btn.closest('[role="dialog"],.modal,.ai-modal,.popup,.word-ai-modal,.wm-modal,.ai-word-modal,div[style*="position: fixed"],div[style*="fixed"]')) || document.body;
+  }
+  function visibleOutput(root){
+    var box=q('#wmFinalAIResult3',root);
+    if(!box){
+      box=document.createElement('div');
+      box.id='wmFinalAIResult3';
+      box.style.cssText='display:block !important;visibility:visible !important;opacity:1 !important;margin:18px 0 8px 0;padding:16px;border-radius:16px;background:rgba(15,23,42,.96);border:1px solid rgba(148,163,184,.25);color:#e5e7eb;font-size:15px;line-height:1.65;white-space:pre-wrap;max-height:38vh;overflow:auto;clear:both;grid-column:1/-1;';
+      var target=qa('*',root).find(function(el){return /ilişkiler yükleniyor|açıklama yükleniyor|yükleniyor|loading/i.test(txt(el));});
+      if(target && target.parentElement) target.parentElement.insertBefore(box,target.nextSibling);
+      else root.appendChild(box);
+    }
+    return box;
+  }
+  function replaceLoadingText(root, html){
+    qa('*',root).forEach(function(el){
+      if(el.id==='wmFinalAIResult3') return;
+      if(/ilişkiler yükleniyor|açıklama yükleniyor|yükleniyor|loading/i.test(txt(el))){
+        el.style.display='block';
+        el.innerHTML=html;
+      }
+    });
+  }
+  async function runWordAI(kind,btn){
+    var root=modalRoot(btn), word=currentWord();
+    qa('h1,h2,h3,.title,.modal-title',root).forEach(function(h){ if(/^undefined$/i.test(txt(h)) && word) h.textContent=word; });
+    var box=visibleOutput(root);
+    if(!word){
+      box.innerHTML='<b>Kelime bulunamadı.</b><br>Kelime ekranındayken tekrar dene.';
+      return false;
+    }
+    var loading='<b>⏳ '+esc(word)+' için '+(kind==='relations'?'ilişkiler':'açıklama')+' hazırlanıyor...</b>';
+    box.innerHTML=loading;
+    replaceLoadingText(root, loading);
+    var system='Sen deneyimli bir İngilizce öğretmenisin. Türkçe açıkla. Kısa, net, maddeli ve örnekli yaz.';
+    var user = kind==='relations'
+      ? 'Kelime: "'+word+'"\nBu kelime için Türkçe kelime ilişkileri hazırla. Başlıklarla yaz: 1) eş anlamlılar 2) zıt anlamlılar 3) collocationlar 4) kelime ailesi 5) yakın anlamlı kelimeler 6) üç örnek cümle.'
+      : 'Kelime: "'+word+'"\nBu kelimeyi Türkçe açıkla: anlam, kullanım, seviye, yaygın hata ve üç örnek cümle.';
+    try{
+      var res;
+      if(typeof window.callAI==='function') res=await window.callAI(system,user,kind==='relations'?'relationships':'explain');
+      else if(typeof window.callGroqAPI==='function') res=await window.callGroqAPI(system,user,1500);
+      else throw new Error('AI fonksiyonu bulunamadı');
+      var out=parseAI(res).trim();
+      if(!out) throw new Error('AI boş cevap döndürdü');
+      var html='<div style="font-weight:900;font-size:17px;margin-bottom:10px;color:#fff">'+(kind==='relations'?'🔗 Kelime İlişkileri':'💬 Kelime Açıklama')+' — '+esc(word)+'</div>'+esc(out);
+      box.innerHTML=html;
+      replaceLoadingText(root, html);
+    }catch(e){
+      var err='<b>❌ Sonuç alınamadı</b><br>'+esc(e&&e.message?e.message:String(e));
+      box.innerHTML=err; replaceLoadingText(root, err); console.error('[WM FINAL PATCH3 AI]',e);
+    }
+    return false;
+  }
+  window.wmRunWordAI=runWordAI;
+
+  function bindAIButtons(){
+    qa('button').forEach(function(b){
+      var t=txt(b).toLowerCase();
+      var rel=/kelime ilişk|ilişkileri|ilişki/.test(t);
+      var exp=/kelime açıklama/.test(t) || (/açıklama/.test(t)&&/kelime/.test(t));
+      if(!rel && !exp) return;
+      b.onclick=null; b.removeAttribute('onclick');
+      if(b.__wmFinalPatch3) return; b.__wmFinalPatch3=true;
+      b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();runWordAI(rel?'relations':'explain',b);return false;},true);
+    });
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('button'); if(!b) return;
+    var t=txt(b).toLowerCase();
+    var rel=/kelime ilişk|ilişkileri|ilişki/.test(t);
+    var exp=/kelime açıklama/.test(t) || (/açıklama/.test(t)&&/kelime/.test(t));
+    if(rel||exp){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();runWordAI(rel?'relations':'explain',b);return false;}
+  },true);
+
+  function getStorageListName(){
+    try{
+      var keys=['activeListName','selectedListName','currentListTitle','wmActiveListName','listName'];
+      for(var i=0;i<keys.length;i++){var v=clean(localStorage.getItem(keys[i])); if(v&&!badName(v)) return v;}
+      for(var j=0;j<localStorage.length;j++){
+        var k=localStorage.key(j), val=localStorage.getItem(k), s=clean(val);
+        if(/list|liste/i.test(k) && s && s.length<50 && !/^[\[{]/.test(s) && !badName(s)) return s;
+        if(/list|liste|vocab|dict|sozluk|sözlük/i.test(k) && /^[\[{]/.test(s)){
+          try{var o=JSON.parse(s); var n=findName(o); if(n) return n;}catch(e){}
+        }
+      }
+    }catch(e){}
+    return '';
+  }
+  function findName(o){
+    if(!o||typeof o!=='object') return '';
+    if(Array.isArray(o)){
+      for(var i=0;i<o.length;i++){
+        var it=o[i]; if(!it||typeof it!=='object') continue;
+        var nm=clean(it.name||it.title||it.listName||it.label);
+        if(nm&&!badName(nm)&&(it.active||it.selected||it.current||it.isActive||it.isSelected)) return nm;
+      }
+      return '';
+    }
+    var direct=clean(o.activeListName||o.selectedListName||o.currentListName||o.name||o.title||o.listName||o.label);
+    if(direct&&!badName(direct)) return direct;
+    for(var k in o){var r=findName(o[k]); if(r) return r;}
+    return '';
+  }
+  function getGlobalListName(){
+    var ks=['activeListName','selectedListName','currentListTitle','wmActiveListName'];
+    for(var i=0;i<ks.length;i++){var v=clean(window[ks[i]]); if(v&&!badName(v)) return v;}
+    var objs=['currentList','selectedList','activeList'];
+    for(var j=0;j<objs.length;j++){var o=window[objs[j]]; if(o&&typeof o==='object'){var n=clean(o.name||o.title||o.listName||o.label); if(n&&!badName(n)) return n;}}
+    return '';
+  }
+  function activeListName(){return getGlobalListName() || getStorageListName() || 'Kelimeler'}
+  function updateListName(){
+    var nm=activeListName();
+    ['currentListName','wmListSwitchName','wmActiveListName'].forEach(function(id){var el=document.getElementById(id); if(el) el.textContent=nm;});
+    qa('.wm-lsb-name,.active-list-name,.selected-list-name').forEach(function(el){el.textContent=nm;});
+    qa('*').forEach(function(el){
+      if(el.children.length) return;
+      var t=txt(el);
+      if(t==='Ana Liste' || t==='Aktif Liste'){
+        if(/label|wm-lsb-label/i.test(el.className||'')) return;
+        el.textContent=nm;
+      }
+    });
+  }
+
+  function removeSettings(){
+    var roots=qa('#wmToolPanel,#wmFeatureDrawer,.wm-feature-drawer,.tool-panel,.side-panel');
+    roots.forEach(function(root){
+      qa('button,a,.wm-feature-item,.tool-item',root).forEach(function(el){
+        var t=txt(el), oc=el.getAttribute('onclick')||'';
+        if(/ayarlar|settings/i.test(t) || /settings|sc-settings|openSettings/i.test(oc)) el.remove();
+      });
+    });
+  }
+
+  function run(){bindAIButtons();updateListName();removeSettings();}
+  document.addEventListener('DOMContentLoaded',function(){run();setTimeout(run,200);setTimeout(run,1000);setInterval(run,700);new MutationObserver(function(){setTimeout(run,30)}).observe(document.body,{childList:true,subtree:true,characterData:true});});
+  if(document.body) setTimeout(run,0);
+})();
+</script>
+
 </body></html>
 
 
