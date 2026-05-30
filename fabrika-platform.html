@@ -3422,6 +3422,231 @@
       width: 100%;
     }
   }
+
+  /* ============================================ */
+  /* ROLLER VE YETKİLER                             */
+  /* ============================================ */
+  .role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .role-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .role-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .role-card-head {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .role-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+  }
+  .role-card-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .role-card-name {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .role-card-id {
+    font-size: 10px;
+    color: var(--text-mute);
+    font-family: var(--mono);
+    margin-top: 2px;
+  }
+  .role-card-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.4;
+    margin-bottom: 10px;
+    min-height: 32px;
+  }
+  .role-card-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .role-info-box {
+    background: var(--panel-2);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin-top: 14px;
+  }
+  .role-info-box h4 {
+    margin: 0 0 8px;
+    font-size: 13px;
+  }
+  .role-info-box ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .role-info-box li strong {
+    color: var(--text);
+  }
+
+  /* Rol Editör */
+  .role-editor-body {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) {
+    .role-editor-body {
+      grid-template-columns: 1fr;
+    }
+  }
+  .role-editor-left, .role-editor-right {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .role-editor-left h3, .role-editor-right h3 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .icon-picker {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .icon-option {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .icon-option:hover { background: var(--panel-3); }
+  .icon-option.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .color-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .color-option {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .color-option:hover { transform: scale(1.1); }
+  .color-option.selected {
+    border-color: var(--text);
+    transform: scale(1.15);
+  }
+  .role-preview {
+    background: var(--panel-2);
+    padding: 14px;
+    border-radius: 6px;
+    margin-top: 14px;
+  }
+  .role-preview-label {
+    font-size: 10px;
+    color: var(--text-mute);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .role-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .permissions-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .permissions-head h3 { margin: 0; }
+  .permissions-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .perm-group {
+    margin-bottom: 18px;
+  }
+  .perm-group h4 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .perm-row {
+    display: flex;
+    gap: 10px;
+    padding: 8px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    align-items: flex-start;
+  }
+  .perm-row:hover {
+    background: var(--panel-2);
+  }
+  .perm-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  .perm-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .perm-label {
+    font-size: 13px;
+    color: var(--text);
+  }
+  .perm-id {
+    font-size: 10px;
+    color: var(--text-mute);
+    font-family: var(--mono);
+    margin-top: 1px;
+  }
 </style>
 </head>
 <body>
@@ -3684,7 +3909,7 @@ function setupRealtimeListeners() {
   const db = window.fb.db;
 
   // 5 ana koleksiyon için listener
-  const collections = ['definitions', 'instances', 'tasks', 'orders', 'notifications', 'comments'];
+  const collections = ['definitions', 'instances', 'tasks', 'orders', 'notifications', 'comments', 'roles'];
   for (const colName of collections) {
     const unsub = window.fb.onSnapshot(
       window.fb.collection(db, colName),
@@ -3847,6 +4072,7 @@ let state = {
   tasks: [],
   notifications: [],
   comments: [],          // Talep yorumları (Firestore /comments)
+  roles: [],             // Özelleştirilebilir roller (Firestore /roles)
   history: [],
   // -- Üretim --
   orders: [],          // sipariş listesi
@@ -3903,6 +4129,258 @@ function defaultStationAssignments() {
     { stationId: 8, operatorIds: ['ayse'] },
     { stationId: 9, operatorIds: ['ayse'] }
   ];
+}
+
+// ============== YETKİ TANIMLARI ==============
+// Sistemdeki tüm yetkiler — UI ve veri kontrolü buradan
+const PERMISSION_GROUPS = [
+  {
+    id: 'workflows',
+    label: '📋 İş Akışları',
+    permissions: [
+      { id: 'workflows_view',           label: 'İş Akışları sekmesini görme',                 default: true },
+      { id: 'workflows_create',         label: 'Yeni talep açma',                              default: true },
+      { id: 'workflows_view_own',       label: 'Kendi taleplerini görme',                      default: true },
+      { id: 'workflows_view_team',      label: 'Ekibinin taleplerini görme (manager için)',    default: false },
+      { id: 'workflows_view_all',       label: 'Tüm şirketin taleplerini görme',               default: false },
+      { id: 'workflows_view_assigned',  label: 'Kendine atanan görevleri görme',               default: true },
+      { id: 'workflows_approve',        label: 'Onay/red verme',                                default: true },
+      { id: 'workflows_withdraw_own',   label: 'Kendi talebini geri çekme',                    default: true },
+      { id: 'workflows_cancel_any',     label: 'Herhangi bir talebi iptal etme (admin)',       default: false }
+    ]
+  },
+  {
+    id: 'production',
+    label: '🏭 Üretim',
+    permissions: [
+      { id: 'production_view',          label: 'Üretim sekmesini görme',                       default: false },
+      { id: 'production_view_all',      label: 'Tüm istasyonları/siparişleri görme',           default: false },
+      { id: 'production_own_station',   label: 'Sadece kendi istasyonunu görme',               default: false },
+      { id: 'production_start_task',    label: 'Görev başlatma (operatör)',                    default: false },
+      { id: 'production_finish_task',   label: 'Görev tamamlama (operatör)',                   default: false },
+      { id: 'production_create_order',  label: 'Yeni sipariş oluşturma',                       default: false },
+      { id: 'production_edit_order',    label: 'Sipariş düzenleme/silme',                       default: false }
+    ]
+  },
+  {
+    id: 'calendar',
+    label: '📅 Takvim',
+    permissions: [
+      { id: 'calendar_view',            label: 'Takvim sekmesini görme',                       default: true },
+      { id: 'calendar_view_self',       label: 'Kendi izin/vekilliklerini görme',              default: true },
+      { id: 'calendar_view_team',       label: 'Ekibinin takvimini görme',                     default: false },
+      { id: 'calendar_view_all',        label: 'Herkesin takvimini görme',                     default: false }
+    ]
+  },
+  {
+    id: 'reports',
+    label: '📊 Raporlar',
+    permissions: [
+      { id: 'reports_view',             label: 'Raporlar sekmesini görme',                     default: false },
+      { id: 'reports_view_overview',    label: 'Genel bakış raporları',                        default: false },
+      { id: 'reports_view_processes',   label: 'Süreç raporları',                              default: false },
+      { id: 'reports_view_users',       label: 'Kullanıcı performans raporları',               default: false },
+      { id: 'reports_view_production',  label: 'Üretim raporları',                              default: false }
+    ]
+  },
+  {
+    id: 'admin',
+    label: '⚙️ Yönetim',
+    permissions: [
+      { id: 'admin_view',               label: 'Yönetim sekmesini görme',                      default: false },
+      { id: 'admin_processes_view',     label: 'Süreçleri görüntüleme',                        default: false },
+      { id: 'admin_processes_edit',     label: 'Süreç tasarımı (oluştur/düzenle/sil)',         default: false },
+      { id: 'admin_users_view',         label: 'Kullanıcıları görüntüleme',                    default: false },
+      { id: 'admin_users_edit',         label: 'Kullanıcı oluştur/düzenle/sil',                default: false },
+      { id: 'admin_roles_view',         label: 'Rolleri görüntüleme',                          default: false },
+      { id: 'admin_roles_edit',         label: 'Rol oluştur/düzenle/sil (yüksek yetki!)',      default: false }
+    ]
+  },
+  {
+    id: 'comments',
+    label: '💬 Yorumlar',
+    permissions: [
+      { id: 'comments_create',          label: 'Yorum yazma',                                  default: true },
+      { id: 'comments_delete_own',      label: 'Kendi yorumunu silme',                         default: true },
+      { id: 'comments_delete_any',      label: 'Herhangi bir yorumu silme (moderator)',        default: false },
+      { id: 'comments_view',            label: 'Yorumları okuma',                              default: true }
+    ]
+  }
+];
+
+// Toplam yetki listesi (tüm yetkilerin id'leri)
+function allPermissions() {
+  return PERMISSION_GROUPS.flatMap(g => g.permissions.map(p => p.id));
+}
+
+// Yetki listesinden bir yetkinin default değerini bul
+function getPermissionDefault(permId) {
+  for (const g of PERMISSION_GROUPS) {
+    const p = g.permissions.find(x => x.id === permId);
+    if (p) return p.default;
+  }
+  return false;
+}
+
+// VARSAYILAN ROLLER — ilk açılışta Firestore'a yazılır
+function defaultRoles() {
+  // Her rol için tüm yetkileri belirle (true/false)
+  const buildPerms = (overrides = {}) => {
+    const out = {};
+    PERMISSION_GROUPS.forEach(g => {
+      g.permissions.forEach(p => {
+        out[p.id] = overrides[p.id] !== undefined ? overrides[p.id] : p.default;
+      });
+    });
+    return out;
+  };
+
+  return [
+    {
+      id: 'worker',
+      name: 'Çalışan',
+      icon: '👷',
+      color: '#94a3b8',
+      description: 'Talep açar, kendine atanan görevleri yapar',
+      isBuiltIn: true,
+      permissions: buildPerms({
+        workflows_view: true,
+        workflows_create: true,
+        workflows_view_own: true,
+        workflows_view_assigned: true,
+        workflows_approve: true,
+        workflows_withdraw_own: true,
+        calendar_view: true,
+        calendar_view_self: true,
+        comments_create: true,
+        comments_delete_own: true,
+        comments_view: true
+      })
+    },
+    {
+      id: 'operator',
+      name: 'Operatör',
+      icon: '🏭',
+      color: '#06b6d4',
+      description: 'Üretim istasyonunda iş yapar',
+      isBuiltIn: true,
+      permissions: buildPerms({
+        workflows_view: true,
+        workflows_create: true,
+        workflows_view_own: true,
+        workflows_view_assigned: true,
+        workflows_approve: true,
+        workflows_withdraw_own: true,
+        calendar_view: true,
+        calendar_view_self: true,
+        comments_create: true,
+        comments_delete_own: true,
+        comments_view: true,
+        production_view: true,
+        production_own_station: true,
+        production_start_task: true,
+        production_finish_task: true
+      })
+    },
+    {
+      id: 'manager',
+      name: 'Müdür',
+      icon: '👔',
+      color: '#3b82f6',
+      description: 'Ekibinin taleplerini yönetir, onay verir, raporları görür',
+      isBuiltIn: true,
+      permissions: buildPerms({
+        workflows_view: true,
+        workflows_create: true,
+        workflows_view_own: true,
+        workflows_view_team: true,
+        workflows_view_assigned: true,
+        workflows_approve: true,
+        workflows_withdraw_own: true,
+        production_view: true,
+        production_view_all: true,
+        production_create_order: true,
+        calendar_view: true,
+        calendar_view_self: true,
+        calendar_view_team: true,
+        reports_view: true,
+        reports_view_overview: true,
+        reports_view_processes: true,
+        reports_view_users: true,
+        reports_view_production: true,
+        comments_create: true,
+        comments_delete_own: true,
+        comments_view: true
+      })
+    },
+    {
+      id: 'hr',
+      name: 'İnsan Kaynakları',
+      icon: '🧑‍💼',
+      color: '#a855f7',
+      description: 'İK süreçleri, kullanıcı yönetimi, izin/vekil',
+      isBuiltIn: true,
+      permissions: buildPerms({
+        workflows_view: true,
+        workflows_create: true,
+        workflows_view_own: true,
+        workflows_view_team: true,
+        workflows_view_all: true,
+        workflows_view_assigned: true,
+        workflows_approve: true,
+        workflows_withdraw_own: true,
+        calendar_view: true,
+        calendar_view_self: true,
+        calendar_view_team: true,
+        calendar_view_all: true,
+        reports_view: true,
+        reports_view_overview: true,
+        reports_view_users: true,
+        admin_view: true,
+        admin_users_view: true,
+        admin_users_edit: true,
+        comments_create: true,
+        comments_delete_own: true,
+        comments_view: true
+      })
+    },
+    {
+      id: 'admin',
+      name: 'Sistem Yöneticisi',
+      icon: '⚙️',
+      color: '#ef4444',
+      description: 'Tam yetkili - tüm sistem kontrolü',
+      isBuiltIn: true,
+      permissions: buildPerms(
+        // Tüm yetkiler true
+        Object.fromEntries(allPermissions().map(p => [p, true]))
+      )
+    }
+  ];
+}
+
+// Bir kullanıcının belirli bir yetkisi var mı?
+function hasPermission(userIdOrUser, permId) {
+  const u = typeof userIdOrUser === 'string' ? getUser(userIdOrUser) : userIdOrUser;
+  if (!u) return false;
+  // Hiç rol yoksa false
+  if (!u.roles || u.roles.length === 0) return false;
+  // Tüm rollerini birleştir (union)
+  for (const roleId of u.roles) {
+    const role = (state.roles || []).find(r => r.id === roleId);
+    if (role && role.permissions && role.permissions[permId] === true) return true;
+  }
+  return false;
+}
+
+// Yardımcı: kullanıcının rol etiketlerini döndür (görsel)
+function getUserRoleLabels(userIdOrUser) {
+  const u = typeof userIdOrUser === 'string' ? getUser(userIdOrUser) : userIdOrUser;
+  if (!u || !u.roles) return [];
+  return u.roles.map(roleId => {
+    const role = (state.roles || []).find(r => r.id === roleId);
+    return role || { id: roleId, name: roleId, icon: '?', color: '#666', isBuiltIn: false };
+  });
 }
 
 // Varsayılan veri
@@ -4046,7 +4524,8 @@ async function persistNow() {
       tasks: state.tasks || [],
       orders: state.orders || [],
       notifications: state.notifications || [],
-      comments: state.comments || []
+      comments: state.comments || [],
+      roles: state.roles || []
     };
 
     // Sadece son N saniyede değişen kayıtları yaz mantığı yerine,
@@ -4112,7 +4591,7 @@ async function loadStateFromFirestore() {
     console.log('[Firestore] Veriler yükleniyor...');
 
     // Paralel olarak tüm koleksiyonları çek
-    const [usersSnap, defsSnap, instSnap, tasksSnap, ordersSnap, notifsSnap, commentsSnap, metaSnap] = await Promise.all([
+    const [usersSnap, defsSnap, instSnap, tasksSnap, ordersSnap, notifsSnap, commentsSnap, rolesSnap, metaSnap] = await Promise.all([
       window.fb.getDocs(window.fb.collection(db, 'users')),
       window.fb.getDocs(window.fb.collection(db, 'definitions')),
       window.fb.getDocs(window.fb.collection(db, 'instances')),
@@ -4120,6 +4599,7 @@ async function loadStateFromFirestore() {
       window.fb.getDocs(window.fb.collection(db, 'orders')),
       window.fb.getDocs(window.fb.collection(db, 'notifications')),
       window.fb.getDocs(window.fb.collection(db, 'comments')),
+      window.fb.getDocs(window.fb.collection(db, 'roles')),
       window.fb.getDoc(window.fb.doc(db, 'meta', 'main'))
     ]);
 
@@ -4145,6 +4625,17 @@ async function loadStateFromFirestore() {
     state.orders = ordersSnap.docs.map(d => d.data());
     state.notifications = notifsSnap.docs.map(d => d.data());
     state.comments = commentsSnap.docs.map(d => d.data());
+    state.roles = rolesSnap.docs.map(d => d.data());
+
+    // İlk açılış - roller boşsa varsayılan 5 rolü kur
+    if (state.roles.length === 0) {
+      console.log('[Firestore] Roller boş, varsayılan 5 rol yazılıyor');
+      state.roles = defaultRoles();
+      // Firestore'a yaz
+      for (const r of state.roles) {
+        await window.fb.setDoc(window.fb.doc(db, 'roles', r.id), sanitize(r));
+      }
+    }
 
     // Meta
     if (metaSnap.exists()) {
@@ -4165,7 +4656,7 @@ async function loadStateFromFirestore() {
       await persistNow();
     }
 
-    console.log(`[Firestore] Yüklendi: ${state.users.length} kullanıcı, ${state.definitions.length} süreç, ${state.instances.length} talep, ${state.tasks.length} görev, ${state.orders.length} sipariş, ${state.notifications.length} bildirim, ${state.comments.length} yorum`);
+    console.log(`[Firestore] Yüklendi: ${state.users.length} kullanıcı, ${state.definitions.length} süreç, ${state.instances.length} talep, ${state.tasks.length} görev, ${state.orders.length} sipariş, ${state.notifications.length} bildirim, ${state.comments.length} yorum, ${state.roles.length} rol`);
   } catch (e) {
     console.error('[Firestore] Yükleme hatası:', e);
     if (typeof notify === 'function') notify('Veriler yüklenemedi: ' + e.message, 'error');
@@ -4181,6 +4672,7 @@ function loadState() {
   state.orders = [];
   state.notifications = [];
   state.comments = [];
+  state.roles = [];
   state.history = [];
   state.productionLog = [];
   state.stationAssignments = defaultStationAssignments();
@@ -6373,6 +6865,7 @@ function renderAdminView(v) {
       <div class="admin-nav-title">Yönetim</div>
       <button class="admin-nav-item ${state.adminTab === 'processes' ? 'active':''}" onclick="setAdminTab('processes')">📋 Süreçler</button>
       <button class="admin-nav-item ${state.adminTab === 'users' ? 'active':''}" onclick="setAdminTab('users')">👥 Kullanıcılar</button>
+      <button class="admin-nav-item ${state.adminTab === 'roles' ? 'active':''}" onclick="setAdminTab('roles')">🔐 Roller ve Yetkiler</button>
     </aside>
     <main class="admin-content" id="admin-content"></main>
   `;
@@ -6382,6 +6875,7 @@ function renderAdminView(v) {
 function setAdminTab(id) {
   state.adminTab = id;
   state.designerProcessId = null;
+  state.editingRoleId = null;
   // Sol menüdeki "active" durumunu güncellemek için tüm admin view'ı yeniden render et
   const v = document.getElementById('view');
   if (v) renderAdminView(v);
@@ -6392,6 +6886,7 @@ function renderAdminContent() {
   const c = document.getElementById('admin-content');
   if (!c) return;
   if (state.adminTab === 'users') renderUsersAdmin(c);
+  else if (state.adminTab === 'roles') renderRolesAdmin(c);
   else if (state.designerProcessId) renderDesigner(c);
   else renderProcessesAdmin(c);
 }
@@ -6443,7 +6938,7 @@ function renderUsersAdmin(c) {
                 </div>
               </div>
             </td>
-            <td>${u.roles.map(r => `<span class="badge-tag">${r}</span>`).join(' ')}</td>
+            <td>${getUserRoleLabels(u).map(role => `<span class="badge-tag" style="background:${role.color||'#666'}20;color:${role.color||'#666'};border:1px solid ${role.color||'#666'}40;">${role.icon||''} ${escapeHtml(role.name)}</span>`).join(' ')}</td>
             <td>${u.manager ? escapeHtml(getUser(u.manager)?.name || u.manager) : '<span style="color:var(--text-mute)">—</span>'}</td>
             <td>${statusCell}</td>
             <td><span style="font-family:var(--mono);font-size:12px;">${u.hireDate||'—'}</span></td>
@@ -6462,7 +6957,12 @@ function openUserEditor(userId) {
   const isNew = !userId;
   const u = isNew ? { id:'', name:'', roles:['worker'], manager:null, hireDate:'', absences:[] } : { ...getUser(userId), absences: getUser(userId).absences ? [...getUser(userId).absences] : [] };
   const others = state.users.filter(x => x.id !== userId);
-  const ALL_ROLES = ['worker','manager','hr','admin'];
+  // Dinamik roller — Firestore'dan çekilen
+  const allRoles = (state.roles || []).slice().sort((a,b) => {
+    if (a.isBuiltIn && !b.isBuiltIn) return -1;
+    if (!a.isBuiltIn && b.isBuiltIn) return 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
 
   // Modal state için global geçici tutucu (modal kapatılınca temizlenir)
   state._editingAbsences = u.absences || [];
@@ -6510,14 +7010,14 @@ function openUserEditor(userId) {
           <div class="form-field">
             <label>Roller</label>
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
-              ${ALL_ROLES.map(r => `
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
-                  <input type="checkbox" id="u-r-${r}" ${u.roles.includes(r) ? 'checked' : ''} style="width:auto;">
-                  <span>${r}</span>
+              ${allRoles.map(r => `
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 10px;background:var(--panel-2);border-radius:6px;border:1px solid var(--border);">
+                  <input type="checkbox" id="u-r-${r.id}" ${u.roles.includes(r.id) ? 'checked' : ''} style="width:auto;">
+                  <span>${r.icon} ${escapeHtml(r.name)}</span>
                 </label>
               `).join('')}
             </div>
-            <div class="hint">worker = talep açar, manager = yönetici, hr = İK, admin = sistem yöneticisi</div>
+            <div class="hint">Birden fazla rol seçebilirsiniz; yetkiler birikir. Roller "🔐 Roller ve Yetkiler" sayfasından özelleştirilebilir.</div>
           </div>
           <div class="form-field">
             <label>Yöneticisi</label>
@@ -6626,7 +7126,11 @@ async function saveUser(originalId) {
   const name = document.getElementById('u-name').value.trim();
   const mgr = document.getElementById('u-mgr').value || null;
   const hire = document.getElementById('u-hire').value || null;
-  const roles = ['worker','manager','hr','admin'].filter(r => document.getElementById('u-r-'+r).checked);
+  // Dinamik: tüm rollerden işaretli olanları al
+  const roles = (state.roles || []).filter(r => {
+    const cb = document.getElementById('u-r-' + r.id);
+    return cb && cb.checked;
+  }).map(r => r.id);
   const absences = (state._editingAbsences || []).filter(a => a.from && a.to);
 
   if (!id) { notify('Kullanıcı adı gerekli', 'error'); return; }
@@ -6768,6 +7272,319 @@ async function deleteUser(id) {
 
   renderAll();
   notify('Kullanıcı silindi', 'success');
+}
+
+// ============== ROLLER VE YETKİLER ==============
+
+function renderRolesAdmin(c) {
+  // Eğer bir rol düzenleniyor ise düzenleme ekranı, değilse liste
+  if (state.editingRoleId !== null && state.editingRoleId !== undefined) {
+    renderRoleEditor(c, state.editingRoleId);
+    return;
+  }
+
+  const roles = state.roles || [];
+
+  c.innerHTML = `
+    <div class="admin-head">
+      <div>
+        <h2>🔐 Roller ve Yetkiler</h2>
+        <p>Sisteme özel roller oluşturun, her role özel yetkiler verin. Kullanıcılara birden fazla rol atayabilirsiniz; yetkiler birikir.</p>
+      </div>
+      <button class="primary-btn" onclick="openNewRole()">+ Yeni Rol</button>
+    </div>
+
+    ${roles.length === 0 ? '<div class="table-empty">Henüz rol yok. Sistem ilk açılışta varsayılan roller oluşturmalıydı.</div>' :
+    `<div class="role-grid">
+      ${roles.map(r => {
+        const userCount = (state.users || []).filter(u => (u.roles || []).includes(r.id)).length;
+        const permCount = Object.values(r.permissions || {}).filter(v => v === true).length;
+        const totalPerms = allPermissions().length;
+        return `
+          <div class="role-card" onclick="openRoleEditor('${r.id}')">
+            <div class="role-card-head">
+              <div class="role-card-icon" style="background:${r.color || '#666'};">${r.icon || '?'}</div>
+              <div class="role-card-info">
+                <div class="role-card-name">${escapeHtml(r.name)}</div>
+                <div class="role-card-id">${escapeHtml(r.id)}${r.isBuiltIn ? ' · sistem' : ''}</div>
+              </div>
+            </div>
+            <div class="role-card-desc">${escapeHtml(r.description || '—')}</div>
+            <div class="role-card-stats">
+              <span>👥 ${userCount} kullanıcı</span>
+              <span>🔑 ${permCount}/${totalPerms} yetki</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>`}
+
+    <div class="role-info-box">
+      <h4>ℹ️ Nasıl Çalışır?</h4>
+      <ul>
+        <li><strong>Rol</strong> = bir yetki paketi. Bir rol birden fazla yetkiyi içerir.</li>
+        <li><strong>Kullanıcı</strong> birden fazla rol alabilir. Yetkileri toplanır (union).</li>
+        <li><strong>Yetki kontrolü:</strong> Bir işlem yapılırken sistem "bu kullanıcının yetkilerinden biri bu izni veriyor mu?" diye bakar.</li>
+        <li><strong>Sistem rolleri</strong> (worker, manager, hr, admin, operator) silinemez ama yetkilerini değiştirebilirsiniz.</li>
+        <li><strong>⚠️ Dikkat:</strong> Yetkiler şu an yapılandırılıyor. <strong>Bir sonraki güncelleme</strong> ile UI ve veri erişimine uygulanacak.</li>
+      </ul>
+    </div>
+  `;
+}
+
+function openNewRole() {
+  state.editingRoleId = '__new__';
+  renderAdminContent();
+}
+
+function openRoleEditor(roleId) {
+  state.editingRoleId = roleId;
+  renderAdminContent();
+}
+
+function closeRoleEditor() {
+  state.editingRoleId = null;
+  renderAdminContent();
+}
+
+function renderRoleEditor(c, roleId) {
+  const isNew = roleId === '__new__';
+  const original = isNew ? null : (state.roles || []).find(r => r.id === roleId);
+  if (!isNew && !original) {
+    state.editingRoleId = null;
+    renderAdminContent();
+    return;
+  }
+
+  // Düzenlenebilir kopyası (in-memory, kaydet basılana kadar)
+  if (!state._editingRole || state._editingRole._loadedFor !== roleId) {
+    if (isNew) {
+      // Yeni rol şablonu - tüm yetkiler false
+      state._editingRole = {
+        _loadedFor: roleId,
+        id: '',
+        name: '',
+        icon: '🎭',
+        color: '#3b82f6',
+        description: '',
+        isBuiltIn: false,
+        permissions: Object.fromEntries(allPermissions().map(p => [p, false]))
+      };
+    } else {
+      state._editingRole = {
+        _loadedFor: roleId,
+        ...JSON.parse(JSON.stringify(original)),
+        permissions: { ...original.permissions }
+      };
+    }
+  }
+
+  const r = state._editingRole;
+
+  // Renk seçenekleri
+  const COLORS = ['#94a3b8', '#06b6d4', '#3b82f6', '#a855f7', '#ef4444', '#f59e0b', '#10b981', '#ec4899'];
+  // İkon seçenekleri
+  const ICONS = ['👷', '👔', '🧑‍💼', '⚙️', '🏭', '🎭', '🔬', '📊', '🛡️', '🎯', '💼', '🤝', '⚡', '🌟'];
+
+  c.innerHTML = `
+    <div class="role-editor">
+      <div class="admin-head" style="border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:18px;">
+        <div>
+          <button class="ghost-btn" onclick="closeRoleEditor()" style="margin-bottom:8px;">← Geri</button>
+          <h2>${isNew ? 'Yeni Rol' : 'Rol Düzenle: ' + escapeHtml(original.name)}</h2>
+        </div>
+        <div style="display:flex;gap:8px;">
+          ${!isNew && !original.isBuiltIn ? `<button class="danger-btn" onclick="deleteRole('${roleId}')">Sil</button>` : ''}
+          <button class="primary-btn" onclick="saveRole()">💾 Kaydet</button>
+        </div>
+      </div>
+
+      <div class="role-editor-body">
+        <!-- Sol: temel bilgiler -->
+        <div class="role-editor-left">
+          <h3>Rol Bilgileri</h3>
+
+          ${isNew ? `
+          <div class="form-field">
+            <label>Rol ID <span class="req">*</span></label>
+            <input type="text" id="role-id" value="" placeholder="ornek: kalite-sefi" />
+            <div class="hint">Benzersiz, küçük harf, tire veya alt çizgi. Sonradan değiştirilemez.</div>
+          </div>
+          ` : `
+          <div class="form-field">
+            <label>Rol ID</label>
+            <input type="text" value="${escapeHtml(r.id)}" readonly />
+            ${original.isBuiltIn ? '<div class="hint">Sistem rolü — silinemez ama yetkilerini değiştirebilirsiniz</div>' : ''}
+          </div>
+          `}
+
+          <div class="form-field">
+            <label>Görünen Ad <span class="req">*</span></label>
+            <input type="text" id="role-name" value="${escapeHtml(r.name)}" placeholder="Kalite Şefi" oninput="state._editingRole.name = this.value">
+          </div>
+
+          <div class="form-field">
+            <label>Açıklama</label>
+            <textarea id="role-desc" placeholder="Bu rolün görevi..." oninput="state._editingRole.description = this.value">${escapeHtml(r.description || '')}</textarea>
+          </div>
+
+          <div class="form-field">
+            <label>İkon</label>
+            <div class="icon-picker">
+              ${ICONS.map(i => `
+                <button type="button" class="icon-option ${r.icon === i ? 'selected' : ''}" onclick="state._editingRole.icon='${i}';renderAdminContent();">${i}</button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label>Renk</label>
+            <div class="color-picker">
+              ${COLORS.map(col => `
+                <button type="button" class="color-option ${r.color === col ? 'selected' : ''}" style="background:${col};" onclick="state._editingRole.color='${col}';renderAdminContent();" title="${col}"></button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="role-preview">
+            <div class="role-preview-label">ÖNİZLEME</div>
+            <div class="role-badge" style="background:${r.color}20;color:${r.color};border:1px solid ${r.color}40;">
+              ${r.icon} ${escapeHtml(r.name || 'Rol Adı')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Sağ: yetkiler -->
+        <div class="role-editor-right">
+          <div class="permissions-head">
+            <h3>Yetkiler</h3>
+            <div class="permissions-actions">
+              <button class="ghost-btn" onclick="setAllPermissions(true)">Hepsini Aç</button>
+              <button class="ghost-btn" onclick="setAllPermissions(false)">Hepsini Kapat</button>
+            </div>
+          </div>
+
+          ${PERMISSION_GROUPS.map(g => `
+            <div class="perm-group">
+              <h4>${escapeHtml(g.label)}</h4>
+              ${g.permissions.map(p => `
+                <label class="perm-row">
+                  <input type="checkbox" ${r.permissions[p.id] ? 'checked' : ''} onchange="state._editingRole.permissions['${p.id}']=this.checked;updatePermCounter();">
+                  <div class="perm-info">
+                    <div class="perm-label">${escapeHtml(p.label)}</div>
+                    <div class="perm-id">${p.id}</div>
+                  </div>
+                </label>
+              `).join('')}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function setAllPermissions(value) {
+  if (!state._editingRole) return;
+  Object.keys(state._editingRole.permissions).forEach(k => {
+    state._editingRole.permissions[k] = value;
+  });
+  renderAdminContent();
+}
+
+function updatePermCounter() {
+  // Sadece checkbox değiştiğinde — re-render yapma
+}
+
+async function saveRole() {
+  const r = state._editingRole;
+  if (!r) return;
+  const isNew = !state.roles.find(x => x.id === r.id) && r.id !== '';
+
+  // ID kontrolü (yeni rol)
+  if (isNew || r.id === '') {
+    const idInput = document.getElementById('role-id');
+    if (idInput) r.id = idInput.value.trim().toLowerCase();
+    if (!r.id) { notify('Rol ID gerekli', 'error'); return; }
+    if (!/^[a-z0-9_-]+$/.test(r.id)) { notify('ID küçük harf, sayı, tire (-) veya alt çizgi (_) içerebilir', 'error'); return; }
+    if (state.roles.find(x => x.id === r.id)) { notify('Bu ID zaten kullanımda', 'error'); return; }
+  }
+
+  if (!r.name || !r.name.trim()) {
+    const nameInput = document.getElementById('role-name');
+    if (nameInput) r.name = nameInput.value.trim();
+    if (!r.name) { notify('Rol adı gerekli', 'error'); return; }
+  }
+
+  // Temizle ve kaydet
+  const toSave = {
+    id: r.id,
+    name: r.name,
+    icon: r.icon || '🎭',
+    color: r.color || '#666',
+    description: r.description || '',
+    isBuiltIn: r.isBuiltIn || false,
+    permissions: r.permissions || {}
+  };
+
+  // State'ten ekle/güncelle
+  const existing = state.roles.findIndex(x => x.id === toSave.id);
+  if (existing >= 0) {
+    state.roles[existing] = toSave;
+  } else {
+    state.roles.push(toSave);
+  }
+
+  // Firestore'a yaz
+  try {
+    await window.fb.setDoc(window.fb.doc(window.fb.db, 'roles', toSave.id), sanitize(toSave));
+    notify(isNew ? 'Rol oluşturuldu' : 'Rol güncellendi', 'success');
+    state.editingRoleId = null;
+    state._editingRole = null;
+    renderAdminContent();
+  } catch (e) {
+    console.error('[saveRole]', e);
+    notify('Kayıt başarısız: ' + e.message, 'error');
+  }
+}
+
+async function deleteRole(roleId) {
+  const r = state.roles.find(x => x.id === roleId);
+  if (!r) return;
+  if (r.isBuiltIn) { notify('Sistem rolleri silinemez', 'error'); return; }
+
+  // Kullanan kullanıcı sayısı
+  const usingUsers = (state.users || []).filter(u => (u.roles || []).includes(roleId));
+
+  let msg = `"${r.name}" rolü silinsin mi?`;
+  if (usingUsers.length > 0) {
+    msg += `\n\n⚠️ Bu rol ${usingUsers.length} kullanıcıda var: ${usingUsers.map(u => u.name).join(', ')}.\nSilinirse bu kullanıcılardan rol kaldırılır.`;
+  }
+  if (!confirm(msg)) return;
+
+  try {
+    // Firestore'dan sil
+    await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'roles', roleId));
+    // State'ten sil
+    state.roles = state.roles.filter(x => x.id !== roleId);
+    // Kullanıcılardan kaldır + Firestore'a yaz
+    for (const u of usingUsers) {
+      u.roles = (u.roles || []).filter(rid => rid !== roleId);
+      if (u.firebaseUid) {
+        await window.fb.setDoc(window.fb.doc(window.fb.db, 'users', u.firebaseUid), {
+          username: u.id, name: u.name, email: u.email || u.id+'@fabrika.com',
+          roles: u.roles, manager: u.manager, hireDate: u.hireDate, absences: u.absences || []
+        });
+      }
+    }
+    state.editingRoleId = null;
+    state._editingRole = null;
+    renderAdminContent();
+    notify('Rol silindi', 'success');
+  } catch (e) {
+    console.error('[deleteRole]', e);
+    notify('Silme başarısız: ' + e.message, 'error');
+  }
 }
 
 // -------- SÜREÇLER LİSTESİ --------
