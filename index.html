@@ -5637,6 +5637,208 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
+
+
+<!-- WM PATCH 20260530: AI modal visible result + active list switch bar + safer word detection -->
+<style id="wm-active-list-ai-patch-style">
+  #wmListSwitchBar{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin:10px 0 14px 0;padding:12px 14px;border-radius:16px;
+    background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.22);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  #wmListSwitchBar .wm-lsb-label{font-size:12px;color:#9ca3cf;font-weight:800;margin-bottom:2px}
+  #wmListSwitchBar .wm-lsb-name{font-size:18px;color:#fff;font-weight:950;letter-spacing:-.2px}
+  #wmListSwitchBar .wm-lsb-btn{
+    border:0;border-radius:13px;padding:10px 13px;background:linear-gradient(135deg,#334155,#1e293b);
+    color:#e5e7eb;font-family:Nunito,Arial,sans-serif;font-weight:950;cursor:pointer;white-space:nowrap;
+  }
+  #wmAIFixedResultBox{
+    margin:14px 0 0 0;padding:16px;border-radius:16px;
+    background:rgba(2,6,23,.86);border:1px solid rgba(96,165,250,.32);
+    color:#e5e7eb;font-size:15px;line-height:1.65;white-space:pre-wrap;
+    max-height:38vh;overflow:auto;box-shadow:0 12px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  #wmAIFixedResultBox .wm-ai-title{font-weight:950;color:#93c5fd;margin-bottom:8px;font-size:15px}
+  .wm-ai-loading{opacity:.82;color:#c4b5fd!important}
+  @media(max-width:520px){#wmListSwitchBar{margin:8px 0 12px 0}.wm-lsb-name{font-size:16px!important}}
+</style>
+<script id="wm-active-list-ai-patch-script">
+(function(){
+  function byId(id){return document.getElementById(id)}
+  function txt(el){return (el&&el.textContent||'').replace(/\s+/g,' ').trim()}
+  function clean(s){return String(s||'').replace(/▼/g,'').replace(/\s+/g,' ').trim()}
+  function isWordLike(s){
+    s=clean(s);
+    if(!/^[A-Za-z][A-Za-z'\-]{1,40}$/.test(s)) return false;
+    return !/^(undefined|null|kelime|cümle|turkce|türkçe|aktif|liste|wikipedia|çeviri|yok|henüz|çalışılmadı|öğrenildi|sonraki|önceki|a1|a2|b1|b2|c1|c2)$/i.test(s);
+  }
+  function fromObj(o){
+    if(!o||typeof o!=='object') return '';
+    var keys=['word','en','english','term','name','title','text'];
+    for(var i=0;i<keys.length;i++){ if(isWordLike(o[keys[i]])) return clean(o[keys[i]]); }
+    return '';
+  }
+  function getArrayWord(){
+    var idxKeys=['currentIndex','wordIndex','idx','currentWordIndex','activeIndex'];
+    var arrKeys=['words','wordList','allWords','filteredWords','currentWords','data','items'];
+    for(var i=0;i<idxKeys.length;i++){
+      var ix=window[idxKeys[i]];
+      if(typeof ix==='number' && ix>=0){
+        for(var a=0;a<arrKeys.length;a++){
+          var arr=window[arrKeys[a]];
+          if(Array.isArray(arr) && arr[ix]){
+            var v=typeof arr[ix]==='string'?arr[ix]:fromObj(arr[ix]);
+            if(isWordLike(v)) return clean(v);
+          }
+        }
+      }
+    }
+    return '';
+  }
+  window.wmGetCurrentWordSafe=function(){
+    var globals=['currentWord','selectedWord','activeWord','currentItem','selectedItem'];
+    for(var i=0;i<globals.length;i++){
+      var v=window[globals[i]];
+      var r=typeof v==='string'?v:fromObj(v);
+      if(isWordLike(r)) return clean(r);
+    }
+    var aw=getArrayWord(); if(aw) return aw;
+    var modal=document.querySelector('[role="dialog"],.modal,.ai-modal,.popup,.word-ai-modal,.wm-modal,div[style*="fixed"]');
+    if(modal){
+      var heads=Array.from(modal.querySelectorAll('h1,h2,h3,.title,.modal-title'));
+      for(var h=0;h<heads.length;h++){var ht=txt(heads[h]); if(isWordLike(ht)) return ht;}
+    }
+    var card=byId('wordCard')||byId('mainCard');
+    if(card){
+      var els=Array.from(card.querySelectorAll('*'));
+      els.sort(function(a,b){return (parseFloat(getComputedStyle(b).fontSize)||0)-(parseFloat(getComputedStyle(a).fontSize)||0)});
+      for(var e=0;e<els.length;e++){var t=txt(els[e]); if(isWordLike(t)) return t;}
+    }
+    return '';
+  };
+  function translation(){
+    var globals=['currentWord','selectedWord','activeWord','currentItem','selectedItem'];
+    for(var i=0;i<globals.length;i++){
+      var o=window[globals[i]];
+      if(o&&typeof o==='object'){
+        var keys=['translation','tr','turkish','meaning','mean'];
+        for(var k=0;k<keys.length;k++){ if(clean(o[keys[k]])) return clean(o[keys[k]]); }
+      }
+    }
+    return '';
+  }
+  function activeListName(){
+    var el=byId('currentListName');
+    var t=clean(el&&el.textContent);
+    if(t && !/^(kelime|undefined|null)$/i.test(t)) return t;
+    try{
+      var keys=['activeListName','selectedListName','currentListTitle'];
+      for(var i=0;i<keys.length;i++){ if(clean(window[keys[i]])) return clean(window[keys[i]]); }
+      var objKeys=['currentList','selectedList','activeList'];
+      for(var j=0;j<objKeys.length;j++){ var o=window[objKeys[j]]; if(o&&typeof o==='object'&&clean(o.name||o.title)) return clean(o.name||o.title); }
+    }catch(e){}
+    return 'Ana Liste';
+  }
+  function ensureListSwitchBar(){
+    var main=byId('mainCard')||byId('wordCard'); if(!main) return;
+    var bar=byId('wmListSwitchBar');
+    if(!bar){
+      bar=document.createElement('div'); bar.id='wmListSwitchBar';
+      bar.innerHTML='<div><div class="wm-lsb-label">Aktif Liste</div><div class="wm-lsb-name" id="wmListSwitchName">Ana Liste</div></div><button class="wm-lsb-btn" type="button">Liste Değiştir ▼</button>';
+      var wordCard=byId('wordCard');
+      (wordCard&&wordCard.parentElement?wordCard.parentElement:main).insertBefore(bar, wordCard||main.firstChild);
+      bar.querySelector('button').onclick=function(ev){
+        ev.preventDefault(); ev.stopPropagation();
+        if(typeof window.showListSelector==='function') window.showListSelector();
+        else if(typeof window.showScreen==='function') window.showScreen('sc-lists');
+      };
+    }
+    var nm=activeListName();
+    var n=byId('wmListSwitchName'); if(n) n.textContent=nm;
+    var h=byId('wmActiveListName'); if(h) h.textContent=nm;
+    var card=byId('wordCard');
+    if(card){Array.from(card.querySelectorAll('.wm-list-chip')).forEach(function(x){x.textContent=nm;});}
+  }
+  function parseAI(x){
+    if(x==null) return '';
+    if(typeof x==='string') return x;
+    if(typeof x==='object'){
+      var direct=['content','text','answer','message','result','output','response','aiResponse','data','reply'];
+      for(var i=0;i<direct.length;i++){
+        var v=x[direct[i]];
+        if(typeof v==='string' && v.trim()) return v;
+        if(v&&typeof v==='object'){
+          var nested=parseAI(v); if(nested) return nested;
+        }
+      }
+      if(x.choices && x.choices[0]){
+        var c=x.choices[0];
+        var m=c.message||c.delta||{};
+        if(typeof m.content==='string') return m.content;
+        if(typeof c.text==='string') return c.text;
+      }
+      if(x.raw && typeof x.raw==='object'){var r=parseAI(x.raw); if(r) return r;}
+      try{return JSON.stringify(x,null,2)}catch(e){return String(x)}
+    }
+    return String(x);
+  }
+  function resultBox(btn){
+    var root=btn.closest('[role="dialog"],.modal,.ai-modal,.popup,.word-ai-modal,.wm-modal,div[style*="fixed"]') || btn.closest('.card') || document.body;
+    var box=root.querySelector('#wmAIFixedResultBox');
+    if(!box){
+      box=document.createElement('div'); box.id='wmAIFixedResultBox';
+      var buttons=btn.closest('div');
+      if(buttons && buttons.parentElement) buttons.parentElement.appendChild(box); else root.appendChild(box);
+    }
+    return box;
+  }
+  async function ask(kind,btn){
+    var word=window.wmGetCurrentWordSafe();
+    var tr=translation();
+    var box=resultBox(btn);
+    if(!word){box.innerHTML='<div class="wm-ai-title">Kelime bulunamadı</div>Kelime kartı açıkken tekrar deneyin.';return;}
+    // Modal başlığındaki undefined yazısını düzelt.
+    var modal=btn.closest('[role="dialog"],.modal,.ai-modal,.popup,.word-ai-modal,.wm-modal,div[style*="fixed"]');
+    if(modal){Array.from(modal.querySelectorAll('h1,h2,h3')).forEach(function(h){if(/^undefined$/i.test(txt(h))) h.textContent=word;});}
+    box.classList.add('wm-ai-loading');
+    box.innerHTML='<div class="wm-ai-title">⏳ '+word+' hazırlanıyor...</div>Lütfen bekle.';
+    var system='Sen deneyimli bir İngilizce öğretmenisin. Türkçe açıkla. Kısa, net, maddeli ve örnekli yaz.';
+    var user= kind==='relations'
+      ? 'Kelime: "'+word+'"'+(tr?' (Türkçe: '+tr+')':'')+'\nKelime ilişkilerini Türkçe açıkla: eş anlamlılar, zıt anlamlılar, collocationlar, kelime ailesi ve 3 örnek cümle.'
+      : 'Kelime: "'+word+'"'+(tr?' (Türkçe: '+tr+')':'')+'\nBu kelimeyi Türkçe açıkla: anlam, kullanım, seviye, yaygın hata ve 3 örnek cümle.';
+    try{
+      var res;
+      if(typeof window.callAI==='function') res=await window.callAI(system,user,kind==='relations'?'relationships':'explain');
+      else if(typeof window.callGroqAPI==='function') res=await window.callGroqAPI(system,user,1500);
+      else throw new Error('AI fonksiyonu bulunamadı');
+      var out=parseAI(res).trim();
+      if(!out) throw new Error('Boş cevap');
+      box.classList.remove('wm-ai-loading');
+      box.innerHTML='<div class="wm-ai-title">'+(kind==='relations'?'🔗 Kelime İlişkileri':'💬 Kelime Açıklama')+' — '+word+'</div>'+out.replace(/[<>&]/g,function(ch){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[ch];});
+    }catch(err){
+      box.classList.remove('wm-ai-loading');
+      box.innerHTML='<div class="wm-ai-title">❌ Sonuç alınamadı</div>'+(err&&err.message?err.message:String(err));
+      console.error('[WM fixed AI]',err);
+    }
+  }
+  function intercept(e){
+    var btn=e.target.closest('button'); if(!btn) return;
+    var t=txt(btn).toLowerCase();
+    var relation=t.indexOf('kelime ilişk')>-1 || t.indexOf('ilişkileri')>-1 || t.indexOf('ilişki')>-1;
+    var explain=t.indexOf('kelime açıklama')>-1 || (t.indexOf('açıklama')>-1 && t.indexOf('kelime')>-1);
+    if(relation||explain){
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      ask(relation?'relations':'explain',btn);
+      return false;
+    }
+  }
+  document.addEventListener('click',intercept,true);
+  function run(){ensureListSwitchBar();}
+  document.addEventListener('DOMContentLoaded',function(){run(); setTimeout(run,400); setTimeout(run,1200); setInterval(run,2500);});
+})();
+</script>
+
 </body></html>
 
 

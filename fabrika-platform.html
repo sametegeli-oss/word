@@ -229,6 +229,9 @@
   .view-profile {
     grid-template-columns: 1fr;
   }
+  .view-home {
+    grid-template-columns: 1fr;
+  }
 
   /* RAPORLAR */
   .rep-wrap { padding: 16px 24px; overflow-y: auto; height: 100%; }
@@ -2996,6 +2999,270 @@
       grid-template-columns: repeat(2, 1fr);
     }
   }
+
+  /* ============================================ */
+  /* ANASAYFA (DASHBOARD)                           */
+  /* ============================================ */
+  .home-page {
+    padding: 24px 28px;
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 100%;
+    overflow-y: auto;
+  }
+  .home-header {
+    margin-bottom: 24px;
+  }
+  .home-header h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+  }
+  .home-date {
+    margin: 4px 0 0;
+    color: var(--text-dim);
+    font-size: 13px;
+    text-transform: capitalize;
+  }
+  .home-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .home-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .home-stat-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .home-stat-card.highlight {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(74,158,255,0.1), var(--panel));
+  }
+  .home-stat-card.success {
+    border-color: rgba(34,197,94,0.3);
+  }
+  .home-stat-icon {
+    font-size: 28px;
+    line-height: 1;
+  }
+  .home-stat-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .home-stat-num {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .home-stat-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+  .home-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .home-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--sans);
+  }
+  .home-action-btn:hover {
+    background: var(--panel-3);
+    border-color: var(--accent);
+  }
+  .home-action-btn.primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .home-action-btn.primary:hover {
+    opacity: 0.9;
+  }
+  .home-action-icon {
+    font-size: 16px;
+  }
+  .home-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .home-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .home-card h3 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .home-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .home-activity {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .home-activity:last-child {
+    border-bottom: none;
+  }
+  .home-activity-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+  .home-activity-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .home-activity-msg {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .home-activity-time {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .home-upcoming-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .home-upcoming {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--panel-2);
+    border-radius: 6px;
+  }
+  .home-upcoming-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .home-upcoming-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .home-upcoming-title {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .home-upcoming-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .home-upcoming-when {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 600;
+    background: rgba(74,158,255,0.1);
+    padding: 4px 8px;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+  .home-team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  .home-team-member {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--panel-2);
+    border-radius: 6px;
+  }
+  .home-team-member.absent {
+    opacity: 0.7;
+    background: rgba(245,158,11,0.05);
+  }
+  .home-team-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .home-team-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .home-team-name {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .home-team-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  @media (max-width: 768px) {
+    .home-page {
+      padding: 16px;
+    }
+    .home-grid {
+      grid-template-columns: 1fr;
+    }
+    .home-stats {
+      grid-template-columns: 1fr 1fr;
+    }
+    .home-header h1 {
+      font-size: 20px;
+    }
+    .home-date {
+      font-size: 11px;
+    }
+  }
+  @media (max-width: 480px) {
+    .home-stats {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 </head>
 <body>
@@ -3228,6 +3495,7 @@ window.handleAuthLogin = async function(firebaseUser) {
     }
 
     state.currentUser = sysUser.id;
+    state.currentTop = 'home';  // Giriş yapınca anasayfa
 
     // App'i göster
     document.getElementById('login-screen').classList.add('hidden');
@@ -5051,6 +5319,7 @@ function renderTopTabs() {
   const isAdmin = u && u.roles.includes('admin');
   const isPrivileged = u && u.roles.some(r => ['admin','manager','hr'].includes(r));
   const tabs = [
+    { id:'home', label:'🏠 Anasayfa' },
     { id:'work', label:'İş Akışları' },
     { id:'production', label:'🏭 Üretim' },
     { id:'calendar', label:'📅 Takvim' }
@@ -5074,7 +5343,8 @@ function setTopTab(id) {
 function renderView() {
   const v = document.getElementById('view');
   v.className = 'view view-' + state.currentTop;
-  if (state.currentTop === 'work') renderWorkView(v);
+  if (state.currentTop === 'home') renderHomeView(v);
+  else if (state.currentTop === 'work') renderWorkView(v);
   else if (state.currentTop === 'production') renderProductionView(v);
   else if (state.currentTop === 'calendar') renderCalendarView(v);
   else if (state.currentTop === 'reports') renderReportsView(v);
@@ -9268,6 +9538,239 @@ function setReportTab(tab) {
 function setReportRange(range) {
   state.reportRange = range;
   renderReportsView(document.getElementById('view'));
+}
+
+// ============== ANASAYFA (DASHBOARD) ==============
+
+function renderHomeView(v) {
+  const u = getUser(state.currentUser);
+  if (!u) { v.innerHTML = '<div class="empty">Kullanıcı bulunamadı</div>'; return; }
+
+  const isManager = u.roles.includes('manager');
+  const isHR = u.roles.includes('hr');
+  const isAdmin = u.roles.includes('admin');
+  const isOperator = u.roles.includes('operator');
+  const isPrivileged = isManager || isHR || isAdmin;
+
+  // Selamlama
+  const hour = new Date().getHours();
+  const greeting = hour < 6 ? 'İyi geceler' : hour < 12 ? 'Günaydın' : hour < 18 ? 'İyi günler' : 'İyi akşamlar';
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  // İstatistikler
+  const myTasks = state.tasks.filter(t => t.assignee === u.id && t.status === 'open');
+  const myInstances = state.instances.filter(i => i.ownerId === u.id);
+  const myActiveInstances = myInstances.filter(i => i.status === 'active' || i.status === 'in_progress');
+  const myCompletedToday = state.tasks.filter(t => {
+    if (t.assignee !== u.id || t.status !== 'closed') return false;
+    if (!t.closedAt) return false;
+    const d = new Date(t.closedAt);
+    return d.toDateString() === today.toDateString();
+  });
+
+  // Manager için: ekibim
+  const myTeam = state.users.filter(usr => usr.manager === u.id);
+  const teamActiveInstances = state.instances.filter(i =>
+    myTeam.some(m => m.id === i.ownerId) && (i.status === 'active' || i.status === 'in_progress')
+  );
+
+  // Üretim (operator için)
+  let myStations = u.stations || [];
+  const myStationOrders = state.orders.filter(o =>
+    myStations.includes(o.currentStation) && o.status === 'in_progress'
+  );
+
+  // Son aktiviteler (tüm sistem)
+  const recentHistory = (state.history || [])
+    .filter(h => h.ts)
+    .sort((a,b) => b.ts - a.ts)
+    .slice(0, 10);
+
+  // Yaklaşan tarihler (kullanıcının ilgili olduğu)
+  const upcomingDates = [];
+  // Kullanıcının kendi izinleri
+  (u.absences || []).forEach(a => {
+    const fromDate = new Date(a.from);
+    const daysAway = Math.floor((fromDate - today) / 86400000);
+    if (daysAway >= 0 && daysAway <= 14) {
+      upcomingDates.push({
+        date: a.from,
+        daysAway,
+        icon: '🌴',
+        title: 'İzniniz başlıyor',
+        sub: `${a.from} → ${a.to}`
+      });
+    }
+  });
+  // Ekibinin izinleri (manager için)
+  if (isManager) {
+    myTeam.forEach(m => {
+      (m.absences || []).forEach(a => {
+        const fromDate = new Date(a.from);
+        const daysAway = Math.floor((fromDate - today) / 86400000);
+        if (daysAway >= 0 && daysAway <= 14) {
+          upcomingDates.push({
+            date: a.from,
+            daysAway,
+            icon: '🌴',
+            title: m.name + ' izne çıkıyor',
+            sub: `${a.from} → ${a.to}${a.delegateTo ? ' (vekil: '+(getUser(a.delegateTo)?.name||'')+')':''}`
+          });
+        }
+      });
+    });
+  }
+  upcomingDates.sort((a,b) => a.daysAway - b.daysAway);
+
+  v.innerHTML = `
+    <div class="home-page">
+      <!-- Header -->
+      <div class="home-header">
+        <div>
+          <h1>${greeting}, ${escapeHtml(u.name.split(' ')[0])}</h1>
+          <p class="home-date">${dateStr}</p>
+        </div>
+      </div>
+
+      <!-- Hızlı İstatistik Kartları -->
+      <div class="home-stats">
+        <div class="home-stat-card ${myTasks.length > 0 ? 'highlight' : ''}" onclick="setTopTab('work');state.workTab='tasks';renderAll();">
+          <div class="home-stat-icon">📥</div>
+          <div class="home-stat-body">
+            <div class="home-stat-num">${myTasks.length}</div>
+            <div class="home-stat-label">Bekleyen Görevim</div>
+          </div>
+        </div>
+
+        <div class="home-stat-card" onclick="setTopTab('work');state.workTab='mine';renderAll();">
+          <div class="home-stat-icon">📋</div>
+          <div class="home-stat-body">
+            <div class="home-stat-num">${myActiveInstances.length}</div>
+            <div class="home-stat-label">Açık Talebim</div>
+          </div>
+        </div>
+
+        <div class="home-stat-card success" onclick="setTopTab('work');state.workTab='tasks';renderAll();">
+          <div class="home-stat-icon">✅</div>
+          <div class="home-stat-body">
+            <div class="home-stat-num">${myCompletedToday.length}</div>
+            <div class="home-stat-label">Bugün Tamamlanan</div>
+          </div>
+        </div>
+
+        ${isPrivileged ? `
+        <div class="home-stat-card" onclick="setTopTab('work');state.workTab='all';renderAll();">
+          <div class="home-stat-icon">📊</div>
+          <div class="home-stat-body">
+            <div class="home-stat-num">${state.instances.filter(i=>i.status==='active'||i.status==='in_progress').length}</div>
+            <div class="home-stat-label">Sistemde Aktif Talep</div>
+          </div>
+        </div>
+        ` : ''}
+
+        ${isOperator && myStations.length ? `
+        <div class="home-stat-card" onclick="setTopTab('production');state.prodTab='mystation';renderAll();">
+          <div class="home-stat-icon">🏭</div>
+          <div class="home-stat-body">
+            <div class="home-stat-num">${myStationOrders.length}</div>
+            <div class="home-stat-label">İstasyonumda Sipariş</div>
+          </div>
+        </div>
+        ` : ''}
+      </div>
+
+      <!-- Hızlı Aksiyon -->
+      <div class="home-actions">
+        <button class="home-action-btn primary" onclick="setTopTab('work');setTimeout(()=>toggleProcessPick(),100);">
+          <span class="home-action-icon">➕</span>
+          <span>Yeni Talep Aç</span>
+        </button>
+        <button class="home-action-btn" onclick="setTopTab('work');state.workTab='tasks';renderAll();">
+          <span class="home-action-icon">📋</span>
+          <span>Görevlerime Git</span>
+        </button>
+        ${isOperator ? `
+        <button class="home-action-btn" onclick="setTopTab('production');renderAll();">
+          <span class="home-action-icon">🏭</span>
+          <span>İstasyonuma Git</span>
+        </button>
+        ` : ''}
+        <button class="home-action-btn" onclick="setTopTab('calendar');renderAll();">
+          <span class="home-action-icon">📅</span>
+          <span>Takvim</span>
+        </button>
+      </div>
+
+      <!-- 2 sütun: Aktivite + Yaklaşan -->
+      <div class="home-grid">
+        <!-- Son Aktiviteler -->
+        <div class="home-card">
+          <h3>🔔 Son Aktiviteler</h3>
+          ${recentHistory.length === 0 ? '<div class="empty-mini">Henüz aktivite yok</div>' :
+          `<div class="home-activity-list">
+            ${recentHistory.map(h => {
+              const actor = getUser(h.by);
+              return `
+                <div class="home-activity">
+                  <div class="home-activity-dot"></div>
+                  <div class="home-activity-body">
+                    <div class="home-activity-msg">${escapeHtml(h.message || h.action || 'Hareket')}</div>
+                    <div class="home-activity-time">${actor ? escapeHtml(actor.name) + ' · ' : ''}${formatAge(h.ts)}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>`}
+        </div>
+
+        <!-- Yaklaşan Tarihler -->
+        <div class="home-card">
+          <h3>📅 Yaklaşan Tarihler</h3>
+          ${upcomingDates.length === 0 ? '<div class="empty-mini">Yaklaşan tarih yok</div>' :
+          `<div class="home-upcoming-list">
+            ${upcomingDates.slice(0, 5).map(d => `
+              <div class="home-upcoming">
+                <div class="home-upcoming-icon">${d.icon}</div>
+                <div class="home-upcoming-body">
+                  <div class="home-upcoming-title">${escapeHtml(d.title)}</div>
+                  <div class="home-upcoming-sub">${escapeHtml(d.sub)}</div>
+                </div>
+                <div class="home-upcoming-when">${d.daysAway === 0 ? 'BUGÜN' : d.daysAway === 1 ? 'YARIN' : d.daysAway + ' GÜN'}</div>
+              </div>
+            `).join('')}
+          </div>`}
+        </div>
+      </div>
+
+      ${isManager ? `
+        <!-- Ekibim (sadece manager için) -->
+        <div class="home-card" style="margin-top:14px;">
+          <h3>👥 Ekibim (${myTeam.length} kişi)</h3>
+          ${myTeam.length === 0 ? '<div class="empty-mini">Ekibinizde kişi yok</div>' :
+          `<div class="home-team-grid">
+            ${myTeam.map(m => {
+              const memberTasks = state.tasks.filter(t => t.assignee === m.id && t.status === 'open');
+              const memberActiveInst = state.instances.filter(i => i.ownerId === m.id && (i.status==='active'||i.status==='in_progress'));
+              const absent = (m.absences || []).find(a => isAbsenceActive(a));
+              return `
+                <div class="home-team-member ${absent ? 'absent' : ''}">
+                  <div class="home-team-avatar">${m.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()}</div>
+                  <div class="home-team-info">
+                    <div class="home-team-name">${escapeHtml(m.name)}</div>
+                    <div class="home-team-sub">
+                      ${absent ? `<span style="color:var(--amber)">🔁 İzinde</span>` :
+                        `${memberTasks.length} görev · ${memberActiveInst.length} talep`}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>`}
+        </div>
+      ` : ''}
+    </div>
+  `;
 }
 
 // ============== BİLDİRİMLER SAYFASI ==============
