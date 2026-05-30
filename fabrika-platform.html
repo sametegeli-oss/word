@@ -3881,6 +3881,9 @@ window.handleAuthLogin = async function(firebaseUser) {
     state.currentUser = sysUser.id;
     state.currentTop = 'home';  // Giriş yapınca anasayfa
 
+    // Built-in rol yetki migration (sadece admin yazabilir, tek seferlik)
+    await runRoleMigrationIfAdmin();
+
     // App'i göster
     document.getElementById('login-screen').classList.add('hidden');
     document.querySelector('.app').classList.remove('hidden');
@@ -4532,6 +4535,12 @@ let _lastPersistedHashes = {
   meta: null
 };
 
+// Append-only koleksiyonlarda (comments, notifications) zaten yazılmış doc ID'leri.
+// Firestore kuralı bu koleksiyonlarda update'i kısıtlar; mevcut dökümanları yeniden
+// set etmek yerine SADECE yeni ID'leri yazarız.
+let _persistedCommentIds = new Set();
+let _persistedNotifIds = new Set();
+
 // Basit hash: koleksiyondaki tüm id'lerin ve son güncellemenin md5 benzeri özeti
 function hashCollection(items) {
   if (!items || items.length === 0) return 'empty';
@@ -4603,15 +4612,25 @@ async function persistNow() {
       try {
         const batch = window.fb.writeBatch(db);
         let count = 0;
+        // Append-only koleksiyonlar: sadece daha önce yazılmamış yeni dökümanları yaz.
+        // (Firestore kuralı bunlarda update'i kısıtlar; mevcutları set etmek reddedilir.)
+        const isAppendOnly = (colName === 'comments' || colName === 'notifications');
+        const seenSet = colName === 'comments' ? _persistedCommentIds
+                      : colName === 'notifications' ? _persistedNotifIds : null;
+        const newlyWritten = [];
         for (const item of items) {
           if (!item || !item.id) continue;
+          if (isAppendOnly && seenSet && seenSet.has(String(item.id))) continue; // zaten yazıldı
           batch.set(window.fb.doc(db, colName, String(item.id)), sanitize(item));
+          newlyWritten.push(String(item.id));
           count++;
           if (count >= 450) break;  // Batch limit
         }
         if (count > 0) {
           await batch.commit();
           writeCount += count;
+          // Append-only ID'leri başarıyla yazıldı olarak işaretle
+          if (seenSet) newlyWritten.forEach(id => seenSet.add(id));
         }
       } catch (e) {
         // Bu koleksiyon yazılamadı (büyük olasılıkla yetki yok)
@@ -4663,6 +4682,35 @@ function sanitize(obj) {
     if (obj[k] !== undefined) out[k] = sanitize(obj[k]);
   }
   return out;
+}
+
+// Built-in rollerin yetkilerini güncel koda eşitler. Tek seferlik, SADECE admin çalıştırır
+// (roles + meta yazma yetkisi gerekir). Özel rollere ve isim/ikon/renk alanlarına DOKUNMAZ.
+const ROLE_PERM_VERSION = 2;
+async function runRoleMigrationIfAdmin() {
+  if (!window.fb || !window.fb.db) return;
+  const u = getUser(state.currentUser);
+  if (!u || !u.roles || !u.roles.includes('admin')) return; // sadece admin yazabilir
+  if ((state.roleVersion || 0) >= ROLE_PERM_VERSION) return; // zaten güncel
+  const db = window.fb.db;
+  console.log(`[Firestore] Rol yetki migration: v${state.roleVersion||0} → v${ROLE_PERM_VERSION}`);
+  const defaults = defaultRoles();
+  let changed = 0;
+  for (const def of defaults) {
+    const existing = state.roles.find(r => r.id === def.id && r.isBuiltIn);
+    if (existing) {
+      existing.permissions = def.permissions; // sadece yetkileri yenile
+      try {
+        await window.fb.setDoc(window.fb.doc(db, 'roles', existing.id), sanitize(existing));
+        changed++;
+      } catch (e) { console.warn(`[Firestore] ${existing.id} rolü güncellenemedi:`, e.code || e.message); }
+    }
+  }
+  state.roleVersion = ROLE_PERM_VERSION;
+  try {
+    await window.fb.setDoc(window.fb.doc(db, 'meta', 'main'), { roleVersion: ROLE_PERM_VERSION }, { merge: true });
+  } catch (e) { console.warn('[Firestore] roleVersion yazılamadı:', e.code || e.message); }
+  console.log(`[Firestore] ${changed} built-in rol yetkileri güncellendi`);
 }
 
 // FIRESTORE'dan tüm veriyi çek - sayfa açılışında çağrılır
@@ -4722,33 +4770,8 @@ async function loadStateFromFirestore() {
       }
     }
 
-    // ---- Built-in rol yetki migration (tek seferlik) ----
-    // Kod güncellendiğinde built-in rollerin (worker/manager/hr/admin/operator)
-    // yetkilerini güncel defaultRoles() ile eşitler. Özel rollere ve admin'in
-    // değiştirdiği isim/ikon/renk alanlarına DOKUNMAZ; sadece permissions yenilenir.
-    const ROLE_PERM_VERSION = 2;
-    let _currentRoleVersion = 0;
-    if (metaSnap.exists()) _currentRoleVersion = metaSnap.data().roleVersion || 0;
-    state.roleVersion = _currentRoleVersion;
-    if (_currentRoleVersion < ROLE_PERM_VERSION) {
-      console.log(`[Firestore] Rol yetki migration: v${_currentRoleVersion} → v${ROLE_PERM_VERSION}`);
-      const defaults = defaultRoles();
-      let _changed = 0;
-      for (const def of defaults) {
-        const existing = state.roles.find(r => r.id === def.id && r.isBuiltIn);
-        if (existing) {
-          existing.permissions = def.permissions; // sadece yetkileri yenile
-          await window.fb.setDoc(window.fb.doc(db, 'roles', existing.id), sanitize(existing));
-          _changed++;
-        }
-      }
-      state.roleVersion = ROLE_PERM_VERSION;
-      console.log(`[Firestore] ${_changed} built-in rol yetkileri güncellendi`);
-      // Versiyonu meta'ya yaz ki tekrar çalışmasın
-      try {
-        await window.fb.setDoc(window.fb.doc(db, 'meta', 'main'), { roleVersion: ROLE_PERM_VERSION }, { merge: true });
-      } catch (e) { console.warn('[Firestore] roleVersion yazılamadı:', e); }
-    }
+    // ---- roleVersion'ı oku (migration giriş sonrası admin ile çalışır) ----
+    state.roleVersion = (metaSnap.exists() && metaSnap.data().roleVersion) || 0;
 
     // Meta
     if (metaSnap.exists()) {
@@ -4768,6 +4791,22 @@ async function loadStateFromFirestore() {
       state.definitions = defaultDefinitions();
       await persistNow();
     }
+
+    // Yüklenen veriyle persist hash'lerini eşitle: aksi halde ilk persist'te
+    // tüm koleksiyonlar "değişti" sanılıp yeniden yazılır (manager definitions/roles
+    // yazamaz, comments update kuralına takılır → permission-denied).
+    _lastPersistedHashes.definitions = hashCollection(state.definitions);
+    _lastPersistedHashes.instances = hashCollection(state.instances);
+    _lastPersistedHashes.tasks = hashCollection(state.tasks);
+    _lastPersistedHashes.orders = hashCollection(state.orders);
+    _lastPersistedHashes.notifications = hashCollection(state.notifications);
+    _lastPersistedHashes.comments = hashCollection(state.comments);
+    _lastPersistedHashes.roles = hashCollection(state.roles);
+    _lastPersistedHashes.meta = hashCollection(state.history) + '|' + hashCollection(state.productionLog);
+
+    // Append-only koleksiyonların mevcut ID'lerini kaydet (yeniden yazılmasınlar)
+    _persistedCommentIds = new Set((state.comments || []).map(c => String(c.id)));
+    _persistedNotifIds = new Set((state.notifications || []).map(n => String(n.id)));
 
     console.log(`[Firestore] Yüklendi: ${state.users.length} kullanıcı, ${state.definitions.length} süreç, ${state.instances.length} talep, ${state.tasks.length} görev, ${state.orders.length} sipariş, ${state.notifications.length} bildirim, ${state.comments.length} yorum, ${state.roles.length} rol`);
   } catch (e) {
@@ -6917,7 +6956,13 @@ function deleteComment(commentId) {
   }
   if (!confirm('Yorum silinsin mi?')) return;
   state.comments = state.comments.filter(x => x.id !== commentId);
-  persist();
+  _persistedCommentIds.delete(String(commentId));
+  _lastPersistedHashes.comments = hashCollection(state.comments); // hash'i eşitle, persist tekrar yazmaya çalışmasın
+  // Firestore'dan gerçek silme (append-only persist silmeyi yapmaz)
+  if (window.fb && window.fb.db) {
+    window.fb.deleteDoc(window.fb.doc(window.fb.db, 'comments', String(commentId)))
+      .catch(e => console.warn('[Firestore] yorum silinemedi:', e.code || e.message));
+  }
   renderDetail();
   notify('Yorum silindi', 'success');
 }
