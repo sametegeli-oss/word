@@ -5972,22 +5972,44 @@ function switchUser(id) {
 function renderTopTabs() {
   const c = document.getElementById('top-tabs');
   const u = getUser(state.currentUser);
-  const isAdmin = u && u.roles.includes('admin');
-  const isPrivileged = u && u.roles.some(r => ['admin','manager','hr'].includes(r));
+  if (!u) { c.innerHTML = ''; return; }
+
+  // Yetki bazlı sekme listesi
   const tabs = [
-    { id:'home', label:'🏠 Anasayfa' },
-    { id:'work', label:'İş Akışları' },
-    { id:'production', label:'🏭 Üretim' },
-    { id:'calendar', label:'📅 Takvim' }
+    { id:'home', label:'🏠 Anasayfa' }  // Anasayfa herkese açık
   ];
-  if (isPrivileged) tabs.push({ id:'reports', label:'📊 Raporlar' });
-  if (isAdmin) tabs.push({ id:'admin', label:'⚙️ Yönetim' });
+  if (hasPermission(u, 'workflows_view'))   tabs.push({ id:'work', label:'İş Akışları' });
+  if (hasPermission(u, 'production_view'))  tabs.push({ id:'production', label:'🏭 Üretim' });
+  if (hasPermission(u, 'calendar_view'))    tabs.push({ id:'calendar', label:'📅 Takvim' });
+  if (hasPermission(u, 'reports_view'))     tabs.push({ id:'reports', label:'📊 Raporlar' });
+  if (hasPermission(u, 'admin_view'))       tabs.push({ id:'admin', label:'⚙️ Yönetim' });
+
+  // Eğer şu an açık olan sekme bu kullanıcıya kapalıysa, anasayfaya gönder
+  if (!tabs.find(t => t.id === state.currentTop) &&
+      state.currentTop !== 'notifications' &&
+      state.currentTop !== 'profile') {
+    state.currentTop = 'home';
+  }
+
   c.innerHTML = tabs.map(t =>
     `<button class="top-tab ${state.currentTop === t.id ? 'active':''}" onclick="setTopTab('${t.id}')">${t.label}</button>`
   ).join('');
 }
 
 function setTopTab(id) {
+  // Yetki kontrolü
+  const u = getUser(state.currentUser);
+  const permMap = {
+    'work': 'workflows_view',
+    'production': 'production_view',
+    'calendar': 'calendar_view',
+    'reports': 'reports_view',
+    'admin': 'admin_view'
+  };
+  if (permMap[id] && u && !hasPermission(u, permMap[id])) {
+    notify('Bu sekme için yetkiniz yok', 'error');
+    return;
+  }
   state.currentTop = id;
   state.selected = null;
   state.designerProcessId = null;
@@ -5998,7 +6020,30 @@ function setTopTab(id) {
 
 function renderView() {
   const v = document.getElementById('view');
+  const u = getUser(state.currentUser);
   v.className = 'view view-' + state.currentTop;
+
+  // Yetki kontrolü — yetki yoksa erişim engeli göster
+  const permMap = {
+    'work': 'workflows_view',
+    'production': 'production_view',
+    'calendar': 'calendar_view',
+    'reports': 'reports_view',
+    'admin': 'admin_view'
+  };
+  if (permMap[state.currentTop] && u && !hasPermission(u, permMap[state.currentTop])) {
+    v.className = 'view view-home';  // tek sütun layout
+    v.innerHTML = `
+      <div style="padding:60px 30px;text-align:center;max-width:500px;margin:0 auto;">
+        <div style="font-size:64px;margin-bottom:20px;">🔒</div>
+        <h2 style="margin-bottom:10px;">Erişim İzni Yok</h2>
+        <p style="color:var(--text-dim);">Bu sayfayı görüntülemek için yetkiniz bulunmuyor. Yetki almak için sistem yöneticisi ile görüşün.</p>
+        <button class="primary-btn" style="margin-top:20px;" onclick="setTopTab('home')">🏠 Anasayfaya Dön</button>
+      </div>
+    `;
+    return;
+  }
+
   if (state.currentTop === 'home') renderHomeView(v);
   else if (state.currentTop === 'work') renderWorkView(v);
   else if (state.currentTop === 'production') renderProductionView(v);
@@ -6052,8 +6097,10 @@ function renderSidebarHTML() {
     </div>
     <div class="sidebar-section">
       <div class="section-title">Hızlı İşlem</div>
-      <button class="new-request-btn" onclick="toggleProcessPick()">+ Yeni Talep Aç</button>
-      <div class="process-pick" id="process-pick">${pickHtml}</div>
+      ${hasPermission(state.currentUser, 'workflows_create') ? `
+        <button class="new-request-btn" onclick="toggleProcessPick()">+ Yeni Talep Aç</button>
+        <div class="process-pick" id="process-pick">${pickHtml}</div>
+      ` : '<div style="font-size:12px;color:var(--text-mute);padding:8px;">Talep açma yetkiniz yok</div>'}
     </div>
     <div class="sidebar-section">
       <div class="section-title">Özet</div>
@@ -6480,7 +6527,7 @@ function renderDetail() {
                      instance.status === 'rejected'  ? 'status-rejected'  : 'status-running';
 
   let actionBar = '';
-  if (task && task.status === 'open' && task.assignee === state.currentUser) {
+  if (task && task.status === 'open' && task.assignee === state.currentUser && hasPermission(state.currentUser, 'workflows_approve')) {
     actionBar = `
       <div class="action-bar">
         <button class="btn reject" onclick="actOnTask('${task.id}','reject')">✕ Reddet</button>
@@ -6603,12 +6650,21 @@ function renderDetail() {
 // ============== YORUMLAR (her talepte) ==============
 
 function renderCommentsSection(instanceId) {
+  // Yorumları görme yetkisi
+  if (!hasPermission(state.currentUser, 'comments_view')) {
+    return '';  // hiç yorum bölümü gösterme
+  }
+
   const comments = (state.comments || [])
     .filter(c => c.instanceId === instanceId)
     .sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
 
+  const canDeleteAny = hasPermission(state.currentUser, 'comments_delete_any');
+  const canDeleteOwn = hasPermission(state.currentUser, 'comments_delete_own');
+  const canCreate = hasPermission(state.currentUser, 'comments_create');
+
   const commentsHtml = comments.length === 0
-    ? `<div class="comments-empty">Henüz yorum yok. İlk yorumu siz yazın.</div>`
+    ? `<div class="comments-empty">Henüz yorum yok.${canCreate ? ' İlk yorumu siz yazın.' : ''}</div>`
     : comments.map(c => {
         const author = getUser(c.authorId);
         const isMine = c.authorId === state.currentUser;
@@ -6616,6 +6672,7 @@ function renderCommentsSection(instanceId) {
         // Mention render: @userN -> highlighted span
         const textHtml = escapeHtml(c.text || '').replace(/@(user\d+|[a-z0-9_]+)/g,
           (m, u) => `<span class="comment-mention">@${u}</span>`);
+        const canDeleteThis = (isMine && canDeleteOwn) || canDeleteAny;
         return `
           <div class="comment-item ${isMine ? 'mine' : ''}">
             <div class="comment-avatar">${initials}</div>
@@ -6623,7 +6680,7 @@ function renderCommentsSection(instanceId) {
               <div class="comment-head">
                 <span class="comment-author">${escapeHtml(author?.name || c.authorId)}</span>
                 <span class="comment-time">${formatAge(c.createdAt || 0)}</span>
-                ${isMine ? `<button class="comment-delete" onclick="deleteComment('${c.id}')" title="Yorumu sil">✕</button>` : ''}
+                ${canDeleteThis ? `<button class="comment-delete" onclick="deleteComment('${c.id}')" title="Yorumu sil">✕</button>` : ''}
               </div>
               <div class="comment-text">${textHtml}</div>
             </div>
@@ -6637,16 +6694,22 @@ function renderCommentsSection(instanceId) {
       <div class="comments-list">
         ${commentsHtml}
       </div>
-      <div class="comment-input-box">
-        <textarea id="comment-textarea-${instanceId}" placeholder="Yorum yazın... @user1 ile bahsedebilirsiniz" rows="2"></textarea>
-        <button class="comment-submit-btn" onclick="addComment('${instanceId}')">📤 Gönder</button>
-      </div>
-      <div class="comment-hint">İpucu: <code>@user1</code> yazarak başkalarına bildirim yollayabilirsiniz</div>
+      ${canCreate ? `
+        <div class="comment-input-box">
+          <textarea id="comment-textarea-${instanceId}" placeholder="Yorum yazın... @user1 ile bahsedebilirsiniz" rows="2"></textarea>
+          <button class="comment-submit-btn" onclick="addComment('${instanceId}')">📤 Gönder</button>
+        </div>
+        <div class="comment-hint">İpucu: <code>@user1</code> yazarak başkalarına bildirim yollayabilirsiniz</div>
+      ` : ''}
     </div>
   `;
 }
 
 function addComment(instanceId) {
+  if (!hasPermission(state.currentUser, 'comments_create')) {
+    notify('Yorum yazma yetkiniz yok', 'error');
+    return;
+  }
   const textarea = document.getElementById('comment-textarea-' + instanceId);
   if (!textarea) return;
   const text = textarea.value.trim();
@@ -6694,8 +6757,12 @@ function addComment(instanceId) {
 function deleteComment(commentId) {
   const c = state.comments.find(x => x.id === commentId);
   if (!c) return;
-  if (c.authorId !== state.currentUser) {
-    notify('Sadece kendi yorumlarınızı silebilirsiniz', 'error');
+  const isMine = c.authorId === state.currentUser;
+  const canDeleteOwn = hasPermission(state.currentUser, 'comments_delete_own');
+  const canDeleteAny = hasPermission(state.currentUser, 'comments_delete_any');
+
+  if (!canDeleteAny && !(isMine && canDeleteOwn)) {
+    notify('Bu yorumu silmek için yetkiniz yok', 'error');
     return;
   }
   if (!confirm('Yorum silinsin mi?')) return;
@@ -6860,12 +6927,26 @@ function toggleProcessPick() {
 // ============== 6) UI - ADMIN VIEW ==============
 
 function renderAdminView(v) {
+  const u = getUser(state.currentUser);
+  const canProcesses = hasPermission(u, 'admin_processes_view');
+  const canUsers = hasPermission(u, 'admin_users_view');
+  const canRoles = hasPermission(u, 'admin_roles_view');
+
+  // Aktif sekme yetkisiz ise ilk yetkili sekmeye geç
+  if ((state.adminTab === 'processes' && !canProcesses) ||
+      (state.adminTab === 'users' && !canUsers) ||
+      (state.adminTab === 'roles' && !canRoles)) {
+    if (canProcesses) state.adminTab = 'processes';
+    else if (canUsers) state.adminTab = 'users';
+    else if (canRoles) state.adminTab = 'roles';
+  }
+
   v.innerHTML = `
     <aside class="admin-nav">
       <div class="admin-nav-title">Yönetim</div>
-      <button class="admin-nav-item ${state.adminTab === 'processes' ? 'active':''}" onclick="setAdminTab('processes')">📋 Süreçler</button>
-      <button class="admin-nav-item ${state.adminTab === 'users' ? 'active':''}" onclick="setAdminTab('users')">👥 Kullanıcılar</button>
-      <button class="admin-nav-item ${state.adminTab === 'roles' ? 'active':''}" onclick="setAdminTab('roles')">🔐 Roller ve Yetkiler</button>
+      ${canProcesses ? `<button class="admin-nav-item ${state.adminTab === 'processes' ? 'active':''}" onclick="setAdminTab('processes')">📋 Süreçler</button>` : ''}
+      ${canUsers ? `<button class="admin-nav-item ${state.adminTab === 'users' ? 'active':''}" onclick="setAdminTab('users')">👥 Kullanıcılar</button>` : ''}
+      ${canRoles ? `<button class="admin-nav-item ${state.adminTab === 'roles' ? 'active':''}" onclick="setAdminTab('roles')">🔐 Roller ve Yetkiler</button>` : ''}
     </aside>
     <main class="admin-content" id="admin-content"></main>
   `;
@@ -6894,13 +6975,14 @@ function renderAdminContent() {
 // -------- KULLANICILAR --------
 
 function renderUsersAdmin(c) {
+  const canEdit = hasPermission(state.currentUser, 'admin_users_edit');
   c.innerHTML = `
     <div class="admin-head">
       <div>
         <h2>Kullanıcılar</h2>
         <p>Kullanıcıları, rollerini, organizasyon hiyerarşisini ve vekil dönemlerini düzenleyin</p>
       </div>
-      <button class="primary-btn" onclick="openUserEditor()">+ Yeni Kullanıcı</button>
+      ${canEdit ? '<button class="primary-btn" onclick="openUserEditor()">+ Yeni Kullanıcı</button>' : ''}
     </div>
     ${state.users.length === 0 ? '<div class="table-empty">Henüz kullanıcı yok</div>' :
     `<table class="data-table">
@@ -6943,8 +7025,8 @@ function renderUsersAdmin(c) {
             <td>${statusCell}</td>
             <td><span style="font-family:var(--mono);font-size:12px;">${u.hireDate||'—'}</span></td>
             <td class="actions">
-              <button class="ghost-btn" onclick="openUserEditor('${u.id}')">Düzenle</button>
-              <button class="danger-btn" onclick="deleteUser('${u.id}')">Sil</button>
+              ${canEdit ? `<button class="ghost-btn" onclick="openUserEditor('${u.id}')">Düzenle</button>` : ''}
+              ${canEdit ? `<button class="danger-btn" onclick="deleteUser('${u.id}')">Sil</button>` : ''}
             </td>
           </tr>`;
         }).join('')}
@@ -7291,7 +7373,7 @@ function renderRolesAdmin(c) {
         <h2>🔐 Roller ve Yetkiler</h2>
         <p>Sisteme özel roller oluşturun, her role özel yetkiler verin. Kullanıcılara birden fazla rol atayabilirsiniz; yetkiler birikir.</p>
       </div>
-      <button class="primary-btn" onclick="openNewRole()">+ Yeni Rol</button>
+      <button class="primary-btn" onclick="openNewRole()" ${!hasPermission(state.currentUser, 'admin_roles_edit') ? 'disabled title="Rol oluşturma yetkiniz yok"' : ''}>+ Yeni Rol</button>
     </div>
 
     ${roles.length === 0 ? '<div class="table-empty">Henüz rol yok. Sistem ilk açılışta varsayılan roller oluşturmalıydı.</div>' :
@@ -7406,9 +7488,14 @@ function renderRoleEditor(c, roleId) {
 
           ${isNew ? `
           <div class="form-field">
+            <label>Görünen Ad <span class="req">*</span></label>
+            <input type="text" id="role-name" value="${escapeHtml(r.name)}" placeholder="Kalite Şefi" oninput="state._editingRole.name = this.value; autoFillRoleId();">
+            <div class="hint">İsim yazınca Rol ID otomatik üretilir</div>
+          </div>
+          <div class="form-field">
             <label>Rol ID <span class="req">*</span></label>
-            <input type="text" id="role-id" value="" placeholder="ornek: kalite-sefi" />
-            <div class="hint">Benzersiz, küçük harf, tire veya alt çizgi. Sonradan değiştirilemez.</div>
+            <input type="text" id="role-id" value="${escapeHtml(r.id || '')}" placeholder="kalite-sefi" oninput="state._editingRole.id = this.value.toLowerCase();" />
+            <div class="hint">Otomatik üretildi, gerekirse düzenleyebilirsiniz. Küçük harf, sayı, tire (-) veya alt çizgi (_) içerebilir. Sonradan değiştirilemez.</div>
           </div>
           ` : `
           <div class="form-field">
@@ -7416,12 +7503,11 @@ function renderRoleEditor(c, roleId) {
             <input type="text" value="${escapeHtml(r.id)}" readonly />
             ${original.isBuiltIn ? '<div class="hint">Sistem rolü — silinemez ama yetkilerini değiştirebilirsiniz</div>' : ''}
           </div>
-          `}
-
           <div class="form-field">
             <label>Görünen Ad <span class="req">*</span></label>
             <input type="text" id="role-name" value="${escapeHtml(r.name)}" placeholder="Kalite Şefi" oninput="state._editingRole.name = this.value">
           </div>
+          `}
 
           <div class="form-field">
             <label>Açıklama</label>
@@ -7490,6 +7576,30 @@ function setAllPermissions(value) {
     state._editingRole.permissions[k] = value;
   });
   renderAdminContent();
+}
+
+function autoFillRoleId() {
+  const r = state._editingRole;
+  if (!r) return;
+  const idInput = document.getElementById('role-id');
+  if (!idInput) return;
+  // Eğer kullanıcı ID alanını manuel düzenlemediyse otomatik üret
+  if (!idInput.dataset.manuallyEdited) {
+    const generated = (r.name || '')
+      .toLowerCase()
+      .trim()
+      .replace(/ç/g, 'c')
+      .replace(/ğ/g, 'g')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ş/g, 's')
+      .replace(/ü/g, 'u')
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    idInput.value = generated;
+    r.id = generated;
+  }
 }
 
 function updatePermCounter() {
@@ -7590,13 +7700,14 @@ async function deleteRole(roleId) {
 // -------- SÜREÇLER LİSTESİ --------
 
 function renderProcessesAdmin(c) {
+  const canEdit = hasPermission(state.currentUser, 'admin_processes_edit');
   c.innerHTML = `
     <div class="admin-head">
       <div>
         <h2>Süreçler</h2>
         <p>Tanımlı süreçleri görüntüleyin, düzenleyin veya yenisini oluşturun</p>
       </div>
-      <button class="primary-btn" onclick="createNewProcess()">+ Yeni Süreç</button>
+      ${canEdit ? '<button class="primary-btn" onclick="createNewProcess()">+ Yeni Süreç</button>' : ''}
     </div>
     ${state.definitions.length === 0 ? '<div class="table-empty">Henüz tanımlı süreç yok</div>' :
     `<table class="data-table">
@@ -7627,9 +7738,9 @@ function renderProcessesAdmin(c) {
             <td><span class="badge-tag ${d.active?'active':'inactive'}">${d.active?'Aktif':'Pasif'}</span></td>
             <td><span style="font-family:var(--mono);">${usage}</span> talep</td>
             <td class="actions">
-              <button class="ghost-btn" onclick="toggleActive('${d.id}')">${d.active?'Pasifleştir':'Aktifleştir'}</button>
-              <button class="ghost-btn" onclick="openDesigner('${d.id}')">Düzenle</button>
-              <button class="danger-btn" onclick="deleteProcess('${d.id}')">Sil</button>
+              ${canEdit ? `<button class="ghost-btn" onclick="toggleActive('${d.id}')">${d.active?'Pasifleştir':'Aktifleştir'}</button>` : ''}
+              ${canEdit ? `<button class="ghost-btn" onclick="openDesigner('${d.id}')">Düzenle</button>` : '<button class="ghost-btn" onclick="openDesigner(\''+d.id+'\')">Görüntüle</button>'}
+              ${canEdit ? `<button class="danger-btn" onclick="deleteProcess('${d.id}')">Sil</button>` : ''}
             </td>
           </tr>`;
         }).join('')}
@@ -7639,6 +7750,10 @@ function renderProcessesAdmin(c) {
 }
 
 function toggleActive(defId) {
+  if (!hasPermission(state.currentUser, 'admin_processes_edit')) {
+    notify('Süreç düzenleme yetkiniz yok', 'error');
+    return;
+  }
   const d = getDef(defId);
   d.active = !d.active;
   persist(); renderAdminContent();
@@ -7646,6 +7761,10 @@ function toggleActive(defId) {
 }
 
 function deleteProcess(defId) {
+  if (!hasPermission(state.currentUser, 'admin_processes_edit')) {
+    notify('Süreç silme yetkiniz yok', 'error');
+    return;
+  }
   const usage = state.instances.filter(i => i.defId === defId).length;
   let msg = `${getDef(defId).name} silinsin mi?`;
   if (usage) msg += `\n${usage} mevcut talep var, onların da geçmişi kalmaya devam edecek ama süreç tanımı silinecek.`;
@@ -8099,6 +8218,10 @@ function getTemplatesByCategory() {
 }
 
 function createNewProcess() {
+  if (!hasPermission(state.currentUser, 'admin_processes_edit')) {
+    notify('Süreç oluşturma yetkiniz yok', 'error');
+    return;
+  }
   // Eski davranış yerine şablon seçim modali aç
   openTemplatePicker();
 }
@@ -10637,7 +10760,7 @@ function renderHomeView(v) {
   const isHR = u.roles.includes('hr');
   const isAdmin = u.roles.includes('admin');
   const isOperator = u.roles.includes('operator');
-  const isPrivileged = isManager || isHR || isAdmin;
+  const isPrivileged = hasPermission(u, 'workflows_view_all') || hasPermission(u, 'workflows_view_team');
 
   // Selamlama
   const hour = new Date().getHours();
@@ -10769,24 +10892,30 @@ function renderHomeView(v) {
 
       <!-- Hızlı Aksiyon -->
       <div class="home-actions">
+        ${hasPermission(u, 'workflows_create') ? `
         <button class="home-action-btn primary" onclick="setTopTab('work');setTimeout(()=>toggleProcessPick(),100);">
           <span class="home-action-icon">➕</span>
           <span>Yeni Talep Aç</span>
         </button>
+        ` : ''}
+        ${hasPermission(u, 'workflows_view') ? `
         <button class="home-action-btn" onclick="setTopTab('work');state.workTab='tasks';renderAll();">
           <span class="home-action-icon">📋</span>
           <span>Görevlerime Git</span>
         </button>
-        ${isOperator ? `
+        ` : ''}
+        ${hasPermission(u, 'production_view') ? `
         <button class="home-action-btn" onclick="setTopTab('production');renderAll();">
           <span class="home-action-icon">🏭</span>
-          <span>İstasyonuma Git</span>
+          <span>${isOperator ? 'İstasyonuma' : 'Üretime'} Git</span>
         </button>
         ` : ''}
+        ${hasPermission(u, 'calendar_view') ? `
         <button class="home-action-btn" onclick="setTopTab('calendar');renderAll();">
           <span class="home-action-icon">📅</span>
           <span>Takvim</span>
         </button>
+        ` : ''}
       </div>
 
       <!-- 2 sütun: Aktivite + Yaklaşan -->
@@ -11730,7 +11859,7 @@ function renderProdSidebar() {
   c.innerHTML = `
     <div class="sidebar-section">
       <div class="section-title">Üretim Görünümü</div>
-      <button class="new-request-btn" onclick="openNewOrderModal()">+ Yeni Sipariş</button>
+      ${hasPermission(state.currentUser, 'production_create_order') ? '<button class="new-request-btn" onclick="openNewOrderModal()">+ Yeni Sipariş</button>' : ''}
     </div>
 
     <div class="sidebar-section">
