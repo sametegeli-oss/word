@@ -4832,29 +4832,56 @@ function continueOrDone(){
 // ══════════════════════════════════════════════════════════
 // SCORE BAR
 // ══════════════════════════════════════════════════════════
+function getActiveListName(){
+  try{
+    if (typeof activeListId !== 'undefined' && activeListId && Array.isArray(multiLists)) {
+      const activeList = multiLists.find(l => String(l.id) === String(activeListId));
+      if (activeList && activeList.name) return activeList.name;
+    }
+    const storedName = localStorage.getItem('activeListName') || localStorage.getItem('wm.activeListName') || localStorage.getItem('currentListName');
+    if (storedName && storedName.trim()) return storedName.trim();
+  }catch(e){}
+  return 'Ana Liste';
+}
+
+function setActiveListTitle(name){
+  const listName = (name && String(name).trim()) ? String(name).trim() : getActiveListName();
+  try{
+    localStorage.setItem('activeListName', listName);
+    localStorage.setItem('wm.activeListName', listName);
+    localStorage.setItem('currentListName', listName);
+  }catch(e){}
+  const title = document.getElementById('currentListName');
+  if (title && title.textContent.trim() !== listName) title.textContent = listName;
+  const wcLabel = document.querySelector('#wordCard .wc-label');
+  if (wcLabel) {
+    const item = (typeof words !== 'undefined' && Array.isArray(words)) ? words[idx] : null;
+    wcLabel.innerHTML = listName + (item && item.rowNum ? `<span style="opacity:0.5;font-size:10px;margin-left:8px">#${item.rowNum}</span>` : '');
+  }
+  return listName;
+}
+
+function saveCurrentListProgress(){
+  try{
+    if (typeof activeListId !== 'undefined' && activeListId) {
+      const currentProgress = { wordStatus, learnedSet: [...learnedSet], spacedRepetition, idx, score, streak, correctCount };
+      localStorage.setItem('listProgress_' + activeListId, JSON.stringify(currentProgress));
+    }
+  }catch(e){ console.warn('Aktif liste ilerlemesi kaydedilemedi:', e); }
+}
+
 function updateScoreBar(){
-  document.getElementById("scoreNum").textContent=score;
-  const fill=document.getElementById("scoreFill");
+  const scoreNum = document.getElementById("scoreNum");
+  const fill = document.getElementById("scoreFill");
+  const scoreLbl = document.getElementById("scoreLbl");
+  if(!scoreNum || !fill || !scoreLbl) return;
+  scoreNum.textContent=score;
   const col=score>=85?"#22c55e":score>=70?"#3b82f6":score>=50?"#f97316":"#ef4444";
   fill.style.width=score+"%";fill.style.background=col;
-  document.getElementById("scoreNum").style.color=col;
-  
-  // Skor etiketi + Aktif liste adı
+  scoreNum.style.color=col;
   const scoreText = score>=85?"Mükemmel":score>=70?"İyi":score>=50?"Orta":"Düşük";
-  let listName = "";
-  
-  // Aktif liste varsa adını bul
-  if (activeListId && multiLists && multiLists.length > 0) {
-    const activeList = multiLists.find(l => l.id === activeListId);
-    if (activeList) {
-      listName = ` • ${activeList.name}`;
-    }
-  } else if (!activeListId && allWords && allWords.length > 0) {
-    // Aktif liste yok ama kelimeler yüklü (ilk yükleme)
-    listName = " • Ana Liste";
-  }
-  
-  document.getElementById("scoreLbl").textContent = scoreText + listName;
+  scoreLbl.textContent = scoreText;
+  setActiveListTitle(getActiveListName());
 }
 
 // ══════════════════════════════════════════════════════════
@@ -4931,8 +4958,9 @@ async function renderLearn(){
       <span style="font-size:11px;color:var(--muted)">${srsNextStr}</span>
     </div>`;
   }
+  const activeListDisplayName = getActiveListName();
   document.getElementById("wordCard").innerHTML=`
-    <div class="wc-label">KELIME ${item.rowNum?`<span style="opacity:0.5;font-size:10px;margin-left:8px">#${item.rowNum}</span>`:''}</div>
+    <div class="wc-label">${activeListDisplayName}${item.rowNum?`<span style="opacity:0.5;font-size:10px;margin-left:8px">#${item.rowNum}</span>`:''}</div>
     ${srsBadge}
     <div class="wc-word" style="cursor:pointer;transition:all 0.2s" onclick="explainWord('${item.word.replace(/'/g,"\\'")}','wordCard')" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">${item.word}</div>
     ${ph}
@@ -6038,39 +6066,55 @@ function showToast(title,text){
 // MARK LEARNED
 // ══════════════════════════════════════════════════════════
 function markLearned(){
-  const item=words[idx];if(!item) return;
-  if(learnedSet.has(item.word)){
-    learnedSet.delete(item.word);
-    if(wordStatus[item.word]) wordStatus[item.word].correct=0;
-    document.getElementById("btnLearned").textContent="✅ Öğrendim";
-    document.getElementById("btnLearned").classList.remove("done");
-  }else{
-    learnedSet.add(item.word);
-    if(!wordStatus[item.word]) wordStatus[item.word]={attempts:1,correct:1,pronScore:null};
-    else wordStatus[item.word].correct=Math.max(1,wordStatus[item.word].correct);
-    document.getElementById("btnLearned").textContent="✓ Öğrenildi";
-    document.getElementById("btnLearned").classList.add("done");
-    
-    // 📊 Analytics: öğrenilme anını kaydet (heatmap, trend, saat dağılımı için)
-    try { recordLearningTime(item.word); } catch(e) {}
-    
-    // Spaced Repetition güncelle (ÖNCE)
-    updateSRS(item.word, true);
-    
-    // ÖĞRENİLEN KELİMELER LİSTESİNE EKLE (SONRA)
-    addLearnedWord(item.word, item.tr || '', 'learning');
-    
-    // Motivasyon sistemi
-    incrementTodayLearned();
-    
-    // Badge'i güncelle
-    renderLearn();
+  const item = words[idx];
+  if(!item || !item.word) return false;
+
+  const word = item.word;
+  const listNameBefore = getActiveListName();
+
+  // Bu buton toggle yapmasın: görevi kelimeyi öğrenildi yapıp ilerletmek.
+  learnedSet.add(word);
+  item.learned = true;
+  item.isLearned = true;
+  item.status = 'learned';
+
+  if(!wordStatus[word]) wordStatus[word] = {attempts:1, correct:1, pronScore:null};
+  else wordStatus[word].correct = Math.max(1, wordStatus[word].correct || 0);
+
+  const btn = document.getElementById("btnLearned");
+  if(btn){
+    btn.textContent = "✓ Öğrenildi";
+    btn.classList.add("done");
   }
-  
-  // SORUN 3 DÜZELTMESİ: Liste etiketlerini otomatik güncelle
-  renderWordList();
-  
+
+  try { recordLearningTime(word); } catch(e) {}
+  try { updateSRS(word, true); } catch(e) {}
+  try { addLearnedWord(word, item.tr || item.translation || '', 'learning'); } catch(e) {}
+  try { incrementTodayLearned(); } catch(e) {}
+
   saveProgress();
+  saveCurrentListProgress();
+  setActiveListTitle(listNameBefore);
+  try { renderWordList(); } catch(e) {}
+
+  // Görünür davranış: Öğrendim'e basınca sıradaki öğrenilmemiş kelimeye geç.
+  const nextIndex = words.findIndex((w, i) => i > idx && w && w.word && !learnedSet.has(w.word));
+  if(nextIndex !== -1){
+    idx = nextIndex;
+    renderLearn();
+  } else {
+    const firstUnlearned = words.findIndex(w => w && w.word && !learnedSet.has(w.word));
+    if(firstUnlearned !== -1){
+      idx = firstUnlearned;
+      renderLearn();
+    } else {
+      renderLearn();
+      try { showToast('🎉 Liste tamamlandı', listNameBefore + ' listesindeki tüm kelimeler öğrenildi'); } catch(e) {}
+    }
+  }
+
+  setActiveListTitle(listNameBefore);
+  return false;
 }
 
 // Spaced Repetition güncelleme
@@ -7926,6 +7970,10 @@ function _pickMainList() {
     }
     activeListId = null;
     localStorage.removeItem('activeListId');
+    localStorage.setItem('activeListName','Ana Liste');
+    localStorage.setItem('wm.activeListName','Ana Liste');
+    localStorage.setItem('currentListName','Ana Liste');
+    if (typeof setActiveListTitle === 'function') setActiveListTitle('Ana Liste');
     // Ana listeye dön — multi-list listeleme ekranına git, kullanıcı oradan yönetir
     if (typeof showList === 'function') showList();
     else if (typeof showScreen === 'function') showScreen('sc-multilist');
@@ -13157,11 +13205,10 @@ function switchToList(id) {
   const words_data = list.words || loadMultiListWords(id);
   if (!words_data) { showToast('❌ Hata', 'Liste verisi bulunamadı'); return; }
 
-  // Mevcut ilerlemeyi kaydet
-  const currentProgress = { wordStatus, learnedSet: [...learnedSet], spacedRepetition };
-  const prevActiveId = localStorage.getItem('prevActiveListId');
-  if (prevActiveId && prevActiveId !== id) {
-    localStorage.setItem('listProgress_' + prevActiveId, JSON.stringify(currentProgress));
+  // Mevcut aktif listenin ilerlemesini kaydet
+  const currentProgress = { wordStatus, learnedSet: [...learnedSet], spacedRepetition, idx, score, streak, correctCount };
+  if (activeListId && activeListId !== id) {
+    localStorage.setItem('listProgress_' + activeListId, JSON.stringify(currentProgress));
   }
 
   // Yeni liste için state'i SIFIRLA
@@ -13180,25 +13227,34 @@ function switchToList(id) {
       wordStatus = prog.wordStatus || {};
       learnedSet = new Set(prog.learnedSet || []);
       spacedRepetition = prog.spacedRepetition || {};
+      idx = prog.idx || 0;
+      score = prog.score ?? 100;
+      streak = prog.streak ?? 0;
+      correctCount = prog.correctCount ?? 0;
     } catch(e) {}
   }
 
   // Kelimeleri yükle
   allWords = words_data;
   words = [...allWords];
-  idx = 0;
+  if (idx < 0 || idx >= words.length) idx = 0;
 
   // Aktif listeyi kaydet
   activeListId = id;
   localStorage.setItem('activeListId', id);
   localStorage.setItem('prevActiveListId', id);
+  localStorage.setItem('activeListName', list.name);
+  localStorage.setItem('wm.activeListName', list.name);
+  localStorage.setItem('currentListName', list.name);
   
   // UI'ı güncelle
   document.getElementById("bottomNav").style.display = "flex"; // Bottom nav'ı göster
   showScreen("sc-word"); // Kelime ekranını göster
   renderMultiListUI();
-  updateScoreBar(); // Aktif liste adını güncelle
+  setActiveListTitle(list.name); // Aktif liste adını güncelle
+  updateScoreBar();
   renderLearn(); // Kelimeyi göster
+  setActiveListTitle(list.name);
   
   showToast('✅ Liste Değiştirildi', `"${list.name}" — ${list.wordCount} kelime`);
 }
@@ -31126,238 +31182,16 @@ window.WM_testAI = async function(){
 };
 
 
-/* ════════════════════════════════════════════════════════════════════════════
-   WM CRITICAL FIX — Aktif liste adı + Öğrendim düğmesi
-   Eklenme nedeni:
-   1) currentListName sadece bazı akışlarda güncelleniyordu, render sonrası kayboluyordu.
-   2) Öğrendim butonu sadece anlık learnedSet'i değiştiriyor; aktif listenin ilerlemesini
-      her tıklamada listProgress_<id> içine güvenli kaydetmiyordu.
-   ════════════════════════════════════════════════════════════════════════════ */
+// === FINAL ACTIVE LIST + LEARNED BUTTON GUARD ===
 (function(){
-  'use strict';
-  if (window.__WM_ACTIVE_LIST_LEARNED_FIX__) return;
-  window.__WM_ACTIVE_LIST_LEARNED_FIX__ = true;
-
-  function safeJSON(raw, fallback){
-    try { return JSON.parse(raw); } catch(e) { return fallback; }
-  }
-  function cleanText(v){ return String(v == null ? '' : v).replace(/\s+/g,' ').trim(); }
-  function isBadListName(v){
-    const s = cleanText(v).toLowerCase();
-    return !s || s === 'kelime' || s === 'undefined' || s === 'null' || s === '100' || s.length > 60;
-  }
-  function getLists(){
-    let lists = [];
-    try { if (Array.isArray(window.multiLists)) lists = window.multiLists; } catch(e) {}
-    if (!lists.length) lists = safeJSON(localStorage.getItem('multiLists') || '[]', []);
-    return Array.isArray(lists) ? lists : [];
-  }
-  function getActiveId(){
-    try { return window.activeListId || localStorage.getItem('activeListId') || null; }
-    catch(e) { return null; }
-  }
-  function getActiveListName(){
-    const activeId = getActiveId();
-    if (activeId) {
-      const list = getLists().find(l => String(l.id) === String(activeId));
-      if (list && !isBadListName(list.name)) return cleanText(list.name);
-    }
-    const keys = ['wm.activeListName','wm.r13.activeList','wm.goodListName','currentListName'];
-    for (const k of keys) {
-      try {
-        const v = localStorage.getItem(k);
-        if (!isBadListName(v) && cleanText(v) !== 'Ana Liste') return cleanText(v);
-      } catch(e) {}
-    }
-    return 'Ana Liste';
-  }
-  function storeActiveListName(name){
-    if (isBadListName(name)) return;
-    try {
-      localStorage.setItem('wm.activeListName', name);
-      localStorage.setItem('wm.goodListName', name);
-      localStorage.setItem('currentListName', name);
-    } catch(e) {}
-  }
-  function refreshActiveListName(){
-    const name = getActiveListName();
-    storeActiveListName(name);
-
-    const title = document.getElementById('currentListName');
-    if (title && cleanText(title.textContent) !== name) title.textContent = name;
-
-    // Kelime kartının üstündeki "KELIME" etiketi yerine aktif liste adını bas.
-    const label = document.querySelector('#wordCard .wc-label');
-    if (label) {
-      const item = (Array.isArray(window.words) && typeof window.idx === 'number') ? window.words[window.idx] : null;
-      const row = item && item.rowNum ? ` <span style="opacity:0.5;font-size:10px;margin-left:8px">#${item.rowNum}</span>` : '';
-      label.innerHTML = `${name}${row}`;
-    }
-    return name;
-  }
-
-  function getCurrentItem(){
-    try {
-      if (Array.isArray(window.words) && typeof window.idx === 'number' && window.words[window.idx]) return window.words[window.idx];
-    } catch(e) {}
-    try {
-      if (Array.isArray(words) && typeof idx === 'number' && words[idx]) return words[idx];
-    } catch(e) {}
-    return null;
-  }
-  function normalizeWord(w){ return cleanText(w).toLowerCase(); }
-  function persistActiveListProgress(){
-    try {
-      const activeId = getActiveId();
-      if (!activeId) return;
-      const progress = {
-        wordStatus: window.wordStatus || (typeof wordStatus !== 'undefined' ? wordStatus : {}),
-        learnedSet: Array.from(window.learnedSet || (typeof learnedSet !== 'undefined' ? learnedSet : new Set())),
-        spacedRepetition: window.spacedRepetition || (typeof spacedRepetition !== 'undefined' ? spacedRepetition : {})
-      };
-      localStorage.setItem('listProgress_' + activeId, JSON.stringify(progress));
-    } catch(e) { console.warn('Aktif liste ilerlemesi kaydedilemedi:', e); }
-  }
-  function markEverywhere(item){
-    if (!item || !item.word) return false;
-    const word = item.word;
-    const nword = normalizeWord(word);
-    const now = Date.now();
-
-    try { if (!(window.learnedSet instanceof Set)) window.learnedSet = new Set(window.learnedSet || []); window.learnedSet.add(word); } catch(e) {}
-    try { if (typeof learnedSet !== 'undefined') learnedSet.add(word); } catch(e) {}
-
-    try {
-      if (!window.wordStatus) window.wordStatus = (typeof wordStatus !== 'undefined' ? wordStatus : {});
-      if (!window.wordStatus[word]) window.wordStatus[word] = {attempts:1, correct:1, pronScore:null};
-      window.wordStatus[word].attempts = Math.max(1, window.wordStatus[word].attempts || 1);
-      window.wordStatus[word].correct = Math.max(1, window.wordStatus[word].correct || 0);
-      window.wordStatus[word].learned = true;
-      window.wordStatus[word].learnedAt = now;
-      try { wordStatus = window.wordStatus; } catch(e) {}
-    } catch(e) {}
-
-    try {
-      [window.words, window.allWords].forEach(arr => {
-        if (!Array.isArray(arr)) return;
-        arr.forEach(o => {
-          if (o && normalizeWord(o.word) === nword) {
-            o.learned = true; o.isLearned = true; o.status = 'learned'; o.state = 'learned'; o.learnedAt = now;
-          }
-        });
-      });
-    } catch(e) {}
-
-    try {
-      let learned = safeJSON(localStorage.getItem('learnedWords') || '[]', []);
-      if (!Array.isArray(learned)) learned = [];
-      const found = learned.find(x => normalizeWord(x && (x.word || x.Kelime || x.en)) === nword);
-      if (found) {
-        found.translation = found.translation || item.tr || item.translation || '';
-        found.tr = found.tr || item.tr || item.translation || '';
-        found.level = found.level || 'learning';
-        found.learned = true; found.isLearned = true; found.status = 'learned'; found.lastReviewed = new Date().toISOString();
-      } else {
-        learned.push({
-          word,
-          translation: item.tr || item.translation || '',
-          tr: item.tr || item.translation || '',
-          sentence: item.sentence || '',
-          sentenceTr: item.sentenceTr || '',
-          level: 'learning',
-          learned: true,
-          isLearned: true,
-          status: 'learned',
-          addedDate: new Date().toISOString(),
-          lastReviewed: new Date().toISOString(),
-          reviewCount: 1
-        });
-      }
-      localStorage.setItem('learnedWords', JSON.stringify(learned.slice(-3000)));
-      window.learnedWords = learned;
-    } catch(e) {}
-
-    try {
-      const activeId = getActiveId();
-      if (activeId) localStorage.setItem('multiList_words_' + activeId, JSON.stringify(window.allWords || allWords || []));
-    } catch(e) {}
-
-    try { if (typeof updateSRS === 'function') updateSRS(word, true); } catch(e) {}
-    try { if (typeof recordLearningTime === 'function') recordLearningTime(word); } catch(e) {}
-    try { if (typeof incrementTodayLearned === 'function') incrementTodayLearned(); } catch(e) {}
-    persistActiveListProgress();
-    try { if (typeof saveProgress === 'function') saveProgress(); } catch(e) {}
-    return true;
-  }
-
-  const oldUpdateScoreBar = window.updateScoreBar;
-  window.updateScoreBar = function(){
-    const r = (typeof oldUpdateScoreBar === 'function') ? oldUpdateScoreBar.apply(this, arguments) : undefined;
-    refreshActiveListName();
-    return r;
-  };
-
-  const oldRenderLearn = window.renderLearn;
-  window.renderLearn = async function(){
-    const r = (typeof oldRenderLearn === 'function') ? await oldRenderLearn.apply(this, arguments) : undefined;
-    refreshActiveListName();
-    return r;
-  };
-
-  const oldSwitchToList = window.switchToList;
-  window.switchToList = function(id){
-    const r = (typeof oldSwitchToList === 'function') ? oldSwitchToList.apply(this, arguments) : undefined;
-    const list = getLists().find(l => String(l.id) === String(id));
-    if (list && !isBadListName(list.name)) storeActiveListName(cleanText(list.name));
-    setTimeout(refreshActiveListName, 0);
-    setTimeout(refreshActiveListName, 150);
-    return r;
-  };
-
-  const oldPickMain = window._pickMainList;
-  window._pickMainList = function(){
-    const r = (typeof oldPickMain === 'function') ? oldPickMain.apply(this, arguments) : undefined;
-    storeActiveListName('Ana Liste');
-    setTimeout(refreshActiveListName, 0);
-    return r;
-  };
-
-  window.markLearned = function(){
-    const item = getCurrentItem();
-    if (!item || !item.word) return false;
-    const ok = markEverywhere(item);
-
+  function boot(){
+    try{ setActiveListTitle(getActiveListName()); }catch(e){}
     const btn = document.getElementById('btnLearned');
-    if (btn) { btn.textContent = '✓ Öğrenildi'; btn.classList.add('done'); }
-
-    refreshActiveListName();
-    try { if (typeof renderWordList === 'function') renderWordList(); } catch(e) {}
-
-    // Butonun görevi: mevcut kelimeyi öğrenildi yapıp bir sonraki çalışılmamış kelimeye geçmek.
-    setTimeout(function(){
-      try {
-        if (typeof nextWord === 'function') nextWord();
-        else if (typeof navNextWord === 'function') navNextWord();
-      } catch(e) { console.warn('Sonraki kelimeye geçilemedi:', e); }
-      setTimeout(refreshActiveListName, 80);
-    }, 180);
-
-    return ok;
-  };
-
-  function bindLearnedButton(){
-    const btn = document.getElementById('btnLearned');
-    if (btn && !btn.__wmLearnFixBound) {
-      btn.__wmLearnFixBound = true;
-      btn.addEventListener('click', function(ev){
-        ev.preventDefault(); ev.stopPropagation();
-        window.markLearned();
-      }, true);
+    if(btn && !btn.__wmLearnFixed){
+      btn.__wmLearnFixed = true;
+      btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} return markLearned(); };
     }
-    refreshActiveListName();
   }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindLearnedButton);
-  else bindLearnedButton();
-  setInterval(bindLearnedButton, 800);
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
