@@ -5370,7 +5370,134 @@ body.wm-tool-panel-open{overflow:hidden}
   });
 })();
 </script>
+
+
+<!-- WM FINAL CLICK FIX: drawer buttons + learned button actual click repair -->
+<script id="wm-final-click-fix-20260530">
+(function(){
+  function byId(id){ return document.getElementById(id); }
+  function call(fn,args){
+    if(typeof window[fn] === 'function'){
+      try{ window[fn].apply(window,args||[]); return true; }
+      catch(e){ console.error('[WM action error]', fn, e); return false; }
+    }
+    return false;
+  }
+  function closePanel(){ document.body.classList.remove('wm-tool-panel-open'); var p=byId('wmToolPanel'); if(p) p.setAttribute('aria-hidden','true'); }
+
+  // Önceki sürümde panel içine capture aşamasında stopPropagation eklenmişti.
+  // Bu, butonların kendi onclick olayına ulaşmasını engelleyebiliyor.
+  // Paneli klonlayarak o hatalı anonim listener'ları tamamen temizliyoruz.
+  function removeBadDrawerListeners(){
+    var panel = byId('wmToolPanel');
+    if(panel && !panel.dataset.wmClickFixed){
+      var clone = panel.cloneNode(true);
+      clone.dataset.wmClickFixed = '1';
+      panel.parentNode.replaceChild(clone, panel);
+    }
+  }
+
+  // Panel sadece dış karartmaya basılınca kapansın. İçerideki butonlar kapanma olayı yemesin.
+  window.wmOpenToolPanel = function(){
+    removeBadDrawerListeners();
+    document.body.classList.add('wm-tool-panel-open');
+    var p=byId('wmToolPanel'); if(p) p.setAttribute('aria-hidden','false');
+  };
+  window.wmCloseToolPanel = closePanel;
+
+  window.wmDrawerAction = function(key){
+    var ok = false;
+    switch(key){
+      case 'wordList': ok = call('showList') || call('showScreen',['sc-list']); break;
+      case 'toLearn': ok = call('openToLearnModal'); break;
+      case 'flash': ok = call('openFlashcardMode') || call('showScreen',['sc-flashcard']); break;
+      case 'srs': ok = call('startReviewMode') || call('startSRSSession') || call('showScreen',['sc-srs']); break;
+      case 'ask': ok = call('openAskAIScreen') || call('switchTab',['ai']); break;
+      case 'speakWord': ok = call('speakWord'); break;
+      case 'speakSent': ok = call('speakSentence'); break;
+      case 'speakTr': ok = call('speakTR'); break;
+      case 'coach': ok = call('openPronCoach'); break;
+      case 'pron': var pp=byId('pronunPanel'); if(pp){ pp.style.display=''; ok=true; } break;
+      case 'accent': ok = call('showScreen',['sc-accent']); break;
+      case 'conv': ok = call('openConversationSim'); break;
+      case 'write': ok = call('openSentenceCorrector'); break;
+      case 'partner': ok = call('openPartnerChat'); break;
+      case 'sent': ok = call('showScreen',['sc-sent']); break;
+      case 'shadow': ok = call('openShadowMode'); break;
+      case 'quiz': ok = call('showScreen',['sc-quiz']); break;
+      case 'grammar': ok = call('showScreen',['sc-grammar']); break;
+      case 'story': ok = call('openStoryScreen'); break;
+      case 'podcast': ok = call('openPodcastScreen'); break;
+      case 'visual': ok = call('openWordVisual'); break;
+      case 'copy': ok = call('copyToClipboard'); break;
+      case 'gt': ok = call('openGT'); break;
+      case 'context': ok = call('openContextAnalysis'); break;
+      case 'video': ok = call('showScreen',['sc-videos']); break;
+      case 'song': ok = call('showScreen',['sc-song']); break;
+      case 'library': ok = call('showScreen',['sc-library']); break;
+      case 'dict': ok = call('openDictBuilder'); break;
+      case 'mydict': ok = call('openMyDictionary'); break;
+      case 'broaddict': ok = call('openBroadDictionary'); break;
+      case 'contextTeacher': ok = call('openContextTeacher'); break;
+      case 'tree': ok = call('openWordFamilyTree'); break;
+      case 'settings': ok = call('switchTab',['settings']); break;
+    }
+    if(ok) closePanel();
+    else alert('Bu bölümün ana fonksiyonu bulunamadı. js/app.js dosyası yüklenmemiş olabilir.');
+    return false;
+  };
+
+  // Eski wmToolAction da aynı sisteme bağlansın.
+  window.wmToolAction = function(type){
+    var map = {wordList:'wordList',toLearn:'toLearn',features:'features',flashcard:'flash',smartReview:'srs',askAI:'ask',panel:'settings',voice:'pron',mining:'dict',review:'srs',shadow:'shadow',settings:'settings'};
+    if(type === 'features'){ closePanel(); var row=byId('actRow'); if(row) row.style.display = (getComputedStyle(row).display==='none'?'':'none'); return false; }
+    return window.wmDrawerAction(map[type] || type);
+  };
+
+  // Öğrenildi: önce gerçek markLearned fonksiyonunu çağır. Yoksa eski düğmenin orijinal inline onclick'ini çalıştır.
+  window.wmLearnedClick = function(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+    if(call('markLearned')) return false;
+
+    var oldBtn = byId('btnLearned');
+    if(oldBtn){
+      try{
+        var code = oldBtn.getAttribute('onclick') || '';
+        if(code && code.indexOf('wmLearnedClick') === -1){
+          (new Function(code)).call(oldBtn);
+          return false;
+        }
+      }catch(e){ console.error('[WM learned fallback error]', e); }
+    }
+    alert('Öğrenildi fonksiyonu bulunamadı. js/app.js dosyası yüklenmemiş olabilir.');
+    return false;
+  };
+
+  function bindLearnedButtons(){
+    document.querySelectorAll('.wm-image-learned-btn,.wm-learned-btn,.wm-inline-learned').forEach(function(btn){
+      btn.type = 'button';
+      btn.onclick = window.wmLearnedClick;
+    });
+  }
+
+  function makeDrawerButtonsSafe(){
+    removeBadDrawerListeners();
+    document.querySelectorAll('#wmToolPanel button[onclick*="wmDrawerAction"],#wmToolPanel button[onclick*="wmToolAction"]').forEach(function(btn){
+      btn.type='button';
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    bindLearnedButtons();
+    makeDrawerButtonsSafe();
+    setTimeout(function(){ bindLearnedButtons(); makeDrawerButtonsSafe(); },300);
+    setTimeout(function(){ bindLearnedButtons(); makeDrawerButtonsSafe(); },1200);
+  });
+})();
+</script>
+
 </body></html>
+
 
 
 
