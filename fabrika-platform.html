@@ -6150,21 +6150,25 @@ function renderWorkMain() {
   // Yaklaşan: 30 gün içindekiler (geçmiş dahil)
   const upcomingCount = upcomingDates.filter(d => d.diffDays <= 30).length;
 
-  let tabs;
-  if (u.roles.includes('worker') && !u.roles.includes('admin') && !u.roles.includes('hr') && !u.roles.includes('manager')) {
-    tabs = [
-      { id:'mine',  label:'Taleplerim', count: myCount },
-      { id:'tasks', label:'Görevlerim', count: taskCount },
-      { id:'dates', label:'📅 Tarihler', count: upcomingCount }
-    ];
-  } else {
-    tabs = [
-      { id:'tasks', label:'Görevlerim',     count: taskCount },
-      { id:'all',   label:'Tüm Talepler',   count: allCount },
-      { id:'mine',  label:'Kendi Taleplerim', count: myCount },
-      { id:'dates', label:'📅 Yaklaşan Tarihler', count: upcomingCount }
-    ];
+  // YETKİ KONTROLÜ
+  const canViewAll = hasPermission(u, 'workflows_view_all');
+  const canViewTeam = hasPermission(u, 'workflows_view_team');
+  const canViewOwn = hasPermission(u, 'workflows_view_own');
+  const canViewAssigned = hasPermission(u, 'workflows_view_assigned');
+
+  // Manager'ın ekibi (kendisine bağlı olanlar)
+  const teamIds = state.users.filter(usr => usr.manager === u.id).map(usr => usr.id);
+  // Yöneticinin ekibi de kendi içinde alt ekipler içerebilir (1 seviye yeter şimdilik)
+
+  // Yetki bazlı sekmeler
+  let tabs = [];
+  if (canViewAssigned) tabs.push({ id:'tasks', label:'Görevlerim', count: taskCount });
+  if (canViewAll || canViewTeam) {
+    const label = canViewAll ? 'Tüm Talepler' : 'Ekip Talepleri';
+    tabs.push({ id:'all', label, count: 0 }); // count aşağıda hesaplanacak
   }
+  if (canViewOwn) tabs.push({ id:'mine', label:'Kendi Taleplerim', count: myCount });
+  tabs.push({ id:'dates', label:'📅 Yaklaşan Tarihler', count: upcomingCount });
 
   // Eğer aktif tab geçersizse ilkine geç
   if (!tabs.find(t => t.id === state.workTab)) state.workTab = tabs[0].id;
@@ -6188,8 +6192,23 @@ function renderWorkMain() {
     filterBarHtml = renderDatesFilterBar(upcomingDates);
     upcomingDates = applyDatesFilter(upcomingDates);
   } else {
-    items = state.instances.slice();
-    title = 'Tüm Talepler';
+    // "Tüm Talepler" / "Ekip Talepleri" — yetki bazlı filtreleme
+    if (canViewAll) {
+      items = state.instances.slice();
+      title = 'Tüm Talepler';
+    } else if (canViewTeam) {
+      // Sadece ekibinin (kendisine bağlı olan kullanıcıların) talepleri + kendisinin
+      items = state.instances.filter(i =>
+        i.ownerId === u.id || teamIds.includes(i.ownerId)
+      );
+      title = 'Ekip Talepleri';
+    } else {
+      items = [];
+      title = 'Talepler';
+    }
+    // Count'u güncelle
+    const allTab = tabs.find(t => t.id === 'all');
+    if (allTab) allTab.count = items.length;
     filterBarHtml = renderInstanceFilterBar(items, false);
     items = applyInstanceFilters(items);
   }
@@ -6507,6 +6526,27 @@ function renderDetail() {
     state.selected = null;
     d.innerHTML = `<div class="empty"><div class="empty-icon">∅</div><div>Bulunamadı</div></div>`;
     return;
+  }
+
+  // YETKİ KONTROLÜ — bu talebi görmeye yetkili mi?
+  const u = getUser(state.currentUser);
+  if (u) {
+    const canViewAll = hasPermission(u, 'workflows_view_all');
+    const canViewTeam = hasPermission(u, 'workflows_view_team');
+    const canViewOwn = hasPermission(u, 'workflows_view_own');
+    const canViewAssigned = hasPermission(u, 'workflows_view_assigned');
+    const isOwner = instance.ownerId === u.id;
+    const teamIds = state.users.filter(x => x.manager === u.id).map(x => x.id);
+    const isTeamMember = teamIds.includes(instance.ownerId);
+    const isAssigned = task && task.assignee === u.id;
+    const canAccess = canViewAll ||
+                      (canViewTeam && (isTeamMember || isOwner)) ||
+                      (canViewOwn && isOwner) ||
+                      (canViewAssigned && isAssigned);
+    if (!canAccess) {
+      d.innerHTML = `<div class="empty"><div class="empty-icon">🔒</div><div>Bu talebi görüntüleme yetkiniz yok</div></div>`;
+      return;
+    }
   }
   const def = getDef(instance.defId);
   const owner = getUser(instance.ownerId);
@@ -10092,6 +10132,10 @@ function getOrdersAtStation(stationId) {
 
 // Operatör "başla" der → durum aktif olur
 function startWorkOnOrder(orderId) {
+  if (!hasPermission(state.currentUser, 'production_start_task')) {
+    notify('Üretim başlatma yetkiniz yok', 'error');
+    return;
+  }
   const o = state.orders.find(o => o.id === orderId);
   if (!o) return;
   if (o.currentTask && o.currentTask.status === 'started') {
@@ -10117,6 +10161,10 @@ function startWorkOnOrder(orderId) {
 
 // Operatör "bittiği" der → bir sonraki istasyona geçer
 function finishWorkOnOrder(orderId) {
+  if (!hasPermission(state.currentUser, 'production_finish_task')) {
+    notify('Üretim tamamlama yetkiniz yok', 'error');
+    return;
+  }
   const o = state.orders.find(o => o.id === orderId);
   if (!o) return;
   const fromStation = o.currentStation;
@@ -10307,7 +10355,18 @@ function renderCalendarSidebar() {
   if (!c) return;
   const types = getActiveFilterTypes();
   const user = getUser(state.currentUser);
-  const isPrivileged = user?.roles.some(r => ['manager','hr','admin'].includes(r));
+  // YETKİ BAZLI: hangi kapsamı görebileceğine bak
+  const canViewSelf = hasPermission(user, 'calendar_view_self');
+  const canViewTeam = hasPermission(user, 'calendar_view_team');
+  const canViewAll = hasPermission(user, 'calendar_view_all');
+
+  // Mevcut scope yetkisiz ise düzelt
+  if (state.calFilterScope === 'all' && !canViewAll) {
+    state.calFilterScope = canViewTeam ? 'team' : 'mine';
+  }
+  if (state.calFilterScope === 'team' && !canViewTeam) {
+    state.calFilterScope = canViewAll ? 'all' : 'mine';
+  }
 
   // Her tip için ne kadar olay var (geniş aralık - yıllık) — sayım
   // Performans için sadece görünür aralığın 2 katı kadar bakalım
@@ -10327,19 +10386,21 @@ function renderCalendarSidebar() {
     <div class="cal-filters">
       <div class="cal-filter-group">
         <div class="cal-filter-title">Görünüm Kapsamı</div>
+        ${canViewSelf ? `
         <label class="cal-filter-item">
           <input type="radio" name="cal-scope" ${state.calFilterScope === 'mine' ? 'checked':''} onchange="setCalScope('mine')">
           <span>Sadece benim</span>
-        </label>
-        ${isPrivileged ? `
+        </label>` : ''}
+        ${canViewTeam ? `
         <label class="cal-filter-item">
           <input type="radio" name="cal-scope" ${state.calFilterScope === 'team' ? 'checked':''} onchange="setCalScope('team')">
           <span>Ekibim</span>
         </label>` : ''}
+        ${canViewAll ? `
         <label class="cal-filter-item">
           <input type="radio" name="cal-scope" ${state.calFilterScope === 'all' ? 'checked':''} onchange="setCalScope('all')">
           <span>Tüm şirket</span>
-        </label>
+        </label>` : ''}
       </div>
 
       <div class="cal-filter-group">
@@ -11277,17 +11338,29 @@ function renderReportsView(v) {
   const tab = state.reportTab || 'overview';
   const range = getReportRangeMs();
 
+  // Yetki bazlı sekmeler
+  const allRepTabs = [
+    {id:'overview',  label:'Genel Bakış',   perm:'reports_view_overview'},
+    {id:'processes', label:'Süreçler',      perm:'reports_view_processes'},
+    {id:'users',     label:'Kullanıcılar',  perm:'reports_view_users'},
+    {id:'production',label:'Üretim',        perm:'reports_view_production'}
+  ];
+  const repTabs = allRepTabs.filter(t => hasPermission(state.currentUser, t.perm));
+
+  // Aktif sekme yetkisiz ise ilk yetkiliye geç
+  if (!repTabs.find(t => t.id === tab)) {
+    if (repTabs.length > 0) {
+      state.reportTab = repTabs[0].id;
+    }
+  }
+  const currentTab = state.reportTab;
+
   v.innerHTML = `
     <div class="rep-wrap">
       <div class="rep-head">
         <h2>📊 Raporlar</h2>
         <div class="rep-tabs">
-          ${[
-            {id:'overview',  label:'Genel Bakış'},
-            {id:'processes', label:'Süreçler'},
-            {id:'users',     label:'Kullanıcılar'},
-            {id:'production',label:'Üretim'}
-          ].map(t => `<button class="${tab === t.id ? 'active':''}" onclick="setReportTab('${t.id}')">${t.label}</button>`).join('')}
+          ${repTabs.map(t => `<button class="${currentTab === t.id ? 'active':''}" onclick="setReportTab('${t.id}')">${t.label}</button>`).join('')}
         </div>
         <div class="rep-range">
           ${Object.entries(REPORT_RANGES).map(([key, meta]) =>
@@ -11297,12 +11370,17 @@ function renderReportsView(v) {
       </div>
 
       <div id="rep-body">
-        ${
-          tab === 'overview'   ? renderReportOverview(range) :
-          tab === 'processes'  ? renderReportProcesses(range) :
-          tab === 'users'      ? renderReportUsers(range) :
-          tab === 'production' ? renderReportProduction(range) : ''
-        }
+        ${repTabs.length === 0 ? `
+          <div style="padding:60px 20px;text-align:center;color:var(--text-dim);">
+            <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+            <div>Hiçbir rapora erişim yetkiniz yok</div>
+          </div>
+        ` : (
+          currentTab === 'overview'   ? renderReportOverview(range) :
+          currentTab === 'processes'  ? renderReportProcesses(range) :
+          currentTab === 'users'      ? renderReportUsers(range) :
+          currentTab === 'production' ? renderReportProduction(range) : ''
+        )}
       </div>
     </div>
   `;
@@ -11832,6 +11910,17 @@ function renderDailyActivityChart(range, instances) {
 // === ÜRETİM VIEW RENDER ===
 
 function renderProductionView(v) {
+  // İlk girişte: operatör (sadece kendi istasyonu) için varsayılan mystation, diğerleri için stations
+  const myStations = getMyStations(state.currentUser);
+  const canViewAll = hasPermission(state.currentUser, 'production_view_all');
+  if (!state._prodTabInitialized) {
+    if (!canViewAll && myStations.length > 0) {
+      state.prodTab = 'mystation';
+    } else if (canViewAll) {
+      state.prodTab = 'stations';
+    }
+    state._prodTabInitialized = true;
+  }
   v.innerHTML = `
     <aside class="prod-sidebar" id="prod-sidebar"></aside>
     <main class="prod-main" id="prod-main"></main>
@@ -11865,8 +11954,10 @@ function renderProdSidebar() {
     <div class="sidebar-section">
       <div class="section-title">Görünüm</div>
       <div style="display:flex;flex-direction:column;gap:4px;">
-        <button class="admin-nav-item ${state.prodTab === 'stations' ? 'active':''}" onclick="setProdTab('stations')">🗺️ Fabrika Haritası</button>
-        <button class="admin-nav-item ${state.prodTab === 'orders' ? 'active':''}" onclick="setProdTab('orders')">📋 Tüm Siparişler</button>
+        ${hasPermission(state.currentUser, 'production_view_all') ?
+          `<button class="admin-nav-item ${state.prodTab === 'stations' ? 'active':''}" onclick="setProdTab('stations')">🗺️ Fabrika Haritası</button>` : ''}
+        ${hasPermission(state.currentUser, 'production_view_all') ?
+          `<button class="admin-nav-item ${state.prodTab === 'orders' ? 'active':''}" onclick="setProdTab('orders')">📋 Tüm Siparişler</button>` : ''}
         ${myStations.length > 0 ?
           `<button class="admin-nav-item ${state.prodTab === 'mystation' ? 'active':''}" onclick="setProdTab('mystation')">🛠️ İstasyonum${myTasks ? ` <span class="badge-tag" style="margin-left:6px;">${myTasks}</span>` : ''}</button>` : ''}
       </div>
@@ -11899,6 +11990,11 @@ function renderProdSidebar() {
 }
 
 function setProdTab(tab) {
+  // Yetki kontrolü
+  if (tab === 'orders' && !hasPermission(state.currentUser, 'production_view_all')) {
+    notify('Tüm siparişleri görme yetkiniz yok', 'error');
+    return;
+  }
   state.prodTab = tab;
   state.selectedOrderId = null;
   state.selectedStationIdx = null;
