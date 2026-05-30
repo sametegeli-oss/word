@@ -5733,6 +5733,190 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
+
+
+<!-- WM REPAIR9: stable list name, learned button, AI relation/explanation buttons -->
+<style id="wm-repair9-style">
+  #wmR9Overlay{position:fixed!important;inset:0!important;background:rgba(0,0,0,.66)!important;z-index:2147483647!important;display:none;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;font-family:Nunito,Arial,sans-serif}
+  #wmR9Overlay.show{display:flex!important}
+  #wmR9Card{width:min(760px,96vw);max-height:86vh;overflow:auto;background:#111827;border:1px solid rgba(148,163,184,.38);border-radius:24px;box-shadow:0 30px 90px rgba(0,0,0,.7);color:#e5e7eb}
+  #wmR9Head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px;border-bottom:1px solid rgba(148,163,184,.24);position:sticky;top:0;background:#111827;z-index:2}
+  #wmR9Title{font-size:24px;font-weight:900;color:#fff;line-height:1.25}
+  #wmR9Close{border:0;background:rgba(255,255,255,.08);color:#c7d2fe;border-radius:16px;width:54px;height:54px;font-size:34px;line-height:1;cursor:pointer;font-weight:300}
+  #wmR9Content{padding:22px;font-size:16px;line-height:1.75;white-space:pre-wrap;color:#e5e7eb}
+  #wmR9Content .wm-loading{font-size:18px;color:#a5b4fc;font-weight:900}
+  .wm-hidden-restore-toast{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+  #currentListName,#wmActiveListName,#wmListSwitchName{visibility:visible!important;opacity:1!important;display:inline-block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:340px!important}
+</style>
+<script id="wm-repair9-script">
+(function(){
+  if(window.__WM_REPAIR9__) return; window.__WM_REPAIR9__=true;
+  function q(s,r){return (r||document).querySelector(s)}
+  function qa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
+  function txt(el){return (el&&(el.innerText||el.textContent)||'').replace(/\s+/g,' ').trim()}
+  function fold(s){return String(s||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i')}
+  function clean(s){return String(s==null?'':s).replace(/▼/g,'').replace(/^[←▶\s]+/,'').replace(/\b\d+\s*kelime\b/ig,'').replace(/\bkelime yüklendi\b/ig,'').replace(/\s+/g,' ').trim()}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function isBadList(s){var f=fold(clean(s));return !f||/^\d{6,}$/.test(f)||/^(undefined|null|aktif liste|liste degistir|ana liste|kelime|play|slow|fast|speed|media|sec|seç|sil|kapat|iptal|duzenle|düzenle|bugun|bugün|telaffuz|istatistik|ai|ai sor|liste)$/.test(f)}
+  function validList(s){s=clean(s);return !!s&&s.length<70&&!isBadList(s)}
+  function validWord(s){s=clean(s);var f=fold(s);return /^[A-Za-z][A-Za-z'’\-]{1,45}$/.test(s)&&!/^(undefined|null|kelime|play|slow|fast|speed|media|aktif|liste|ceviri|yok|henuz|calisilmadi|sonraki)$/.test(f)}
+
+  var lastGoodList='';
+  try{lastGoodList=localStorage.getItem('wm.r9.listName')||localStorage.getItem('wm.activeListName')||''}catch(e){}
+  if(isBadList(lastGoodList)) lastGoodList='';
+
+  function setListName(name){
+    name=clean(name); if(!validList(name)) return false;
+    lastGoodList=name;
+    try{localStorage.setItem('wm.r9.listName',name);localStorage.setItem('wm.activeListName',name)}catch(e){}
+    ['#currentListName','#wmActiveListName','#wmListSwitchName'].forEach(function(sel){var el=q(sel); if(el) el.textContent=name;});
+    return true;
+  }
+  function listFromGlobals(){
+    var names=['activeList','currentList','selectedList','currentWordList','activeWordList','selectedWordList'];
+    for(var i=0;i<names.length;i++){
+      var v=window[names[i]];
+      if(typeof v==='string'&&validList(v)) return v;
+      if(v&&typeof v==='object'){
+        var n=v.name||v.title||v.listName||v.label;
+        if(validList(n)) return n;
+      }
+    }
+    var idNames=['activeListId','currentListId','selectedListId'];
+    var ids=[]; idNames.forEach(function(n){if(window[n]!=null) ids.push(String(window[n]))});
+    var arrNames=['lists','multiLists','wordLists','excelLists','allLists'];
+    for(var a=0;a<arrNames.length;a++){
+      var arr=window[arrNames[a]]; if(!Array.isArray(arr)) continue;
+      for(var j=0;j<arr.length;j++){
+        var o=arr[j]||{}; var id=String(o.id||o.listId||o.key||o.createdAt||o.timestamp||'');
+        if(ids.indexOf(id)>-1||ids.indexOf(String(o.id))>-1){var nm=o.name||o.title||o.listName||o.label; if(validList(nm)) return nm;}
+      }
+    }
+    return '';
+  }
+  function listFromStorage(){
+    var direct=''; try{direct=localStorage.getItem('wm.r9.listName')||localStorage.getItem('wm.activeListName')||''}catch(e){}
+    if(validList(direct)) return direct;
+    var activeIds=[];
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v=localStorage.getItem(k)||'';
+        if(/active|current|selected/i.test(k)&&v.length<90) activeIds.push(String(v).replace(/["']/g,''));
+        try{var o=JSON.parse(v); if(o&&typeof o==='object') ['activeListId','currentListId','selectedListId','activeId','currentId'].forEach(function(p){if(o[p]!=null) activeIds.push(String(o[p]))})}catch(e){}
+      }
+      for(var j=0;j<localStorage.length;j++){
+        var val; try{val=JSON.parse(localStorage.getItem(localStorage.key(j))||'null')}catch(e){continue}
+        var arrays=[]; if(Array.isArray(val)) arrays.push(val); else if(val&&typeof val==='object') ['lists','multiLists','wordLists','excelLists','allLists'].forEach(function(p){if(Array.isArray(val[p])) arrays.push(val[p])});
+        for(var a=0;a<arrays.length;a++) for(var b=0;b<arrays[a].length;b++){
+          var item=arrays[a][b]||{}, id=String(item.id||item.listId||item.key||item.createdAt||item.timestamp||''), nm=item.name||item.title||item.listName||item.label;
+          if(validList(nm)&&(activeIds.indexOf(id)>-1||activeIds.indexOf(String(item.id))>-1)) return nm;
+        }
+      }
+    }catch(e){}
+    return '';
+  }
+  function syncList(){
+    var cur=q('#currentListName'); var ct=cur?clean(txt(cur)):'';
+    // Do not let icon-only/empty text overwrite good list name.
+    if(validList(ct)){setListName(ct);return}
+    var n=listFromGlobals()||listFromStorage()||lastGoodList;
+    if(validList(n)) setListName(n);
+    else if(cur && !clean(txt(cur))) cur.textContent='Liste Seç';
+  }
+  function captureListClick(el){
+    var context=el.closest&&el.closest('#multiListContainer,.list-manager,[id*="List"],[class*="list"],[role="dialog"],.modal,.popup,.screen');
+    if(!context) return;
+    var target=el.closest('button,[role="button"],li,.card,.list-item,.ml-item,.wm-list-option,div')||el;
+    var lines=(target.innerText||target.textContent||'').split(/\n+/).map(clean).filter(Boolean);
+    for(var i=0;i<lines.length;i++){
+      var line=lines[i].replace(/\b(seç|sec|sil|düzenle|duzenle|aktif)\b/ig,'').trim();
+      if(validList(line)){setTimeout(function(x){return function(){setListName(x)}}(line),120);return}
+    }
+  }
+
+  function hideRestoreToasts(){qa('div,section,aside').forEach(function(el){var t=txt(el); if(/Otomatik Geri Yükleme|Yedek geri yüklendi|kelime yüklendi|kitap yüklendi/.test(t)&&t.length<360) el.classList.add('wm-hidden-restore-toast')})}
+
+  function currentObj(){
+    var idxs=['currentIndex','wordIndex','idx','currentWordIndex','activeIndex'];
+    var arrs=['words','wordList','allWords','filteredWords','currentWords','data','items','vocab','wordData'];
+    for(var a=0;a<arrs.length;a++){var arr=window[arrs[a]]; if(!Array.isArray(arr)) continue; for(var i=0;i<idxs.length;i++){var ix=window[idxs[i]]; if(typeof ix==='number'&&arr[ix]!=null) return arr[ix];}}
+    return null;
+  }
+  function objWord(o){return o&&typeof o==='object'&&(o.word||o.en||o.english||o.term||o.title||o.name)}
+  function wordFromModal(el){
+    var root=el&&el.closest&&el.closest('[role="dialog"],.modal,.ai-modal,.popup,.word-ai-modal,.wm-modal,.overlay,.dialog,div[style*="position: fixed"]');
+    if(!root) return '';
+    var heads=qa('h1,h2,h3,.title,.modal-title',root);
+    for(var i=0;i<heads.length;i++){var w=clean(txt(heads[i])); if(validWord(w)) return w}
+    return '';
+  }
+  function wordFromCard(){
+    var o=currentObj(); var w=typeof o==='string'?o:objWord(o); if(validWord(w)) return clean(w);
+    var card=q('#wordCard')||q('#mainCard')||q('#sc-word'); if(!card) return '';
+    var candidates=qa('*',card).map(function(el){return {t:clean(txt(el)),fs:parseFloat(getComputedStyle(el).fontSize)||0,fw:parseInt(getComputedStyle(el).fontWeight)||400,c:String(el.className||''),tag:el.tagName}}).filter(function(x){return validWord(x.t)});
+    candidates.sort(function(a,b){var aw=/word|vocab/i.test(a.c)?150:0; if(/^H[1-3]$/.test(a.tag))aw+=80; var bw=/word|vocab/i.test(b.c)?150:0; if(/^H[1-3]$/.test(b.tag))bw+=80; return (bw-aw)||(b.fs-a.fs)||(b.fw-a.fw)});
+    return candidates[0]?candidates[0].t:'';
+  }
+  function getWord(el){return wordFromModal(el)||wordFromCard()}
+
+  function ensureOverlay(){
+    var ov=q('#wmR9Overlay'); if(ov) return ov;
+    ov=document.createElement('div'); ov.id='wmR9Overlay';
+    ov.innerHTML='<div id="wmR9Card"><div id="wmR9Head"><div id="wmR9Title">Sonuç</div><button id="wmR9Close" type="button">×</button></div><div id="wmR9Content"></div></div>';
+    document.body.appendChild(ov); q('#wmR9Close',ov).onclick=function(){ov.classList.remove('show')}; ov.addEventListener('click',function(e){if(e.target===ov) ov.classList.remove('show')}); return ov;
+  }
+  function showAI(title,body){var ov=ensureOverlay(); q('#wmR9Title',ov).innerHTML=title; q('#wmR9Content',ov).innerHTML=body; ov.classList.add('show')}
+  function parseAI(x){
+    if(x==null) return ''; if(typeof x==='string') return x;
+    if(typeof x==='object'){
+      if(x.choices&&x.choices[0]){var c=x.choices[0]; if(c.message&&typeof c.message.content==='string') return c.message.content; if(typeof c.text==='string') return c.text;}
+      var keys=['content','text','answer','message','result','output','response','reply','data'];
+      for(var i=0;i<keys.length;i++){var v=x[keys[i]]; if(typeof v==='string'&&v.trim()) return v; if(v&&typeof v==='object'){var r=parseAI(v); if(r) return r;}}
+      try{return JSON.stringify(x,null,2)}catch(e){return String(x)}
+    }
+    return String(x);
+  }
+  async function runAI(kind,el){
+    var word=getWord(el); if(!word){showAI('Kelime bulunamadı','Aktif kelime okunamadı. Kelime ekranındayken tekrar dene.');return false}
+    showAI((kind==='relations'?'🔗 Kelime İlişkileri':'💬 Kelime Açıklama')+' — '+esc(word),'<div class="wm-loading">Hazırlanıyor...</div>');
+    var system='Sen deneyimli bir İngilizce öğretmenisin. Cevabı Türkçe ver. Kısa, net, maddeli ve örnekli yaz.';
+    var user=kind==='relations'?('Kelime: "'+word+'"\nBu kelime için Türkçe kelime ilişkileri hazırla: eş anlamlılar, zıt anlamlılar, collocationlar, kelime ailesi, yakın anlamlılar ve 3 örnek cümle.'):('Kelime: "'+word+'"\nBu kelimeyi Türkçe açıkla: temel anlam, kullanım, seviye, yaygın hata ve 3 örnek cümle.');
+    try{var res;if(typeof window.callAI==='function') res=await window.callAI(system,user,kind==='relations'?'relationships':'explain'); else if(typeof window.callGroqAPI==='function') res=await window.callGroqAPI(system,user,1500); else throw new Error('AI fonksiyonu bulunamadı'); var out=parseAI(res).trim(); if(!out) throw new Error('AI boş cevap döndürdü'); showAI((kind==='relations'?'🔗 Kelime İlişkileri':'💬 Kelime Açıklama')+' — '+esc(word),esc(out));}
+    catch(err){showAI('❌ Sonuç alınamadı',esc(err&&err.message?err.message:String(err)))}
+    return false;
+  }
+
+  function safeLearned(){
+    var w=wordFromCard(); var o=currentObj();
+    if(o&&typeof o==='object'){o.learned=true;o.isLearned=true;o.status='learned';o.lastReviewed=Date.now();o.correct=(o.correct||0)+1;if(w&&!o.word)o.word=w;}
+    try{var raw=localStorage.getItem('learnedWords'), arr=[]; try{arr=raw?JSON.parse(raw):[]}catch(e){arr=[]} if(!Array.isArray(arr)) arr=[]; if(w&&!arr.some(function(x){var ww=typeof x==='string'?x:objWord(x);return String(ww||'').toLowerCase()===w.toLowerCase()})) arr.push(o&&typeof o==='object'?Object.assign({},o,{word:w,learned:true,date:Date.now()}):{word:w,learned:true,date:Date.now()}); localStorage.setItem('learnedWords',JSON.stringify(arr.slice(-600)));}catch(e){console.warn('[WM R9] learned storage skipped',e)}
+    qa('*',q('#wordCard')||document).forEach(function(el){if(/henüz çalışılmadı/i.test(txt(el))) el.textContent='✅ Öğrenildi'});
+    if(typeof window.updateStats==='function') try{window.updateStats()}catch(e){}
+    // Keep user on the same card; do not jump to a broken next render.
+    setTimeout(syncList,60);
+    return false;
+  }
+  function installLearnedOverride(){window.markLearned=safeLearned; window.addLearnedWord=function(){return safeLearned()}; qa('button').forEach(function(b){if(/ogrenildi|ogrendim/.test(fold(txt(b)))) b.onclick=function(ev){ev.preventDefault();ev.stopPropagation();safeLearned();return false}})}
+
+  document.addEventListener('click',function(e){
+    var node=e.target.closest&&e.target.closest('button,[role="button"],a,.act-btn,.wm-ai-action,.feature-btn,div');
+    var f=fold(txt(node||e.target));
+    if(/kelime\s*iliski|iliski/.test(f)){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation&&e.stopImmediatePropagation();runAI('relations',node||e.target);return false}
+    if(/kelime\s*aciklama|aciklama/.test(f)){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation&&e.stopImmediatePropagation();runAI('explain',node||e.target);return false}
+    if(/ogrenildi|ogrendim/.test(f)){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation&&e.stopImmediatePropagation();safeLearned();return false}
+    if(/^(×|x|✕)$/.test(f)||/kapat/.test(f)){var ov=e.target.closest&&e.target.closest('#wmR9Overlay,#wmR8Overlay,#wmFix7AIOverlay'); if(ov){ov.classList.remove('show','wm-show');e.preventDefault();e.stopPropagation();return false}}
+    captureListClick(e.target);
+  },true);
+
+  var oldShow=window.showListSelector; if(typeof oldShow==='function') window.showListSelector=function(){var r=oldShow.apply(this,arguments); setTimeout(syncList,250); return r};
+  var oldNext=window.nextWord; if(typeof oldNext==='function') window.nextWord=function(){var r=oldNext.apply(this,arguments); setTimeout(syncList,80);return r};
+  var oldPrev=window.prevWord; if(typeof oldPrev==='function') window.prevWord=function(){var r=oldPrev.apply(this,arguments); setTimeout(syncList,80);return r};
+  function tick(){hideRestoreToasts();syncList();installLearnedOverride()}
+  document.addEventListener('DOMContentLoaded',function(){tick();setTimeout(tick,250);setTimeout(tick,1000)}); if(document.readyState!=='loading') setTimeout(tick,0);
+  setInterval(function(){syncList();installLearnedOverride();hideRestoreToasts()},1500);
+})();
+</script>
+
 </body></html>
 
 
