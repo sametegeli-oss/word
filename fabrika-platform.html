@@ -3263,6 +3263,165 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* ============================================ */
+  /* YORUMLAR (Talep Detayında)                    */
+  /* ============================================ */
+  .comments-section h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .comment-count {
+    background: var(--accent);
+    color: #000;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .comments-empty {
+    text-align: center;
+    color: var(--text-mute);
+    font-size: 12px;
+    padding: 16px;
+    background: var(--panel-2);
+    border-radius: 6px;
+  }
+  .comment-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    background: var(--panel-2);
+    border-radius: 6px;
+    border-left: 2px solid var(--border);
+  }
+  .comment-item.mine {
+    border-left-color: var(--accent);
+    background: rgba(74,158,255,0.05);
+  }
+  .comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .comment-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .comment-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .comment-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .comment-time {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .comment-delete {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--text-mute);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .comment-delete:hover {
+    background: var(--red);
+    color: white;
+  }
+  .comment-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .comment-mention {
+    background: rgba(74,158,255,0.15);
+    color: var(--accent);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+  .comment-input-box {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .comment-input-box textarea {
+    flex: 1;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: var(--sans);
+    resize: vertical;
+    min-height: 40px;
+  }
+  .comment-input-box textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .comment-submit-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--sans);
+    white-space: nowrap;
+    align-self: flex-end;
+  }
+  .comment-submit-btn:hover {
+    opacity: 0.9;
+  }
+  .comment-hint {
+    font-size: 10px;
+    color: var(--text-mute);
+    margin-top: 6px;
+  }
+  .comment-hint code {
+    background: var(--panel-3);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent);
+  }
+  @media (max-width: 768px) {
+    .comment-input-box {
+      flex-direction: column;
+    }
+    .comment-submit-btn {
+      width: 100%;
+    }
+  }
 </style>
 </head>
 <body>
@@ -3525,7 +3684,7 @@ function setupRealtimeListeners() {
   const db = window.fb.db;
 
   // 5 ana koleksiyon için listener
-  const collections = ['definitions', 'instances', 'tasks', 'orders', 'notifications'];
+  const collections = ['definitions', 'instances', 'tasks', 'orders', 'notifications', 'comments'];
   for (const colName of collections) {
     const unsub = window.fb.onSnapshot(
       window.fb.collection(db, colName),
@@ -3687,6 +3846,7 @@ let state = {
   instances: [],
   tasks: [],
   notifications: [],
+  comments: [],          // Talep yorumları (Firestore /comments)
   history: [],
   // -- Üretim --
   orders: [],          // sipariş listesi
@@ -3885,7 +4045,8 @@ async function persistNow() {
       instances: state.instances || [],
       tasks: state.tasks || [],
       orders: state.orders || [],
-      notifications: state.notifications || []
+      notifications: state.notifications || [],
+      comments: state.comments || []
     };
 
     // Sadece son N saniyede değişen kayıtları yaz mantığı yerine,
@@ -3951,13 +4112,14 @@ async function loadStateFromFirestore() {
     console.log('[Firestore] Veriler yükleniyor...');
 
     // Paralel olarak tüm koleksiyonları çek
-    const [usersSnap, defsSnap, instSnap, tasksSnap, ordersSnap, notifsSnap, metaSnap] = await Promise.all([
+    const [usersSnap, defsSnap, instSnap, tasksSnap, ordersSnap, notifsSnap, commentsSnap, metaSnap] = await Promise.all([
       window.fb.getDocs(window.fb.collection(db, 'users')),
       window.fb.getDocs(window.fb.collection(db, 'definitions')),
       window.fb.getDocs(window.fb.collection(db, 'instances')),
       window.fb.getDocs(window.fb.collection(db, 'tasks')),
       window.fb.getDocs(window.fb.collection(db, 'orders')),
       window.fb.getDocs(window.fb.collection(db, 'notifications')),
+      window.fb.getDocs(window.fb.collection(db, 'comments')),
       window.fb.getDoc(window.fb.doc(db, 'meta', 'main'))
     ]);
 
@@ -3982,6 +4144,7 @@ async function loadStateFromFirestore() {
     state.tasks = tasksSnap.docs.map(d => d.data());
     state.orders = ordersSnap.docs.map(d => d.data());
     state.notifications = notifsSnap.docs.map(d => d.data());
+    state.comments = commentsSnap.docs.map(d => d.data());
 
     // Meta
     if (metaSnap.exists()) {
@@ -4002,7 +4165,7 @@ async function loadStateFromFirestore() {
       await persistNow();
     }
 
-    console.log(`[Firestore] Yüklendi: ${state.users.length} kullanıcı, ${state.definitions.length} süreç, ${state.instances.length} talep, ${state.tasks.length} görev, ${state.orders.length} sipariş, ${state.notifications.length} bildirim`);
+    console.log(`[Firestore] Yüklendi: ${state.users.length} kullanıcı, ${state.definitions.length} süreç, ${state.instances.length} talep, ${state.tasks.length} görev, ${state.orders.length} sipariş, ${state.notifications.length} bildirim, ${state.comments.length} yorum`);
   } catch (e) {
     console.error('[Firestore] Yükleme hatası:', e);
     if (typeof notify === 'function') notify('Veriler yüklenemedi: ' + e.message, 'error');
@@ -4017,6 +4180,7 @@ function loadState() {
   state.tasks = [];
   state.orders = [];
   state.notifications = [];
+  state.comments = [];
   state.history = [];
   state.productionLog = [];
   state.stationAssignments = defaultStationAssignments();
@@ -5938,9 +6102,115 @@ function renderDetail() {
           `).join('')}
         </div>
       </div>
+      ${renderCommentsSection(instance.id)}
     </div>
     ${actionBar}
   `;
+}
+
+// ============== YORUMLAR (her talepte) ==============
+
+function renderCommentsSection(instanceId) {
+  const comments = (state.comments || [])
+    .filter(c => c.instanceId === instanceId)
+    .sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+  const commentsHtml = comments.length === 0
+    ? `<div class="comments-empty">Henüz yorum yok. İlk yorumu siz yazın.</div>`
+    : comments.map(c => {
+        const author = getUser(c.authorId);
+        const isMine = c.authorId === state.currentUser;
+        const initials = (author?.name || '?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+        // Mention render: @userN -> highlighted span
+        const textHtml = escapeHtml(c.text || '').replace(/@(user\d+|[a-z0-9_]+)/g,
+          (m, u) => `<span class="comment-mention">@${u}</span>`);
+        return `
+          <div class="comment-item ${isMine ? 'mine' : ''}">
+            <div class="comment-avatar">${initials}</div>
+            <div class="comment-body">
+              <div class="comment-head">
+                <span class="comment-author">${escapeHtml(author?.name || c.authorId)}</span>
+                <span class="comment-time">${formatAge(c.createdAt || 0)}</span>
+                ${isMine ? `<button class="comment-delete" onclick="deleteComment('${c.id}')" title="Yorumu sil">✕</button>` : ''}
+              </div>
+              <div class="comment-text">${textHtml}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+  return `
+    <div class="detail-section comments-section">
+      <h4>💬 Yorumlar ${comments.length > 0 ? `<span class="comment-count">${comments.length}</span>` : ''}</h4>
+      <div class="comments-list">
+        ${commentsHtml}
+      </div>
+      <div class="comment-input-box">
+        <textarea id="comment-textarea-${instanceId}" placeholder="Yorum yazın... @user1 ile bahsedebilirsiniz" rows="2"></textarea>
+        <button class="comment-submit-btn" onclick="addComment('${instanceId}')">📤 Gönder</button>
+      </div>
+      <div class="comment-hint">İpucu: <code>@user1</code> yazarak başkalarına bildirim yollayabilirsiniz</div>
+    </div>
+  `;
+}
+
+function addComment(instanceId) {
+  const textarea = document.getElementById('comment-textarea-' + instanceId);
+  if (!textarea) return;
+  const text = textarea.value.trim();
+  if (!text) { notify('Yorum boş olamaz', 'error'); return; }
+  if (text.length > 2000) { notify('Yorum çok uzun (max 2000 karakter)', 'error'); return; }
+
+  // Mention'ları çıkar
+  const mentionMatches = text.match(/@(user\d+|[a-z0-9_]+)/g) || [];
+  const mentions = mentionMatches.map(m => m.substring(1)).filter(u =>
+    state.users.find(usr => usr.id === u)
+  );
+
+  const commentId = 'C-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+  const newComment = {
+    id: commentId,
+    instanceId: instanceId,
+    authorId: state.currentUser,
+    text: text,
+    createdAt: Date.now(),
+    mentions: mentions
+  };
+
+  state.comments.push(newComment);
+
+  // Mention'lara bildirim gönder
+  const author = getUser(state.currentUser);
+  const inst = state.instances.find(i => i.id === instanceId);
+  for (const userId of mentions) {
+    if (userId !== state.currentUser) {  // kendine bildirim gönderme
+      pushNotif(userId, `💬 ${author?.name || 'Biri'} ${instanceId} talebinde sizden bahsetti`, instanceId);
+    }
+  }
+
+  // Talep sahibine de bildirim (eğer yorum yapan başkasıysa)
+  if (inst && inst.ownerId !== state.currentUser && !mentions.includes(inst.ownerId)) {
+    pushNotif(inst.ownerId, `💬 ${author?.name || 'Biri'} ${instanceId} talebinize yorum yazdı`, instanceId);
+  }
+
+  persist();
+  textarea.value = '';
+  renderDetail();
+  notify('Yorum eklendi', 'success');
+}
+
+function deleteComment(commentId) {
+  const c = state.comments.find(x => x.id === commentId);
+  if (!c) return;
+  if (c.authorId !== state.currentUser) {
+    notify('Sadece kendi yorumlarınızı silebilirsiniz', 'error');
+    return;
+  }
+  if (!confirm('Yorum silinsin mi?')) return;
+  state.comments = state.comments.filter(x => x.id !== commentId);
+  persist();
+  renderDetail();
+  notify('Yorum silindi', 'success');
 }
 
 function actOnTask(taskId, action) {
