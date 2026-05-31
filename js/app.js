@@ -32735,3 +32735,176 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
   console.log('✅ v13 cümleler.xlsx yapısı aktif');
 })();
+
+/* =====================================================================
+   WORD MODE v14 — Sentence Level + Grammar Visible Everywhere
+   Shows sentenceLevel and grammarStructure on the main sentence card and
+   on list cards. No continuous observers/intervals.
+   ===================================================================== */
+(function(){
+  if(window.__WM_SENTENCE_META_V14__) return;
+  window.__WM_SENTENCE_META_V14__ = true;
+
+  function esc(s){return String(s??'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]});}
+  function clean(s){return String(s||'').replace(/\s+/g,' ').trim();}
+  function lower(s){return clean(s).toLowerCase();}
+  function qa(sel,root){return Array.from((root||document).querySelectorAll(sel));}
+  function arr(){try{return Array.isArray(window.allWords)?window.allWords:[]}catch(e){return []}}
+  function curArr(){try{return Array.isArray(window.words)?window.words:arr()}catch(e){return arr()}}
+  function curIndex(){try{return typeof window.idx==='number'?window.idx:(typeof idx==='number'?idx:0)}catch(e){return 0}}
+  function cur(){const a=curArr(); return a[curIndex()] || null;}
+  function itemLevel(w){return clean(w&&(w.sentenceLevel||w.level||w.cefr||w.CEFR||''));}
+  function itemGrammar(w){return clean(w&&(w.grammarStructure||w.grammar||w.grammar_structure||w.structure||''));}
+  function itemTarget(w){return clean(w&&(w.word||w.targetWord||w.en||w.english||''));}
+  function hasMeta(w){return !!(itemLevel(w)||itemGrammar(w));}
+
+  function metaHtml(w,mode){
+    if(!w) return '';
+    const target=itemTarget(w), lvl=itemLevel(w), gram=itemGrammar(w);
+    const parts=[];
+    if(target && mode!=='list') parts.push('<span class="wm-v14-chip wm-v14-target">🎯 '+esc(target)+'</span>');
+    if(lvl) parts.push('<span class="wm-v14-chip wm-v14-level">📊 Seviye: '+esc(lvl)+'</span>');
+    if(gram) parts.push('<span class="wm-v14-chip wm-v14-grammar">🏗️ Gramer: '+esc(gram)+'</span>');
+    return parts.length ? '<div class="wm-v14-meta '+(mode==='list'?'wm-v14-list-meta':'wm-v14-main-meta')+'">'+parts.join('')+'</div>' : '';
+  }
+
+  function injectCss(){
+    if(document.getElementById('wmSentenceMetaV14Css')) return;
+    const st=document.createElement('style');
+    st.id='wmSentenceMetaV14Css';
+    st.textContent=`
+      .wm-v14-meta{display:flex!important;gap:6px!important;flex-wrap:wrap!important;align-items:center!important;margin:8px 0!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:20!important;clear:both!important;}
+      .wm-v14-main-meta{margin:10px 0 14px!important;padding:8px 10px!important;border:1px solid rgba(96,165,250,.28)!important;background:rgba(59,130,246,.08)!important;border-radius:14px!important;}
+      .wm-v14-list-meta{margin:7px 0 3px!important;}
+      .wm-v14-chip{display:inline-flex!important;align-items:center!important;gap:4px!important;padding:5px 9px!important;border-radius:999px!important;background:var(--bg3,#1f2937)!important;color:var(--muted,#94a3b8)!important;font-size:11px!important;font-weight:900!important;line-height:1.15!important;white-space:normal!important;max-width:100%!important;}
+      .wm-v14-level{background:linear-gradient(135deg,#2563eb,#3b82f6)!important;color:#fff!important;}
+      .wm-v14-grammar{background:rgba(168,85,247,.18)!important;color:#d8b4fe!important;border:1px solid rgba(168,85,247,.35)!important;}
+      .wm-v14-target{background:rgba(34,197,94,.14)!important;color:#86efac!important;border:1px solid rgba(34,197,94,.28)!important;}
+      .wm-v13-meta{display:flex!important;visibility:visible!important;opacity:1!important;}
+      .wm-v13-chip{visibility:visible!important;opacity:1!important;}
+      #wordCard .wm-v14-main-meta{width:100%!important;box-sizing:border-box!important;}
+      #wordListEl .wm-v14-list-meta{padding-right:8px!important;}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function findBigWordEl(wc,w){
+    const target=lower(itemTarget(w));
+    if(!target) return null;
+    const els=qa('*',wc).filter(function(el){
+      const t=lower(el.textContent);
+      if(t!==target) return false;
+      const fs=parseFloat(getComputedStyle(el).fontSize)||0;
+      return fs>=22;
+    });
+    return els[0]||null;
+  }
+
+  function patchMainMeta(){
+    injectCss();
+    const w=cur();
+    const wc=document.getElementById('wordCard') || document.getElementById('mainCard');
+    if(!wc || !w || !hasMeta(w)) return;
+    let meta=document.getElementById('wmV14SentenceMeta');
+    if(!meta){
+      meta=document.createElement('div');
+      meta.id='wmV14SentenceMeta';
+    }
+    meta.outerHTML = metaHtml(w,'main').replace('<div class="wm-v14-meta wm-v14-main-meta"','<div id="wmV14SentenceMeta" class="wm-v14-meta wm-v14-main-meta"');
+    meta=document.getElementById('wmV14SentenceMeta');
+    if(!meta){
+      meta=document.createElement('div'); meta.id='wmV14SentenceMeta'; meta.className='wm-v14-meta wm-v14-main-meta'; meta.innerHTML=metaHtml(w,'main').replace(/^<div[^>]*>|<\/div>$/g,'');
+    }
+    // Move it to a stable place on every render: just before the large target word if possible,
+    // otherwise after sentence/SRS status panel, otherwise near the top of wordCard.
+    const big=findBigWordEl(wc,w);
+    const status=wc.querySelector('.wm-sentence-status,.wm-v13-status,.wmSentenceStatus,#wmSentenceStatus,[class*="sentence-status"]');
+    if(big && big.parentNode){
+      big.parentNode.insertBefore(meta,big);
+    }else if(status && status.parentNode){
+      status.parentNode.insertBefore(meta,status.nextSibling);
+    }else{
+      const learned=document.getElementById('wmFixedLearnedBar');
+      if(learned && learned.parentNode===wc) wc.insertBefore(meta,learned.nextSibling);
+      else wc.insertBefore(meta,wc.firstChild);
+    }
+  }
+
+  function itemFromListCard(card){
+    const data=arr();
+    if(!data.length || !card) return null;
+    const html=card.innerHTML||'';
+    let m=html.match(/goToWord\((\d+)/);
+    if(m && data[+m[1]]) return data[+m[1]];
+    const txt=lower(card.textContent);
+    // Visible cards only; this is called after rendering/scroll, not continuously.
+    for(let i=0;i<data.length;i++){
+      const s=lower(data[i].sentence||'');
+      if(s && s.length>8 && txt.includes(s.slice(0,Math.min(60,s.length)))) return data[i];
+    }
+    return null;
+  }
+
+  function patchListMeta(){
+    injectCss();
+    const root=document.getElementById('wordListEl');
+    if(!root) return;
+    const cards=qa('.wi,.wm-v13-list-card,.word-item,.word-row,.list-item',root);
+    cards.forEach(function(card){
+      const w=itemFromListCard(card);
+      if(!w || !hasMeta(w)) return;
+      let meta=card.querySelector('.wm-v14-list-meta');
+      if(!meta){
+        const body=card.querySelector('.wm-v13-body,.wi-body,.word-info,.item-body') || card;
+        meta=document.createElement('div');
+        meta.className='wm-v14-meta wm-v14-list-meta';
+        // Put after visible sentence/tr if possible, otherwise append to body.
+        const tr=body.querySelector('.wm-v13-tr');
+        if(tr && tr.parentNode) tr.parentNode.insertBefore(meta,tr.nextSibling);
+        else body.appendChild(meta);
+      }
+      meta.innerHTML=metaHtml(w,'list').replace(/^<div[^>]*>|<\/div>$/g,'');
+    });
+  }
+
+  let timer=null;
+  function schedule(delay){
+    clearTimeout(timer);
+    timer=setTimeout(function(){patchMainMeta(); patchListMeta();}, delay==null?80:delay);
+  }
+
+  function wrapFn(name){
+    const old=window[name];
+    if(typeof old==='function' && !old.__wmV14Wrapped){
+      const wrapped=function(){
+        const r=old.apply(this,arguments);
+        schedule(0); setTimeout(function(){patchMainMeta(); patchListMeta();},180);
+        return r;
+      };
+      wrapped.__wmV14Wrapped=true;
+      window[name]=wrapped;
+    }
+  }
+
+  ['renderLearn','renderWord','showWord','nextWord','prevWord','goToWord','showList','renderWordList','updateVisibleItems','startSession','loadWord'].forEach(wrapFn);
+
+  document.addEventListener('click',function(e){
+    const t=clean((e.target&&e.target.textContent)||'');
+    if(/Öğrenmeye|Çalışmaya|Gerçek Hayatta|Kullandım|Sonraki|Önceki|Liste|Tümü|Öğrenildi|Görülmedi|Tekrar|Yanlış/i.test(t)){
+      schedule(40); setTimeout(function(){patchMainMeta(); patchListMeta();},250);
+    }
+  },true);
+
+  document.addEventListener('scroll',function(e){
+    if(e.target && e.target.id==='wordListEl') schedule(60);
+  },true);
+
+  function boot(){
+    injectCss();
+    patchMainMeta(); patchListMeta();
+    setTimeout(function(){patchMainMeta(); patchListMeta();},250);
+    setTimeout(function(){patchMainMeta(); patchListMeta();},900);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+  console.log('✅ WM v14 sentence level/grammar görünürlük katmanı aktif');
+})();

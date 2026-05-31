@@ -7,3 +7,8 @@ Bu paket `cumleler.xlsx` şemasını kullanır:
 Ana öğrenme birimi **sentence** alanıdır. `word` sadece hedef kelime etiketi olarak kullanılır.
 
 GitHub Pages'e klasör içeriğini olduğu gibi yükleyin. Ana dosya: `index.html`.
+
+
+## v14
+- sentenceLevel ve grammarStructure kelime ekranında ve liste ekranında görünür.
+- Eklenen katman sürekli döngü kullanmaz; sadece render/navigasyon/list scroll sonrası çalışır.
