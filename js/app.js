@@ -31803,11 +31803,11 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
     window.renderWordList();
   };
 
-  // Mutation sonrası sabit düğmeyi tekrar yamala.
-  const mo=new MutationObserver(()=>setTimeout(patchMainCard,0));
-  mo.observe(document.documentElement,{childList:true,subtree:true});
+  // v9: MutationObserver kaldırıldı. Eski sürümde patchMainCard DOM'u her tetiklemede
+  // tekrar yazdığı için Chrome sekmesi sürekli çalışıyor görünüyordu.
+  // Render sonrası tek seferlik yama yeterli.
   setTimeout(()=>{try{patchMainCard();}catch(e){}},300);
-  console.log('✅ v6 Öğrenmeye Başladım + kalıcı liste rozetleri aktif');
+  console.log('✅ v6/v9 Öğrenmeye Başladım aktif — sürekli MutationObserver kapalı');
 })();
 
 
@@ -31955,9 +31955,10 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
     document.querySelectorAll('.wi').forEach(el=>{ el.style.overflow='visible'; });
   }
   ['scroll','touchend','mouseup','wheel'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(forceBadges,120),true));
-  setInterval(forceBadges,1000);
+  // v9: sürekli setInterval(forceBadges) kapatıldı; sadece liste açılışı ve scroll bitişinde çalışır.
+  setTimeout(forceBadges,300);
   syncWindowState();
-  console.log('✅ v7 aktif liste yükleme düzeltmesi aktif');
+  console.log('✅ v7/v9 aktif liste yükleme düzeltmesi aktif — sürekli interval kapalı');
 })();
 
 
@@ -32039,23 +32040,41 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
     return null;
   }
 
+  const WM_IMG_CACHE = window.__WM_IMG_CACHE__ || (window.__WM_IMG_CACHE__ = {});
+  let WM_IMG_LAST_KEY = '';
+  let WM_IMG_BUSY = false;
+
   loadSentenceImage = async function(sentence, word){
     ensureImageTop();
     const wrap=document.getElementById('sentImgWrap');
     const img=document.getElementById('sentImg');
     const credit=document.getElementById('imgCredit');
     if(!wrap||!img) return;
+    const cacheKey = String(word||'') + '|' + String(sentence||'').slice(0,120);
+    if(WM_IMG_BUSY && WM_IMG_LAST_KEY === cacheKey) return;
+    if(WM_IMG_LAST_KEY === cacheKey && img.getAttribute('src')) return;
+    WM_IMG_LAST_KEY = cacheKey;
+    if(WM_IMG_CACHE[cacheKey]){
+      if(WM_IMG_CACHE[cacheKey] === '__NONE__'){ wrap.style.display='none'; return; }
+      img.onload=()=>{wrap.style.display='block'; if(credit) credit.innerHTML='📷 Önbellek';};
+      img.onerror=()=>{wrap.style.display='none';};
+      img.src=WM_IMG_CACHE[cacheKey];
+      return;
+    }
+    WM_IMG_BUSY = true;
     wrap.style.display='none';
     img.removeAttribute('src');
     if(credit) credit.innerHTML='';
-    try{ if(typeof enableWordImages!=='undefined' && !enableWordImages) return; }catch(e){}
+    try{ if(typeof enableWordImages!=='undefined' && !enableWordImages) { WM_IMG_BUSY=false; return; } }catch(e){}
 
     const item=currentItem()||{};
     const direct=item.imageUrl||item.image||item.imgUrl||item.photo||item.picture||item.visual;
     if(direct && /^https?:\/\//i.test(String(direct))){
       img.onload=()=>{wrap.style.display='block'; if(credit) credit.innerHTML='📷 Kaynak dosya';};
       img.onerror=()=>{wrap.style.display='none';};
+      WM_IMG_CACHE[cacheKey]=direct;
       img.src=direct;
+      WM_IMG_BUSY=false;
       return;
     }
 
@@ -32072,7 +32091,9 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
       if(u){
         img.onload=()=>{wrap.style.display='block'; if(credit) credit.innerHTML='📷 Wikipedia / Wikimedia';};
         img.onerror=()=>{wrap.style.display='none';};
+        WM_IMG_CACHE[cacheKey]=u;
         img.src=u;
+        WM_IMG_BUSY=false;
         return;
       }
     }
@@ -32081,22 +32102,19 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
     wrap.style.display='block';
     wrap.style.minHeight='82px';
     wrap.innerHTML='<div style="padding:18px;text-align:center;color:var(--muted);font-weight:800">🖼️ Bu cümle için uygun görsel bulunamadı</div><div class="img-credit" id="imgCredit" style="font-size:10px;color:var(--muted);text-align:right;padding:4px 8px">Wikipedia/Wikimedia arandı</div>';
+    WM_IMG_CACHE[cacheKey]='__NONE__';
+    WM_IMG_BUSY=false;
   };
 
   const prevRender = window.renderLearn;
   if(typeof prevRender === 'function'){
     window.renderLearn = async function(){
       const r = await prevRender.apply(this, arguments);
-      setTimeout(()=>{
-        try{
-          ensureImageTop();
-          const it=currentItem();
-          if(it) loadSentenceImage(it.sentence||'', it.word||'');
-        }catch(e){console.warn('v8 image patch', e);}
-      }, 30);
+      // v9: prevRender zaten loadSentenceImage çağırıyor. Burada ikinci ağ isteği başlatma.
+      setTimeout(()=>{ try{ ensureImageTop(); }catch(e){} }, 30);
       return r;
     };
   }
   document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{ensureImageTop();}catch(e){}},500));
-  console.log('✅ v8 cümle görseli üst konum + Wikimedia fallback aktif');
+  console.log('✅ v9 görsel önbellek + JS döngüsü temizliği aktif');
 })();
