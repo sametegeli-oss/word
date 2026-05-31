@@ -33712,3 +33712,253 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
 
   console.log('✅ WM v18 sentenceLevel + grammarStructure çalışma sistemi aktif');
 })();
+
+/* =====================================================================
+   WM v19 — BUGÜN ÇALIŞ / AKILLI SEVİYE + GRAMER KOÇU
+   - sentenceLevel + grammarStructure alanlarına göre en zayıf çalışma alanını bulur
+   - Cümle durumlarını sentenceStatus üzerinden okur
+   - Tek tıkla önerilen seviye/gramer filtresiyle çalışma oturumu başlatır
+   ===================================================================== */
+(function(){
+  if(window.__WM_TODAY_SMART_COACH_V19__) return;
+  window.__WM_TODAY_SMART_COACH_V19__ = true;
+
+  const FILTER_KEY = 'wm_sentence_meta_filter_v18';
+  const SESSION_KEY = 'wm_sentence_meta_session_v18';
+  const ONE_DAY = 24*60*60*1000;
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function clean(s){ return String(s ?? '').replace(/\s+/g,' ').trim(); }
+  function lower(s){ return clean(s).toLowerCase(); }
+  function readJSON(k,f){ try{ const v=JSON.parse(localStorage.getItem(k)||''); return v ?? f; }catch(e){ return f; } }
+  function writeJSON(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function toast(a,b){ try{ if(typeof showToast==='function') showToast(a,b||''); else console.log(a,b||''); }catch(e){ console.log(a,b||''); } }
+  function all(){ try{ if(typeof allWords !== 'undefined' && Array.isArray(allWords)) return allWords; }catch(e){} return Array.isArray(window.allWords) ? window.allWords : []; }
+  function setRuntimeWords(a){ try{ words = a; }catch(e){} try{ window.words = a; }catch(e){} }
+  function setRuntimeIndex(n){ try{ idx = n; }catch(e){} try{ window.idx = n; }catch(e){} }
+  function levelOf(w){ return clean(w && (w.sentenceLevel || w.level || w.cefr || w.CEFR)); }
+  function grammarOf(w){ return clean(w && (w.grammarStructure || w.grammar || w.grammar_structure || w.structure)); }
+  function sentenceOf(w){ return clean(w && (w.sentence || w.text || w.enSentence || '')); }
+  function core(){ return window.WMSentenceCore || null; }
+  function getStatus(w){ const c=core(); return c && w ? c.getStatus(w) : null; }
+  function started(st){ return !!(st && (st.learningStarted || st.startedAt || st.learned || st.realLifeUsed)); }
+  function used(st){ return Number(st && st.realLifeUsed || 0); }
+  function srs(st){ return Number(st && st.srsLevel || 0); }
+  function isDue(st){ return !!(st && started(st) && st.nextReview && st.nextReview <= Date.now()); }
+  function dueText(st){
+    if(!started(st)) return 'Yeni';
+    if(isDue(st)) return 'Bugün tekrar';
+    const diff=(Number(st.nextReview||0)-Date.now());
+    if(diff<=0) return 'Bugün tekrar';
+    const d=Math.ceil(diff/ONE_DAY);
+    return d===1 ? 'Yarın' : d+' gün sonra';
+  }
+
+  function ensureCss(){
+    if($('wm-v19-coach-css')) return;
+    const st=document.createElement('style');
+    st.id='wm-v19-coach-css';
+    st.textContent = `
+      .wm-v19-coach{background:linear-gradient(135deg,rgba(245,158,11,.13),rgba(34,197,94,.10));border:1.5px solid rgba(245,158,11,.38);border-radius:18px;padding:13px;margin:12px 0;box-shadow:0 10px 26px rgba(0,0,0,.13)}
+      .wm-v19-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.wm-v19-title{font-size:15px;font-weight:900;color:var(--text)}
+      .wm-v19-sub{font-size:12px;color:var(--muted);line-height:1.45;margin:6px 0 10px}.wm-v19-reco{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+      .wm-v19-box{background:var(--bg2);border:1px solid var(--border);border-radius:13px;padding:9px}.wm-v19-box b{display:block;color:var(--text);font-size:15px}.wm-v19-box span{font-size:11px;color:var(--muted);font-weight:800}
+      .wm-v19-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.wm-v19-btn{border:0;border-radius:13px;padding:11px 12px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;color:#fff}.wm-v19-main{background:linear-gradient(135deg,#f59e0b,#22c55e)}.wm-v19-alt{background:linear-gradient(135deg,#2563eb,#7c3aed)}.wm-v19-ghost{background:var(--bg3)!important;color:var(--text)!important;border:1.5px solid var(--border)!important}
+      .wm-v19-risklist{margin-top:9px;display:grid;gap:6px}.wm-v19-risk{padding:8px 9px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);cursor:pointer}.wm-v19-risk strong{font-size:12px;color:var(--text);display:block;line-height:1.35}.wm-v19-risk span{font-size:10.5px;color:var(--muted);font-weight:800}
+      .wm-v19-mini{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;background:var(--bg3);color:var(--muted);font-size:10.5px;font-weight:900;margin:2px 3px 0 0}.wm-v19-hot{background:#ef4444!important;color:#fff!important}.wm-v19-warm{background:#f59e0b!important;color:#fff!important}.wm-v19-good{background:#22c55e!important;color:#fff!important}
+      @media(max-width:430px){.wm-v19-reco,.wm-v19-actions{grid-template-columns:1fr}}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function groupKey(w){
+    const lvl=levelOf(w) || 'Seviye yok';
+    const gr=grammarOf(w) || 'Gramer yok';
+    return lower(lvl)+'||'+lower(gr);
+  }
+
+  function analyze(){
+    const data = all().filter(w => sentenceOf(w));
+    const groups = new Map();
+    const levels = new Map();
+    const grammars = new Map();
+
+    function add(map, key, label, w){
+      if(!key) return;
+      const st=getStatus(w);
+      const g=map.get(key) || {key,label,total:0,newCount:0,startedCount:0,dueCount:0,usedCount:0,autoCount:0,srsSum:0,score:0,items:[]};
+      g.total++;
+      if(!started(st)) g.newCount++;
+      else g.startedCount++;
+      if(isDue(st)) g.dueCount++;
+      if(used(st)>0) g.usedCount++;
+      if(srs(st)>=6 || used(st)>=5) g.autoCount++;
+      g.srsSum += srs(st);
+      g.items.push(w);
+      map.set(key,g);
+    }
+
+    data.forEach(w=>{
+      const lvl=levelOf(w) || 'Seviye yok';
+      const gr=grammarOf(w) || 'Gramer yok';
+      const combo=groupKey(w);
+      add(groups, combo, {level:lvl, grammar:gr}, w);
+      add(levels, lower(lvl), lvl, w);
+      add(grammars, lower(gr), gr, w);
+    });
+
+    function finalize(g){
+      const avgSrs = g.total ? g.srsSum/g.total : 0;
+      const weakRatio = g.total ? ((g.newCount*1.4 + g.dueCount*2.2 + Math.max(0,g.startedCount-g.usedCount)*.55) / g.total) : 0;
+      // Büyük ama tamamen bitmemiş grupları öne al. Kullanılmış/otomatikleşmiş oranı zayıflığı azaltır.
+      g.score = Math.round((weakRatio*100) + Math.min(g.total,30)*1.2 - g.usedCount*1.3 - g.autoCount*2.2 - avgSrs*3);
+      g.avgSrs = avgSrs;
+      g.progress = g.total ? Math.round(((g.usedCount*0.55 + g.autoCount*0.45 + g.startedCount*0.20) / g.total) * 100) : 0;
+      return g;
+    }
+    const combos=[...groups.values()].map(finalize).filter(g=>g.total>=2).sort((a,b)=>b.score-a.score || b.dueCount-a.dueCount || b.newCount-a.newCount || b.total-a.total);
+    const levelList=[...levels.values()].map(finalize).sort((a,b)=>b.score-a.score || b.total-a.total);
+    const grammarList=[...grammars.values()].map(finalize).filter(g=>g.total>=2).sort((a,b)=>b.score-a.score || b.total-a.total);
+    const riskItems=data.map(w=>({w, st:getStatus(w)})).filter(x=>!started(x.st)||isDue(x.st)||srs(x.st)<=2).sort((a,b)=>{
+      const sa=(!started(a.st)?6:0)+(isDue(a.st)?9:0)+(3-Math.min(3,srs(a.st)));
+      const sb=(!started(b.st)?6:0)+(isDue(b.st)?9:0)+(3-Math.min(3,srs(b.st)));
+      return sb-sa;
+    }).slice(0,10);
+    return {combos, levelList, grammarList, riskItems, total:data.length};
+  }
+
+  function recommended(){
+    const a=analyze();
+    const combo=a.combos[0];
+    const lvl=a.levelList[0];
+    const gr=a.grammarList[0];
+    return {analysis:a, combo, lvl, gr};
+  }
+
+  function setFilter(level, grammar, mode){
+    writeJSON(FILTER_KEY,{level:clean(level||''), grammar:clean(grammar||''), mode:mode||'today'});
+  }
+
+  function filteredBy(level, grammar){
+    const l=lower(level), g=lower(grammar);
+    return all().filter(w => (!l || lower(levelOf(w))===l) && (!g || lower(grammarOf(w))===g));
+  }
+
+  window.wmTodayCoachStart = function(){
+    const r=recommended();
+    if(!r.combo){ toast('⚠️ Uygun çalışma alanı bulunamadı','Önce cümle listesi yükle'); return; }
+    setFilter(r.combo.label.level, r.combo.label.grammar, 'today');
+    const selected = filteredBy(r.combo.label.level, r.combo.label.grammar);
+    if(!selected.length){ toast('⚠️ Cümle bulunamadı','Önerilen filtre boş döndü'); return; }
+    writeJSON(SESSION_KEY,{startedAt:Date.now(), level:r.combo.label.level, grammar:r.combo.label.grammar, count:selected.length, mode:'todayCoach'});
+    setRuntimeWords(selected.slice());
+    setRuntimeIndex(0);
+    try{ if(typeof showScreen==='function') showScreen('sc-word'); }catch(e){}
+    try{ if(typeof renderLearn==='function') renderLearn(); }catch(e){}
+    setTimeout(wmTodayCoachRender,80);
+    toast('🎯 Bugün çalış başladı', `${r.combo.label.level} • ${r.combo.label.grammar} — ${selected.length} cümle`);
+  };
+
+  window.wmTodayCoachApply = function(levelEnc, grammarEnc){
+    const level=decodeURIComponent(levelEnc||'');
+    const grammar=decodeURIComponent(grammarEnc||'');
+    setFilter(level, grammar, 'today');
+    try{ if(typeof renderWordList==='function') renderWordList(); }catch(e){}
+    try{ if(typeof wmStartMetaStudySession==='function') wmStartMetaStudySession(); else window.wmTodayCoachStart(); }catch(e){ window.wmTodayCoachStart(); }
+    setTimeout(wmTodayCoachRender,80);
+  };
+
+  window.wmTodayCoachGoSentence = function(i){
+    const r=recommended();
+    const item=(r.analysis.riskItems[i]||{}).w;
+    if(!item) return;
+    const index=all().indexOf(item);
+    try{ if(typeof goToWord==='function') goToWord(index>=0?index:i, all()); else { setRuntimeWords(all()); setRuntimeIndex(index); if(typeof showScreen==='function') showScreen('sc-word'); if(typeof renderLearn==='function') renderLearn(); } }catch(e){}
+  };
+
+  function progressLabel(g){
+    if(!g) return '';
+    return `${g.total} cümle · ${g.newCount} yeni · ${g.dueCount} tekrar · ${g.usedCount} kullanım`;
+  }
+
+  function coachHTML(){
+    const r=recommended();
+    const c=r.combo;
+    if(!r.analysis.total){
+      return `<div class="wm-v19-coach" id="wmTodayCoach"><div class="wm-v19-title">🎯 Bugün Çalış</div><div class="wm-v19-sub">Henüz cümle listesi yok. Önce cumleler.xlsx veya AI senaryo listesi yükle.</div></div>`;
+    }
+    const levelText=c ? c.label.level : '—';
+    const grammarText=c ? c.label.grammar : '—';
+    const pct=c ? Math.max(0,Math.min(100,c.progress)) : 0;
+    const risks=r.analysis.riskItems.slice(0,5);
+    const topGrammars=r.analysis.grammarList.slice(0,4);
+    return `
+      <div class="wm-v19-coach" id="wmTodayCoach">
+        <div class="wm-v19-head"><div class="wm-v19-title">🎯 Bugün Çalış — Akıllı Koç</div><span class="wm-v19-mini wm-v19-warm">otomatik seçim</span></div>
+        <div class="wm-v19-sub">Program en zayıf seviye + gramer alanını bulur ve çalışma oturumunu bu cümlelerle başlatır.</div>
+        <div class="wm-v19-reco">
+          <div class="wm-v19-box"><b>📊 ${esc(levelText)}</b><span>Önerilen seviye</span></div>
+          <div class="wm-v19-box"><b>🏗️ ${esc(grammarText)}</b><span>Önerilen gramer</span></div>
+          <div class="wm-v19-box"><b>${c?c.total:0}</b><span>Bu alandaki cümle</span></div>
+          <div class="wm-v19-box"><b>%${pct}</b><span>Tahmini ilerleme</span></div>
+        </div>
+        ${c?`<div class="wm-v19-sub"><span class="wm-v19-mini wm-v19-hot">${c.dueCount} tekrar</span><span class="wm-v19-mini wm-v19-warm">${c.newCount} yeni</span><span class="wm-v19-mini wm-v19-good">${c.usedCount} kullanıldı</span></div>`:''}
+        <div class="wm-v19-actions">
+          <button class="wm-v19-btn wm-v19-main" onclick="wmTodayCoachStart()">🎯 Bugün Çalış</button>
+          <button class="wm-v19-btn wm-v19-ghost" onclick="wmTodayCoachRender()">🔄 Yenile</button>
+        </div>
+        ${topGrammars.length?`<div class="wm-v19-sub" style="margin-top:10px"><b>Diğer zayıf gramerler:</b><br>${topGrammars.map(g=>`<button class="wm-v19-mini" onclick="wmTodayCoachApply('', '${encodeURIComponent(g.label)}')">🏗️ ${esc(g.label)} (${g.total})</button>`).join('')}</div>`:''}
+        ${risks.length?`<div class="wm-v19-risklist"><div class="wm-v19-sub"><b>Bugün öncelikli cümleler:</b></div>${risks.map((x,i)=>{const w=x.w, st=x.st; return `<div class="wm-v19-risk" onclick="wmTodayCoachGoSentence(${i})"><strong>${esc(sentenceOf(w).slice(0,95))}${sentenceOf(w).length>95?'...':''}</strong><span>📊 ${esc(levelOf(w)||'—')} · 🏗️ ${esc(grammarOf(w)||'—')} · ${esc(dueText(st))} · SRS-${srs(st)}</span></div>`;}).join('')}</div>`:''}
+      </div>`;
+  }
+
+  window.wmTodayCoachRender = function(){
+    ensureCss();
+    // Liste ekranındaki v18 panelinin üstüne yerleştir.
+    let host=$('wmTodayCoachHost');
+    const metaHost=$('wmMetaStudyHost');
+    if(!host){
+      host=document.createElement('div');
+      host.id='wmTodayCoachHost';
+      if(metaHost && metaHost.parentNode) metaHost.parentNode.insertBefore(host, metaHost);
+      else {
+        const listScreen=$('sc-list');
+        const stats=$('listStats');
+        if(stats && stats.parentNode) stats.parentNode.insertBefore(host, stats);
+        else if(listScreen) listScreen.appendChild(host);
+      }
+    }
+    host.innerHTML=coachHTML();
+
+    // Menüde veya istatistikte kullanılabilecek küçük özet kartı.
+    let dash=$('wmTodayCoachMini');
+    const statsScreen=$('sc-stats');
+    if(statsScreen && !dash){
+      dash=document.createElement('div');
+      dash.id='wmTodayCoachMini';
+      const first=statsScreen.querySelector('.card');
+      if(first && first.parentNode) first.parentNode.insertBefore(dash, first);
+      else statsScreen.appendChild(dash);
+    }
+    if(dash){
+      const r=recommended(), c=r.combo;
+      dash.innerHTML = c ? `<div class="wm-v19-coach"><div class="wm-v19-title">🎯 Bugün Çalış</div><div class="wm-v19-sub">Öneri: <b>${esc(c.label.level)}</b> • <b>${esc(c.label.grammar)}</b><br>${esc(progressLabel(c))}</div><button class="wm-v19-btn wm-v19-main" onclick="wmTodayCoachStart()" style="width:100%">Başlat</button></div>` : '';
+    }
+  };
+
+  // Fonksiyonları sar; sürekli observer yok, sadece ekran çizimlerinden sonra tazele.
+  ['renderWordList','showList','showScreen','switchToList','wmApplyMetaStudyFilter','wmQuickMetaStudy','wmClearMetaStudyFilter'].forEach(fn=>{
+    const old=window[fn];
+    if(typeof old!=='function' || old.__wmV19Wrapped) return;
+    const wrapped=function(){ const res=old.apply(this,arguments); setTimeout(window.wmTodayCoachRender,70); return res; };
+    wrapped.__wmV19Wrapped=true;
+    window[fn]=wrapped;
+    try{ eval(fn+' = window[fn]'); }catch(e){}
+  });
+
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(window.wmTodayCoachRender,700));
+  setTimeout(window.wmTodayCoachRender,900);
+  setTimeout(window.wmTodayCoachRender,1800);
+  console.log('✅ WM v19 Bugün Çalış / Akıllı Koç aktif');
+})();

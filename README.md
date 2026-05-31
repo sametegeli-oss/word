@@ -13,3 +13,11 @@ Oluşan liste otomatik aktif liste yapılır ve program kapatılıp açıldığ�
 - grammarStructure alanına göre çalışma filtresi eklendi.
 - Liste ekranından seçilen seviye/gramer ile doğrudan çalışma oturumu başlatılır.
 - Ana veri yapısı cümle tabanlıdır; word sadece hedef kelime etiketi olarak kalır.
+
+
+## v19 Bugün Çalış / Akıllı Koç
+- sentenceLevel + grammarStructure verilerine göre en zayıf çalışma alanını otomatik bulur.
+- Cümle bazlı sentenceStatus kayıtlarını okur: yeni, tekrar bekleyen, kullanılan ve otomatikleşen cümleleri dikkate alır.
+- Liste ekranında “Bugün Çalış” paneli gösterir.
+- Tek tıkla önerilen seviye + gramer oturumunu başlatır.
+- İstatistik ekranında küçük günlük çalışma kartı gösterir.
