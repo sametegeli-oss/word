@@ -447,6 +447,24 @@
   }
   .process-pick button:hover { border-color: var(--accent); background: var(--panel-3); }
 
+  /* FAB varsayılan gizli (masaüstü dahil); sadece mobilde body.show-fab açar */
+  .fab-new-request { display: none; }
+
+  /* Modal süreç seçici (FAB) liste stilleri */
+  .picker-list { display: flex; flex-direction: column; gap: 8px; }
+  .picker-row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border-hi);
+    padding: 14px 14px; border-radius: 8px;
+    font-size: 15px; cursor: pointer; text-align: left;
+    font-family: var(--sans); width: 100%;
+  }
+  .picker-row:hover { border-color: var(--accent); background: var(--panel-3); }
+  .picker-row .picker-icon { font-size: 20px; }
+  .picker-row .picker-name { flex: 1; font-weight: 500; }
+  .picker-row .picker-arrow { color: var(--text-dim); font-size: 20px; }
+
   .user-info { display: flex; align-items: center; gap: 10px; }
   .avatar {
     width: 34px; height: 34px; border-radius: 50%;
@@ -1342,6 +1360,30 @@
     @media (min-width: 769px) {
       .mobile-menu-btn { display: none; }
     }
+
+    /* Mobil FAB — Yeni Talep Aç (sadece İş Akışları sekmesinde gösterilir, JS ile) */
+    .fab-new-request {
+      position: fixed;
+      right: 18px;
+      bottom: 22px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-size: 30px;
+      font-weight: 300;
+      line-height: 1;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+      z-index: 55;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .fab-new-request:active { transform: scale(0.92); }
+    body.show-fab .fab-new-request { display: inline-flex; }
 
     /* DETAY PANEL — mobilde fullscreen modal */
     .view-work .detail {
@@ -3699,6 +3741,9 @@
     <button class="bell" onclick="toggleNotif(event)">🔔<span class="count" id="notif-count" style="display:none">0</span></button>
   </header>
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+  <!-- Mobil FAB: Yeni Talep Aç (sadece mobilde, yetki varsa görünür) -->
+  <button class="fab-new-request" id="fab-new-request" onclick="openNewRequestPicker()" title="Yeni Talep Aç" aria-label="Yeni Talep Aç">+</button>
 
   <div class="top-tabs" id="top-tabs"></div>
 
@@ -6201,6 +6246,10 @@ function renderView() {
   else if (state.currentTop === 'notifications') renderNotificationsView(v);
   else if (state.currentTop === 'profile') renderProfileView(v);
   else renderAdminView(v);
+
+  // Mobil FAB: sadece İş Akışları sekmesinde ve talep açma yetkisi varsa göster
+  const showFab = state.currentTop === 'work' && u && hasPermission(u, 'workflows_create');
+  document.body.classList.toggle('show-fab', !!showFab);
 }
 
 function renderWorkView(v) {
@@ -7117,6 +7166,32 @@ function submitNewRequest(defId) {
 
 function toggleProcessPick() {
   document.getElementById('process-pick').classList.toggle('open');
+}
+
+// Modal tabanlı süreç seçici — mobil FAB için (drawer'a girmeden talep açma).
+function openNewRequestPicker() {
+  if (!hasPermission(state.currentUser, 'workflows_create')) {
+    notify('Talep açma yetkiniz yok', 'error');
+    return;
+  }
+  const activeDefs = state.definitions.filter(d => d.active);
+  if (activeDefs.length === 0) {
+    notify('Açık süreç bulunmuyor', 'error');
+    return;
+  }
+  const list = activeDefs.map(d =>
+    `<button class="picker-row" onclick="openNewRequest('${d.id}')">
+       <span class="picker-icon">${d.icon || '📄'}</span>
+       <span class="picker-name">${escapeHtml(d.name)}</span>
+       <span class="picker-arrow">›</span>
+     </button>`
+  ).join('');
+  openModal({
+    title: '+ Yeni Talep Aç',
+    body: `<div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Hangi süreç için talep açmak istiyorsunuz?</div>
+           <div class="picker-list">${list}</div>`,
+    foot: `<button class="ghost-btn" onclick="closeModal()">İptal</button>`
+  });
 }
 
 // ============== 6) UI - ADMIN VIEW ==============
