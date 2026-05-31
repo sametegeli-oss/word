@@ -31259,3 +31259,526 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
     return false;
   }
 };
+
+
+
+/* ==========================================================================
+   WM SENTENCE SRS LAYER v4 — CÜMLE BAZLI ÖĞRENME / RENKLİ KART / TEKRAR
+   Bu katman "Öğrendim" davranışını kelimeden cümleye taşır.
+   - Öğrenme anahtarı: cümle metni (+ liste adı)
+   - Kart ve liste renkleri: cümle SRS seviyesi / tekrar zamanı
+   - Öğrenilme zamanı, son tekrar, sonraki tekrar gösterimi
+   - Günlük öncelik: unutma riski yüksek cümleler
+   ========================================================================== */
+(function(){
+  if (window.__WM_SENTENCE_SRS_V4__) return;
+  window.__WM_SENTENCE_SRS_V4__ = true;
+
+  const STORE_KEY = 'wm_sentence_srs_v4';
+  const DAY = 24 * 60 * 60 * 1000;
+  const INTERVALS = [1, 3, 7, 14, 30, 60, 90];
+
+  function safeJSON(v, fallback){
+    try { return JSON.parse(v || ''); } catch(e){ return fallback; }
+  }
+
+  function readStore(){
+    const data = safeJSON(localStorage.getItem(STORE_KEY), {});
+    return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  }
+
+  function writeStore(data){
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e){}
+  }
+
+  function esc(s){
+    return String(s ?? '').replace(/[&<>'"]/g, c => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
+    }[c]));
+  }
+
+  function hash(str){
+    str = String(str || '');
+    let h = 2166136261;
+    for(let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(36);
+  }
+
+  function listName(){
+    try {
+      if (typeof getActiveListName === 'function') return getActiveListName();
+    } catch(e){}
+    return localStorage.getItem('activeListName') || localStorage.getItem('currentListName') || 'Ana Liste';
+  }
+
+  function sentenceText(item){
+    if(!item) return '';
+    return String(item.sentence || item.example || item.word || '').trim();
+  }
+
+  function sentenceKey(item){
+    const sent = sentenceText(item);
+    const list = listName();
+    return 'sent_' + hash(list + '::' + sent);
+  }
+
+  function now(){ return Date.now(); }
+
+  function fmt(ts, withTime){
+    if(!ts) return '—';
+    try{
+      return new Date(ts).toLocaleString('tr-TR', {
+        day:'2-digit', month:'short', year:'numeric',
+        hour: withTime ? '2-digit' : undefined,
+        minute: withTime ? '2-digit' : undefined
+      });
+    }catch(e){ return '—'; }
+  }
+
+  function daysText(ts){
+    if(!ts) return '—';
+    const diff = Math.ceil((ts - now()) / DAY);
+    if(diff < 0) return '🔴 Tekrar gecikti';
+    if(diff === 0) return '🔴 Bugün tekrar';
+    if(diff === 1) return '🟠 Yarın';
+    return '⏰ ' + diff + ' gün sonra';
+  }
+
+  function statusOf(item){
+    const store = readStore();
+    const key = sentenceKey(item);
+    const rec = store[key] || null;
+    if(!rec){
+      return {
+        key, learned:false, level:0, label:'⚪ Yeni', mastery:'Yeni',
+        color:'#64748b', bg:'rgba(100,116,139,.10)', border:'#64748b',
+        dueText:'Henüz çalışılmadı', risk:'new', rec:null
+      };
+    }
+
+    const level = Math.max(1, Math.min(7, Number(rec.srsLevel || rec.level || 1)));
+    const due = Number(rec.nextReview || 0);
+    const overdue = due && due <= now();
+    const labels = {
+      1:['🟡 Tanıdık','Tanıdık','#eab308','rgba(234,179,8,.13)'],
+      2:['🟠 Pekişiyor','Pekişiyor','#f97316','rgba(249,115,22,.13)'],
+      3:['🔵 Anlıyorum','Anlıyorum','#3b82f6','rgba(59,130,246,.13)'],
+      4:['🟢 Kullanabiliyorum','Kullanabiliyorum','#22c55e','rgba(34,197,94,.13)'],
+      5:['🟢 Güçlü','Güçlü','#16a34a','rgba(22,163,74,.16)'],
+      6:['💎 Otomatikleşti','Otomatikleşti','#14b8a6','rgba(20,184,166,.16)'],
+      7:['🏆 Kalıcı','Kalıcı','#8b5cf6','rgba(139,92,246,.16)']
+    };
+    const x = labels[level] || labels[7];
+
+    return {
+      key, learned:true, level, label:x[0], mastery:x[1],
+      color: overdue ? '#ef4444' : x[2],
+      bg: overdue ? 'rgba(239,68,68,.13)' : x[3],
+      border: overdue ? '#ef4444' : x[2],
+      dueText: daysText(due),
+      risk: overdue ? 'due' : 'safe',
+      rec
+    };
+  }
+
+  function learnSentence(item, opts){
+    if(!item) return null;
+    const store = readStore();
+    const key = sentenceKey(item);
+    const existing = store[key] || {};
+    const first = !existing.learnedAt;
+    const currentLevel = Number(existing.srsLevel || existing.level || 0);
+    const nextLevel = opts && opts.fail ? Math.max(1, currentLevel - 1) : Math.min(7, Math.max(1, currentLevel + 1));
+    const t = now();
+    const interval = INTERVALS[Math.max(0, Math.min(INTERVALS.length - 1, nextLevel - 1))];
+
+    store[key] = {
+      id: key,
+      sentence: sentenceText(item),
+      word: item.word || '',
+      listName: listName(),
+      learned: true,
+      learnedAt: existing.learnedAt || t,
+      lastReview: t,
+      nextReview: t + interval * DAY,
+      srsLevel: nextLevel,
+      correct: (existing.correct || 0) + ((opts && opts.fail) ? 0 : 1),
+      wrong: (existing.wrong || 0) + ((opts && opts.fail) ? 1 : 0),
+      realUseCount: existing.realUseCount || 0,
+      pronunciationScore: existing.pronunciationScore || null,
+      comprehensionScore: existing.comprehensionScore || null,
+      updatedAt: t
+    };
+    writeStore(store);
+    return store[key];
+  }
+
+  function markRealUse(item){
+    if(!item) return;
+    const store = readStore();
+    const key = sentenceKey(item);
+    if(!store[key]) learnSentence(item);
+    const rec = readStore()[key] || {};
+    const data = readStore();
+    data[key] = Object.assign({}, rec, {
+      realUseCount: (rec.realUseCount || 0) + 1,
+      lastRealUse: now(),
+      srsLevel: Math.min(7, Math.max(4, Number(rec.srsLevel || 1))),
+      updatedAt: now()
+    });
+    // Gerçek kullanım görünce tekrar aralığını biraz güçlendir.
+    data[key].nextReview = now() + INTERVALS[Math.min(6, data[key].srsLevel - 1)] * DAY;
+    writeStore(data);
+  }
+
+  function cardStatusHTML(item){
+    const st = statusOf(item);
+    const r = st.rec || {};
+    if(!st.learned){
+      return `<div class="wm-sentence-status" style="display:flex;align-items:center;gap:6px;margin:8px 0;flex-wrap:wrap">
+        <span style="background:#64748b;color:#e2e8f0;padding:4px 9px;border-radius:20px;font-size:11px;font-weight:900">⚪ Cümle yeni</span>
+        <span style="font-size:11px;color:var(--muted)">Henüz çalışılmadı</span>
+      </div>`;
+    }
+
+    return `<div class="wm-sentence-status" style="margin:8px 0;padding:10px 12px;border-radius:14px;background:${st.bg};border:1.5px solid ${st.border}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <span style="background:${st.color};color:#fff;padding:4px 9px;border-radius:20px;font-size:11px;font-weight:900">${st.label} · SRS-${st.level}</span>
+        <span style="font-size:11px;color:var(--text);font-weight:800">${st.dueText}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;font-size:11px;color:var(--sub);line-height:1.45">
+        <div>📅 Öğrenildi:<br><b>${fmt(r.learnedAt, true)}</b></div>
+        <div>🔄 Son tekrar:<br><b>${fmt(r.lastReview, true)}</b></div>
+        <div>⏰ Sonraki tekrar:<br><b>${fmt(r.nextReview, false)}</b></div>
+        <div>🏆 Gerçek kullanım:<br><b>${r.realUseCount || 0} kez</b></div>
+      </div>
+      <button type="button" onclick="WM_markCurrentSentenceRealUse()" style="margin-top:8px;width:100%;padding:8px;border:none;border-radius:10px;background:rgba(255,255,255,.12);color:var(--text);font-size:12px;font-weight:900;cursor:pointer">🏆 Bu cümleyi gerçek hayatta kullandım</button>
+    </div>`;
+  }
+
+  function sentenceFamilyHTML(item){
+    const s = sentenceText(item);
+    if(!s || s.length < 8) return '';
+    let variants = [];
+    const lower = s.toLowerCase();
+    if(lower.includes('i was wondering if you could')){
+      variants = [
+        s.replace(/could .+?(\.|$)/i, 'could explain this.'),
+        s.replace(/could .+?(\.|$)/i, 'could show me.'),
+        s.replace(/could .+?(\.|$)/i, 'could give me a hand.')
+      ];
+    } else if(lower.includes('would you like')){
+      variants = [
+        s.replace(/would you like .+?(\?|$)/i, 'Would you like some help?'),
+        s.replace(/would you like .+?(\?|$)/i, 'Would you like to try again?')
+      ];
+    } else if(lower.includes('can i')){
+      variants = [
+        s.replace(/can i .+?(\?|$)/i, 'Can I get some water?'),
+        s.replace(/can i .+?(\?|$)/i, 'Can I ask you a question?')
+      ];
+    }
+    variants = [...new Set(variants.filter(v => v && v !== s))].slice(0,3);
+    if(!variants.length) return '';
+    return `<details class="wm-sentence-family" style="margin-top:10px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:9px">
+      <summary style="cursor:pointer;font-size:12px;font-weight:900;color:var(--text)">🌳 Cümle ailesi</summary>
+      <div style="margin-top:7px;font-size:12px;color:var(--sub);line-height:1.65">${variants.map(v => `<div>• ${esc(v)}</div>`).join('')}</div>
+    </details>`;
+  }
+
+  function patchCurrentCard(){
+    try{
+      const item = window.words && words[idx];
+      const card = document.getElementById('wordCard');
+      if(!item || !card) return;
+
+      // Eski kelime SRS rozetini kaldır: wc-label'dan sonraki ilk flex rozet.
+      card.querySelectorAll('.wm-sentence-status,.wm-sentence-family').forEach(el => el.remove());
+      const label = card.querySelector('.wc-label');
+      if(label){
+        const n = label.nextElementSibling;
+        if(n && n.textContent && /Henüz çalışılmadı|Başlangıç|Orta|Güçlü|Uzman|Tekrar zamanı|Yeni/.test(n.textContent)){
+          n.remove();
+        }
+        label.insertAdjacentHTML('afterend', cardStatusHTML(item));
+      }
+
+      const st = statusOf(item);
+      const sent = card.querySelector('.wc-sent');
+      if(sent){
+        sent.style.background = st.bg;
+        sent.style.border = '1.5px solid ' + st.border;
+        sent.style.borderLeft = '6px solid ' + st.border;
+        sent.style.borderRadius = '14px';
+        sent.style.padding = '12px';
+        sent.style.transition = 'background .2s,border .2s';
+        sent.insertAdjacentHTML('afterend', sentenceFamilyHTML(item));
+      }
+
+      const btn = document.getElementById('btnLearned');
+      if(btn){
+        btn.textContent = st.learned ? '✓ Cümle Öğrenildi' : '✅ Cümleyi Öğrendim';
+        btn.classList.toggle('done', !!st.learned);
+        btn.style.display = '';
+      }
+    }catch(e){ console.warn('[WM sentence card patch]', e); }
+  }
+
+  function prioritySentences(limit){
+    const store = readStore();
+    const arr = Object.values(store).filter(x => x && x.sentence);
+    arr.sort((a,b) => (a.nextReview || 0) - (b.nextReview || 0));
+    return arr.slice(0, limit || 10);
+  }
+
+  function renderPriorityPanel(){
+    const list = document.getElementById('sc-list');
+    const stats = document.getElementById('listStats');
+    if(!list || !stats) return;
+    let panel = document.getElementById('wmSentencePriorityPanel');
+    if(!panel){
+      panel = document.createElement('div');
+      panel.id = 'wmSentencePriorityPanel';
+      stats.insertAdjacentElement('afterend', panel);
+    }
+    const items = prioritySentences(10);
+    const due = items.filter(x => x.nextReview <= now()).length;
+    panel.innerHTML = `<div style="margin:10px 0 12px;padding:12px;border-radius:16px;background:var(--bg2);border:1px solid var(--border)">
+      <div style="font-size:13px;font-weight:900;color:var(--text);margin-bottom:6px">⚠️ Bugün unutma riski yüksek cümleler</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${due} cümle bugün/geçmiş tekrar bekliyor.</div>
+      ${items.length ? `<div style="display:flex;flex-direction:column;gap:6px">${items.map(x => `
+        <div style="padding:8px;border-radius:10px;background:${x.nextReview <= now() ? 'rgba(239,68,68,.12)' : 'var(--bg3)'};font-size:12px;color:var(--sub);line-height:1.35">
+          <b style="color:var(--text)">${x.nextReview <= now() ? '🔴' : '🟡'} ${esc(daysText(x.nextReview))}</b><br>${esc(String(x.sentence).slice(0,105))}
+        </div>`).join('')}</div>` : `<div style="font-size:12px;color:var(--muted)">Henüz cümle öğrenme kaydı yok.</div>`}
+    </div>`;
+  }
+
+  function listBadgeHTML(item){
+    const st = statusOf(item);
+    if(!st.learned) return `<span class="badge bu">⚪ Yeni</span>`;
+    return `<span class="badge bl" style="background:${st.color};color:#fff">${st.label}</span>
+            <span class="badge bp" style="background:transparent;border:1px solid ${st.border};color:${st.border}">${st.dueText}</span>`;
+  }
+
+  function rowStyle(item){
+    const st = statusOf(item);
+    return `background:${st.bg};border-left:6px solid ${st.border};`;
+  }
+
+  // Ana "Öğrendim" artık cümleye işler.
+  window.markLearned = function(){
+    try{
+      const item = window.words && words[idx];
+      if(!item) return false;
+      const listNameBefore = listName();
+      const rec = learnSentence(item);
+
+      // Eski kelime tabanlı sistemlerle uyumluluk için minimum kayıt bırakıyoruz.
+      if(item.word){
+        try { learnedSet.add(item.word); } catch(e){}
+        try {
+          item.learned = true; item.isLearned = true; item.status = 'learned';
+          if(!wordStatus[item.word]) wordStatus[item.word] = {attempts:1, correct:1, pronScore:null};
+          wordStatus[item.word].correct = Math.max(1, wordStatus[item.word].correct || 0);
+          spacedRepetition[item.word] = {
+            level: rec.srsLevel,
+            correctStreak: rec.srsLevel,
+            lastReview: rec.lastReview,
+            nextReview: rec.nextReview
+          };
+        } catch(e){}
+      }
+
+      try { saveProgress(); } catch(e){}
+      try { if(typeof saveCurrentListProgress === 'function') saveCurrentListProgress(); } catch(e){}
+      try { if(typeof incrementTodayLearned === 'function') incrementTodayLearned(); } catch(e){}
+      try { if(typeof setActiveListTitle === 'function') setActiveListTitle(listNameBefore); } catch(e){}
+
+      patchCurrentCard();
+      renderPriorityPanel();
+
+      // Sonraki öğrenilmemiş cümleye geç.
+      let nextIndex = -1;
+      try {
+        nextIndex = words.findIndex((w, i) => i > idx && w && !statusOf(w).learned);
+        if(nextIndex < 0) nextIndex = words.findIndex(w => w && !statusOf(w).learned);
+      } catch(e){}
+      if(nextIndex >= 0){
+        idx = nextIndex;
+        if(typeof renderLearn === 'function') renderLearn();
+      } else {
+        if(typeof renderLearn === 'function') renderLearn();
+        try { showToast('🎉 Liste tamamlandı', listNameBefore + ' listesindeki tüm cümleler öğrenildi'); } catch(e){}
+      }
+      return false;
+    }catch(err){
+      console.error('[WM sentence markLearned]', err);
+      return false;
+    }
+  };
+
+  window.WM_markCurrentSentenceRealUse = function(){
+    const item = window.words && words[idx];
+    if(!item) return;
+    markRealUse(item);
+    try { showToast('🏆 Gerçek kullanım kaydedildi', sentenceText(item).slice(0,80)); } catch(e){}
+    patchCurrentCard();
+    try { if(typeof renderWordList === 'function') renderWordList(); } catch(e){}
+  };
+
+  // Eski updateSRS çağrıları da cümle kaydını güncellesin.
+  window.updateSRS = function(word, isCorrect){
+    let item = null;
+    try {
+      item = (window.words && words[idx] && words[idx].word === word) ? words[idx] :
+             ((window.allWords || []).find(w => w && w.word === word) || null);
+    } catch(e){}
+    if(item){
+      const rec = learnSentence(item, {fail: !isCorrect});
+      try {
+        spacedRepetition[word] = {
+          level: rec.srsLevel,
+          correctStreak: rec.srsLevel,
+          lastReview: rec.lastReview,
+          nextReview: rec.nextReview
+        };
+        localStorage.setItem('spacedRepetition', JSON.stringify(spacedRepetition));
+      } catch(e){}
+    }
+  };
+
+  window.getDueWords = function(){
+    const data = readStore();
+    const dueKeys = new Set(Object.values(data).filter(x => x && x.nextReview <= now()).map(x => x.id));
+    return (window.allWords || []).filter(w => dueKeys.has(sentenceKey(w)));
+  };
+
+  // renderLearn'i sar: orijinal çizsin, biz cümle durumunu yerleştirelim.
+  const oldRenderLearn = window.renderLearn;
+  if(typeof oldRenderLearn === 'function'){
+    window.renderLearn = async function(){
+      const r = await oldRenderLearn.apply(this, arguments);
+      setTimeout(patchCurrentCard, 0);
+      return r;
+    };
+  }
+
+  const oldShowList = window.showList;
+  if(typeof oldShowList === 'function'){
+    window.showList = function(){
+      const r = oldShowList.apply(this, arguments);
+      setTimeout(renderPriorityPanel, 0);
+      return r;
+    };
+  }
+
+  // Listeyi cümle durumuna göre yeniden çizer.
+  window.updateVisibleItems = function(){
+    const listEl = document.getElementById("wordListEl");
+    const contentWrapper = listEl?.querySelector('.virtual-content');
+    if(!contentWrapper) return;
+
+    const wordList = virtualScrollData.filteredWords || allWords;
+    const scrollTop = listEl.scrollTop || virtualScrollData.scrollTop || 0;
+    const containerHeight = listEl.clientHeight || 600;
+    const itemHeight = (typeof ITEM_HEIGHT !== 'undefined') ? ITEM_HEIGHT : 85;
+    const buffer = (typeof BUFFER_SIZE !== 'undefined') ? BUFFER_SIZE : 5;
+    const start = Math.floor(scrollTop / itemHeight);
+    const end = Math.ceil((scrollTop + containerHeight) / itemHeight) + buffer;
+    const visibleStart = Math.max(0, start - buffer);
+    const visibleEnd = Math.min(wordList.length, end);
+    virtualScrollData.visibleStart = visibleStart;
+    virtualScrollData.visibleEnd = visibleEnd;
+
+    const fragment = document.createDocumentFragment();
+    for(let i = visibleStart; i < visibleEnd; i++){
+      const w = wordList[i];
+      if(!w || !w.word) continue;
+
+      const st = statusOf(w);
+      const legacy = wordStatus[w.word];
+      const isF = !st.learned && legacy && legacy.attempts > 0 && legacy.correct === 0;
+      const cls = st.learned ? "learned" : isF ? "failed" : "unseen";
+      const ico = st.learned ? "✅" : isF ? "❌" : "⬜";
+      const rowBadge = w.rowNum ? `<span style="opacity:0.5;font-size:11px;margin-left:4px">#${w.rowNum}</span>` : "";
+      const pronHTML = w.pronunciation ? `<div style="font-size:11px;color:var(--purple);margin-top:2px">🔊 /${esc(w.pronunciation)}/</div>` : "";
+      const sentenceHTML = w.sentence ? `<div class="wm-list-sentence" style="font-size:14px;font-weight:800;color:var(--text);margin-top:4px;line-height:1.35">${esc(w.sentence.length > 90 ? w.sentence.substring(0, 90) + '...' : w.sentence)}</div>` : "";
+      const sentenceTrHTML = w.sentenceTr ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;line-height:1.25">${esc(w.sentenceTr.length > 90 ? w.sentenceTr.substring(0, 90) + '...' : w.sentenceTr)}</div>` : "";
+      const pb = legacy && legacy.pronScore != null ? `<span class="badge bp">🎤${legacy.pronScore}</span>` : "";
+
+      const itemDiv = document.createElement("div");
+      itemDiv.className = `wi ${cls}`;
+      itemDiv.style.cssText = `position:absolute;top:${i * itemHeight}px;width:100%;height:${itemHeight}px;${rowStyle(w)}box-sizing:border-box;`;
+      itemDiv.innerHTML = `
+        <div class="wi-ico">${ico}</div>
+        <div class="wi-body" onclick="goToWord(${i}, virtualScrollData.filteredWords || allWords)" style="flex:1;cursor:pointer;min-width:0">
+          <div class="wi-word">${esc(w.word)}${rowBadge}</div>
+          ${pronHTML}
+          ${sentenceHTML}
+          ${sentenceTrHTML}
+        </div>
+        <div class="wi-badges" style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;min-width:96px">${listBadgeHTML(w)}${pb}</div>
+        <button onclick="deleteWord('${String(w.word).replace(/'/g,"\\'")}', event)" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:16px;cursor:pointer;margin-left:6px">🗑️</button>`;
+      fragment.appendChild(itemDiv);
+    }
+    contentWrapper.innerHTML = "";
+    contentWrapper.appendChild(fragment);
+  };
+
+  // renderWordList sonrası range cache'i sıfırla ki durum anında görünür.
+  const oldRenderWordList = window.renderWordList;
+  if(typeof oldRenderWordList === 'function'){
+    window.renderWordList = function(){
+      try {
+        if(window.virtualScrollData){
+          virtualScrollData.visibleStart = -1;
+          virtualScrollData.visibleEnd = -1;
+        }
+      } catch(e){}
+      const r = oldRenderWordList.apply(this, arguments);
+      setTimeout(renderPriorityPanel, 0);
+      return r;
+    };
+  }
+
+  // Eski ilerlemeyi cümle kaydına taşımaya çalış.
+  window.WM_migrateWordLearnedToSentenceSRS = function(){
+    try{
+      const store = readStore();
+      let changed = false;
+      (window.allWords || []).forEach(w => {
+        if(!w) return;
+        const key = sentenceKey(w);
+        if(store[key]) return;
+        const wordLearned = (window.learnedSet && learnedSet.has(w.word)) || w.learned || w.isLearned;
+        const srs = window.spacedRepetition && spacedRepetition[w.word];
+        if(wordLearned || srs){
+          const t = srs?.lastReview || now();
+          store[key] = {
+            id:key, sentence:sentenceText(w), word:w.word || '', listName:listName(),
+            learned:true, learnedAt:t, lastReview:t,
+            nextReview:srs?.nextReview || (t + DAY),
+            srsLevel: Math.max(1, Math.min(7, Number(srs?.level || 1))),
+            correct:1, wrong:0, realUseCount:0, updatedAt:now()
+          };
+          changed = true;
+        }
+      });
+      if(changed) writeStore(store);
+    }catch(e){ console.warn('[WM sentence migration]', e); }
+  };
+
+  function boot(){
+    try { WM_migrateWordLearnedToSentenceSRS(); } catch(e){}
+    try { patchCurrentCard(); } catch(e){}
+    try { renderPriorityPanel(); } catch(e){}
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else setTimeout(boot, 0);
+
+  console.log('✅ WM Sentence SRS v4 aktif: öğrenme artık cümle bazlı.');
+})();
+
