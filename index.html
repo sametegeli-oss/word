@@ -5913,7 +5913,7 @@ body.wm-tool-panel-open{overflow:hidden}
   var oldPrev=window.prevWord; if(typeof oldPrev==='function') window.prevWord=function(){var r=oldPrev.apply(this,arguments); setTimeout(syncList,80);return r};
   function tick(){hideRestoreToasts();syncList();installLearnedOverride()}
   document.addEventListener('DOMContentLoaded',function(){tick();setTimeout(tick,250);setTimeout(tick,1000)}); if(document.readyState!=='loading') setTimeout(tick,0);
-  setInterval(function(){syncList();installLearnedOverride();hideRestoreToasts()},1500);
+  // WM v12: eski periyodik learned override kapalı.
 })();
 </script>
 
@@ -5975,7 +5975,7 @@ body.wm-tool-panel-open{overflow:hidden}
   document.addEventListener('click',function(e){var n=e.target.closest&&e.target.closest('button,[role="button"],a,.act-btn,.wm-ai-action,.feature-btn,div'); var f=fold(txt(n||e.target)); if(/kelime\s*iliski|iliski/.test(f)){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation&&e.stopImmediatePropagation();runAI('relations');return false} if(/kelime\s*aciklama|aciklama/.test(f)){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation&&e.stopImmediatePropagation();runAI('explain');return false} if(/ogrenildi|ogrendim/.test(f)){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation&&e.stopImmediatePropagation();safeLearned();return false} capturePossibleList(e.target); setTimeout(syncListName,200)},true);
   var oldShow=window.showListSelector; if(typeof oldShow==='function'&&!oldShow.__wmr10){window.showListSelector=function(){var r=oldShow.apply(this,arguments); setTimeout(syncListName,300); return r}; window.showListSelector.__wmr10=true}
   function tick(){syncListName();installLearned()}
-  document.addEventListener('DOMContentLoaded',function(){tick();setTimeout(tick,300);setTimeout(tick,1200)}); if(document.readyState!=='loading') setTimeout(tick,0); setInterval(tick,2500);
+  document.addEventListener('DOMContentLoaded',function(){tick();setTimeout(tick,300);setTimeout(tick,1200)}); if(document.readyState!=='loading') setTimeout(tick,0); // WM v12: eski periyodik learned override kapalı.
 })();
 </script>
 
@@ -6071,7 +6071,7 @@ body.wm-tool-panel-open{overflow:hidden}
   function tick(){install();}
   document.addEventListener('DOMContentLoaded',function(){tick();setTimeout(tick,250);setTimeout(tick,900);});
   if(document.readyState !== 'loading') setTimeout(tick,0);
-  new MutationObserver(function(){setTimeout(tick,0)}).observe(document.documentElement,{childList:true,subtree:true});
+  // WM v12: sürekli MutationObserver kapalı; app.js final cümle katmanı tek merkezden yönetir.
 })();
 </script>
 
