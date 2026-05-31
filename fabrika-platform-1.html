@@ -918,12 +918,13 @@
 
   /* ===== GÖRSEL TUVAL ===== */
   .canvas-wrap { display: flex; flex-direction: column; height: calc(100vh - 140px); }
-  .canvas-wrap.canvas-fullscreen {
-    height: 100vh; width: 100vw; background: var(--bg);
-    padding: 0; margin: 0;
+  /* admin-content tam ekran (hem tuval hem liste tasarımcısı kapsanır) */
+  #admin-content.designer-fullscreen {
+    position: fixed; inset: 0; z-index: 9000;
+    background: var(--bg); padding: 16px 20px;
+    overflow-y: auto; width: 100vw; height: 100vh;
   }
-  .canvas-wrap.canvas-fullscreen .canvas-stage { border-radius: 0; }
-  .canvas-wrap.canvas-fullscreen .canvas-toolbar { border-radius: 0; }
+  #admin-content.designer-fullscreen .canvas-wrap { height: calc(100vh - 110px); }
   .canvas-toolbar {
     display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
     padding: 10px 14px; background: var(--panel-2); border: 1px solid var(--border);
@@ -1030,6 +1031,20 @@
   .cv-ctx-menu .cv-ctx-del { color: var(--red); }
   .cv-ctx-menu .cv-ctx-del:hover { background: rgba(226,75,74,0.12); }
   .cv-ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* Tuval doğrulama paneli (fullscreen uyumlu) */
+  .cv-validate-panel {
+    position: fixed; z-index: 99999;
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 420px; max-width: 92vw;
+    background: var(--panel); border: 1px solid var(--border-hi);
+    border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  .cv-validate-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 14px;
+  }
+  .cv-validate-body { padding: 14px 16px; }
 
   /* SVG preview */
   .preview-svg {
@@ -9802,7 +9817,14 @@ function openDesigner(defId) {
 }
 
 function closeDesigner() {
+  // Tam ekrandaysa çık
+  if (document.fullscreenElement) {
+    if (document.exitFullscreen) document.exitFullscreen();
+    const el = document.getElementById('admin-content');
+    if (el) el.classList.remove('designer-fullscreen');
+  }
   state.designerProcessId = null;
+  state.canvasMode = false;
   renderAdminContent();
 }
 
@@ -10149,7 +10171,6 @@ function canvasSetStart(id) {
 
 function canvasDeleteNode(id) {
   const def = getDef(state.designerProcessId);
-  if (!confirm('Bu kutuyu ve ona bağlı okları sil?')) return;
   canvasSnapshot();
   def.steps = def.steps.filter(s => s.id !== id);
   def.transitions = (def.transitions||[]).filter(t => t.from !== id && t.to !== id);
@@ -10158,6 +10179,7 @@ function canvasDeleteNode(id) {
   closeContextMenu();
   persist();
   renderDesignerOnly();
+  notify('Kutu silindi — geri almak için ↩ (Ctrl+Z)', 'info');
 }
 
 // Kutu üzerinde sağ tık → işlem menüsü
@@ -10267,13 +10289,11 @@ function canvasEditEdge(from, when) {
   const def = getDef(state.designerProcessId);
   const t = def.transitions.find(x => x.from===from && x.when===when);
   if (!t) return;
-  const toNode = def.steps.find(s=>s.id===t.to);
-  if (confirm(`Bu oku sil?\n\n${from} —[${canvasTransLabel(when)}]→ ${toNode?.title||t.to}`)) {
-    canvasSnapshot();
-    def.transitions = def.transitions.filter(x => !(x.from===from && x.when===when));
-    persist();
-    renderDesignerOnly();
-  }
+  canvasSnapshot();
+  def.transitions = def.transitions.filter(x => !(x.from===from && x.when===when));
+  persist();
+  renderDesignerOnly();
+  notify('Ok silindi — geri almak için ↩ (Ctrl+Z)', 'info');
 }
 
 function canvasZoom(delta) {
@@ -10363,27 +10383,26 @@ function canvasAutoLayout() {
 
 // Tuvali gerçek tam ekran yap (browser Fullscreen API)
 function canvasFullscreen() {
-  const el = document.querySelector('.canvas-wrap');
+  // Tam ekranı admin-content'e uygula → hem tuval hem liste tasarımcısı kapsanır
+  const el = document.getElementById('admin-content');
   if (!el) return;
   if (!document.fullscreenElement) {
-    el.classList.add('canvas-fullscreen');
+    el.classList.add('designer-fullscreen');
     if (el.requestFullscreen) el.requestFullscreen();
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    // Tam ekrandan çıkınca class'ı temizle
     const onFsChange = () => {
       if (!document.fullscreenElement) {
-        el.classList.remove('canvas-fullscreen');
+        el.classList.remove('designer-fullscreen');
         document.removeEventListener('fullscreenchange', onFsChange);
-        // Tuvali yeniden çiz + sürükle olaylarını tazele
         renderDesignerOnly();
-        setTimeout(attachCanvasHandlers, 0);
+        if (state.canvasMode) setTimeout(attachCanvasHandlers, 0);
       }
     };
     document.addEventListener('fullscreenchange', onFsChange);
   } else {
     if (document.exitFullscreen) document.exitFullscreen();
     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    el.classList.remove('canvas-fullscreen');
+    el.classList.remove('designer-fullscreen');
   }
 }
 
@@ -10432,30 +10451,37 @@ function canvasValidate() {
 
   const errors = issues.filter(i=>i.sev==='error');
   const warns = issues.filter(i=>i.sev==='warn');
-  let body;
+  let inner;
   if (issues.length === 0) {
-    body = `<div style="text-align:center;padding:24px;">
-      <div style="font-size:40px;">✅</div>
+    inner = `<div style="text-align:center;padding:20px;">
+      <div style="font-size:36px;">✅</div>
       <div style="font-size:15px;font-weight:600;margin-top:8px;">Akış geçerli!</div>
-      <div style="font-size:13px;color:var(--text-dim);margin-top:4px;">Hiçbir sorun bulunamadı. Bu süreci güvenle yayınlayabilirsin.</div>
+      <div style="font-size:13px;color:var(--text-dim);margin-top:4px;">Hiçbir sorun yok. Güvenle yayınlayabilirsin.</div>
     </div>`;
   } else {
-    body = `<div style="font-size:13px;margin-bottom:12px;">
-      ${errors.length} hata, ${warns.length} uyarı bulundu:</div>
-      <div style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;">
+    inner = `<div style="font-size:13px;margin-bottom:10px;">${errors.length} hata, ${warns.length} uyarı:</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;">
       ${issues.map(i => `
-        <div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:6px;background:${i.sev==='error'?'rgba(226,75,74,0.1)':'rgba(239,159,39,0.1)'};">
-          <span>${i.sev==='error'?'🔴':'🟡'}</span>
-          <span style="font-size:13px;">${escapeHtml(i.msg)}</span>
+        <div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:6px;background:${i.sev==='error'?'rgba(226,75,74,0.12)':'rgba(239,159,39,0.12)'};">
+          <span>${i.sev==='error'?'🔴':'🟡'}</span><span style="font-size:13px;">${escapeHtml(i.msg)}</span>
         </div>`).join('')}
-      </div>
-      ${errors.length===0 ? '<div style="font-size:12px;color:var(--text-dim);margin-top:12px;">Sadece uyarı var — yayınlayabilirsin ama kontrol etmen iyi olur.</div>' : '<div style="font-size:12px;color:var(--red);margin-top:12px;">🔴 Hatalar düzeltilmeden süreç düzgün çalışmaz.</div>'}`;
+      </div>`;
   }
-  openModal({
-    title: '🔍 Akış Doğrulama',
-    body,
-    foot: `<button class="btn approve" style="flex:0;padding:7px 14px;" onclick="closeModal()">Tamam</button>`
-  });
+  // Tuval-içi panel olarak göster (fullscreen'de de görünür, modal değil)
+  let panel = document.getElementById('cv-validate-panel');
+  if (panel) panel.remove();
+  panel = document.createElement('div');
+  panel.id = 'cv-validate-panel';
+  panel.className = 'cv-validate-panel';
+  panel.innerHTML = `
+    <div class="cv-validate-head">
+      <span>🔍 Akış Doğrulama</span>
+      <button onclick="document.getElementById('cv-validate-panel').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;">✕</button>
+    </div>
+    <div class="cv-validate-body">${inner}</div>`;
+  // Fullscreen aktifse .canvas-wrap içine, değilse body'ye ekle
+  const host = document.fullscreenElement ? document.querySelector('.canvas-wrap') : document.body;
+  (host || document.body).appendChild(panel);
 }
 
 function canvasOpenCondition(id) {
@@ -10717,19 +10743,6 @@ function renderDesigner(c) {
 
   // TUVAL MODU: tam ekran sürükle-bırak
   if (state.canvasMode) {
-    const existingWrap = document.querySelector('.canvas-wrap');
-    // Fullscreen aktif ve tuval zaten varsa: tüm sayfayı değil, sadece tuvalin içini güncelle
-    // (yoksa fullscreen elementi DOM'dan silinince tam ekran kopuyor)
-    if (document.fullscreenElement && existingWrap) {
-      const newWrap = document.createElement('div');
-      newWrap.innerHTML = renderCanvas(def);
-      const fresh = newWrap.firstElementChild;
-      existingWrap.innerHTML = fresh.innerHTML;
-      existingWrap.className = fresh.className; // canvas-fullscreen class'ını koru
-      existingWrap.classList.add('canvas-fullscreen');
-      setTimeout(attachCanvasHandlers, 0);
-      return;
-    }
     c.innerHTML = `
       <div class="admin-head">
         <div>
@@ -10743,7 +10756,6 @@ function renderDesigner(c) {
       </div>
       ${renderCanvas(def)}
     `;
-    // Sürükle-bırak olaylarını bağla (DOM hazır olunca)
     setTimeout(attachCanvasHandlers, 0);
     return;
   }
@@ -10757,6 +10769,7 @@ function renderDesigner(c) {
       <div style="display:flex;gap:8px;">
         <button class="ghost-btn" onclick="closeDesigner()">← Geri</button>
         <button class="primary-btn" onclick="openCanvas()" style="background:#7F77DD;color:#fff;">🎨 Görsel Tuval</button>
+        <button class="ghost-btn" onclick="canvasFullscreen()" title="Tam ekran aç/kapa">⤢</button>
         <button class="primary-btn" onclick="testProcess('${def.id}')">▶ Test Et</button>
       </div>
     </div>
