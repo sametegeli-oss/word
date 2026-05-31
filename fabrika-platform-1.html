@@ -939,20 +939,22 @@
     padding: 6px 10px; border-radius: 5px; font-size: 11px; cursor: pointer; font-family: var(--sans);
   }
   .canvas-stage {
-    flex: 1; background: var(--bg);
+    flex: 1 1 auto; background: var(--bg);
     background-image: radial-gradient(var(--border) 1px, transparent 1px);
     background-size: 20px 20px;
     border: 1px solid var(--border); border-top: none;
-    overflow: hidden; position: relative; min-height: 300px;
+    overflow: hidden; position: relative; min-height: 180px;
   }
   .cv-hint, .cv-tip {
     padding: 8px 14px; font-size: 12px; background: var(--panel-2);
     border: 1px solid var(--border); border-top: none; color: var(--text-dim);
+    flex-shrink: 0;
   }
   .cv-hint { background: rgba(127,119,221,0.12); color: var(--text); }
   .cv-panel {
     background: var(--panel-2); border: 1px solid var(--border); border-top: none;
     border-radius: 0 0 8px 8px; max-height: 240px; overflow-y: auto;
+    flex-shrink: 0;
   }
   .cv-panel-head {
     display: flex; justify-content: space-between; align-items: center;
@@ -1003,6 +1005,25 @@
     .cond-row { flex-direction: column; align-items: stretch; }
     .cond-row select, .cond-row input { width: 100%; }
   }
+
+  /* Tuval sağ tık menüsü */
+  .cv-ctx-menu {
+    position: fixed; z-index: 9999;
+    background: var(--panel); border: 1px solid var(--border-hi);
+    border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+    padding: 5px; min-width: 180px;
+  }
+  .cv-ctx-menu button {
+    display: block; width: 100%; text-align: left;
+    background: none; border: none; color: var(--text);
+    padding: 9px 12px; border-radius: 5px; font-size: 13px; cursor: pointer;
+    font-family: var(--sans);
+  }
+  .cv-ctx-menu button:hover { background: var(--panel-3); }
+  .cv-ctx-menu button:disabled { opacity: 0.5; cursor: default; }
+  .cv-ctx-menu .cv-ctx-del { color: var(--red); }
+  .cv-ctx-menu .cv-ctx-del:hover { background: rgba(226,75,74,0.12); }
+  .cv-ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
 
   /* SVG preview */
   .preview-svg {
@@ -9885,16 +9906,20 @@ function renderCanvas(def) {
     const isSel = state.canvasSelected === n.id;
     const isLinkFrom = state.canvasLinkFrom === n.id;
     nodesHtml += `
-      <g class="cv-node" data-id="${n.id}" transform="translate(${n.x},${n.y})" style="cursor:move;">
+      <g class="cv-node" data-id="${n.id}" transform="translate(${n.x},${n.y})" style="cursor:move;" oncontextmenu="canvasContextMenu(event,'${n.id}')">
         <rect width="${CANVAS_NODE_W}" height="${CANVAS_NODE_H}" rx="8"
               fill="${td.bg}" stroke="${isSel||isLinkFrom ? td.color : 'var(--border-hi)'}"
               stroke-width="${isSel||isLinkFrom ? 2.5 : 1.5}"/>
         ${isStart ? `<rect x="-3" y="-3" width="${CANVAS_NODE_W+6}" height="${CANVAS_NODE_H+6}" rx="10" fill="none" stroke="#1D9E75" stroke-width="1.5" stroke-dasharray="4,3"/>` : ''}
         <text x="10" y="24" font-size="16">${td.icon}</text>
-        <text x="34" y="22" font-size="12" font-weight="600" fill="var(--text)">${escapeHtml((n.title||'').slice(0,16))}</text>
+        <text x="34" y="22" font-size="12" font-weight="600" fill="var(--text)">${escapeHtml((n.title||'').slice(0,15))}</text>
         <text x="34" y="38" font-size="10" fill="var(--text-dim)">${td.label}</text>
         ${isStart ? `<text x="10" y="54" font-size="9" fill="#1D9E75">▶ başlangıç</text>` : ''}
         <circle class="cv-port" data-id="${n.id}" cx="${CANVAS_NODE_W/2}" cy="${CANVAS_NODE_H}" r="6" fill="${td.color}" stroke="#fff" stroke-width="1.5" style="cursor:crosshair;"/>
+        <g class="cv-node-del" data-del="${n.id}" style="cursor:pointer;">
+          <circle cx="${CANVAS_NODE_W-12}" cy="12" r="9" fill="#E24B4A"/>
+          <text x="${CANVAS_NODE_W-12}" y="16" text-anchor="middle" font-size="12" fill="#fff" style="pointer-events:none;">✕</text>
+        </g>
       </g>`;
   }
 
@@ -10103,9 +10128,71 @@ function canvasDeleteNode(id) {
   def.transitions = (def.transitions||[]).filter(t => t.from !== id && t.to !== id);
   if (def.startStep === id) def.startStep = def.steps[0]?.id || null;
   state.canvasSelected = null;
+  closeContextMenu();
   persist();
   renderDesignerOnly();
 }
+
+// Kutu üzerinde sağ tık → işlem menüsü
+function canvasContextMenu(evt, id) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  closeContextMenu();
+  const def = getDef(state.designerProcessId);
+  const n = def.steps.find(s => s.id === id);
+  if (!n) return;
+  const isStart = def.startStep === id;
+  const canBeStart = n.type !== 'end-good' && n.type !== 'end-bad';
+  const canCondition = n.type === 'system';
+
+  const menu = document.createElement('div');
+  menu.id = 'cv-ctx-menu';
+  menu.className = 'cv-ctx-menu';
+  menu.style.left = evt.clientX + 'px';
+  menu.style.top = evt.clientY + 'px';
+  menu.innerHTML = `
+    <button onclick="state.canvasSelected='${id}';closeContextMenu();renderDesignerOnly();">✏️ Düzenle</button>
+    <button onclick="canvasStartLink('${id}');closeContextMenu();">🔗 Buradan ok çek</button>
+    ${canCondition ? `<button onclick="closeContextMenu();canvasOpenCondition('${id}');">⚙️ Koşulu düzenle</button>` : ''}
+    ${canBeStart ? `<button onclick="canvasSetStart('${id}');closeContextMenu();" ${isStart?'disabled':''}>${isStart?'▶ Zaten başlangıç':'▶ Başlangıç yap'}</button>` : ''}
+    <button onclick="canvasDuplicateNode('${id}');closeContextMenu();">📋 Kopyala</button>
+    <div class="cv-ctx-sep"></div>
+    <button class="cv-ctx-del" onclick="canvasDeleteNode('${id}');">🗑 Sil</button>
+  `;
+  document.body.appendChild(menu);
+  // Ekran dışına taşmasın
+  setTimeout(() => {
+    const r = menu.getBoundingClientRect();
+    if (r.right > window.innerWidth) menu.style.left = (window.innerWidth - r.width - 8) + 'px';
+    if (r.bottom > window.innerHeight) menu.style.top = (window.innerHeight - r.height - 8) + 'px';
+  }, 0);
+}
+
+function closeContextMenu() {
+  const m = document.getElementById('cv-ctx-menu');
+  if (m) m.remove();
+}
+
+// Kutuyu kopyala (aynı ayarlarla, biraz kaydırılmış)
+function canvasDuplicateNode(id) {
+  const def = getDef(state.designerProcessId);
+  const n = def.steps.find(s => s.id === id);
+  if (!n) return;
+  const copy = JSON.parse(JSON.stringify(n));
+  copy.id = 's_' + Math.random().toString(36).substr(2,4);
+  copy.x = (n.x||0) + 30;
+  copy.y = (n.y||0) + 30;
+  copy.title = (n.title||'') + ' (kopya)';
+  def.steps.push(copy);
+  state.canvasSelected = copy.id;
+  persist();
+  renderDesignerOnly();
+}
+
+// Boş alana tıklayınca menüyü kapat
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#cv-ctx-menu')) closeContextMenu();
+});
 
 function canvasStartLink(id) {
   state.canvasLinkFrom = id;
@@ -10324,6 +10411,16 @@ function attachCanvasHandlers() {
     return { x: (clientX - rect.left - pan.x) / z, y: (clientY - rect.top - pan.y) / z };
   }
   function onDown(evt) {
+    closeContextMenu();
+    // ✕ silme düğmesi
+    const delBtn = evt.target.closest('.cv-node-del');
+    if (delBtn) {
+      const id = delBtn.getAttribute('data-del');
+      canvasDeleteNode(id);
+      evt.preventDefault();
+      evt.stopPropagation();
+      return;
+    }
     const port = evt.target.closest('.cv-port');
     if (port) {
       state.canvasLinkFrom = port.getAttribute('data-id');
