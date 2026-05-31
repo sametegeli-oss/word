@@ -924,6 +924,7 @@
     margin-bottom: 5px; font-weight: 500;
   }
   .form-field label .req { color: var(--red); margin-left: 2px; }
+  .field-hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
   .form-field input, .form-field textarea, .form-field select {
     width: 100%;
     background: var(--bg);
@@ -7139,14 +7140,16 @@ function renderField(f, oldVal) {
   const valAttr = (oldVal !== undefined && oldVal !== null && oldVal !== '') ? ` value="${escapeAttr(String(oldVal))}"` : '';
   let input = '';
   if (f.type === 'text' || f.type === 'date' || f.type === 'number') {
-    input = `<input type="${f.type}" id="f-${f.id}" placeholder="${escapeHtml(f.placeholder||'')}"${valAttr}>`;
+    const minAttr = (f.type === 'number' && f.min !== undefined) ? ` min="${f.min}"` : '';
+    input = `<input type="${f.type}" id="f-${f.id}" placeholder="${escapeHtml(f.placeholder||'')}"${minAttr}${valAttr}>`;
   } else if (f.type === 'textarea') {
     input = `<textarea id="f-${f.id}" placeholder="${escapeHtml(f.placeholder||'')}">${escapeHtml(oldVal || '')}</textarea>`;
   } else if (f.type === 'select') {
     const opts = (f.options||[]).map(o => `<option value="${escapeHtml(o.value)}" ${o.value === oldVal ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('');
     input = `<select id="f-${f.id}"><option value="">Seçin...</option>${opts}</select>`;
   }
-  return `<div class="form-field"><label>${escapeHtml(f.label)} ${req}</label>${input}</div>`;
+  const hint = f.hint ? `<div class="field-hint">${escapeHtml(f.hint)}</div>` : '';
+  return `<div class="form-field"><label>${escapeHtml(f.label)} ${req}</label>${input}${hint}</div>`;
 }
 
 function submitNewRequest(defId) {
@@ -7156,6 +7159,10 @@ function submitNewRequest(defId) {
     const el = document.getElementById('f-' + f.id);
     const v = el ? el.value.trim() : '';
     if (f.required && !v) { notify(`"${f.label}" zorunlu`, 'error'); el && el.focus(); return; }
+    // Number alanlarında min kontrolü (ör. "kaç gün önce" negatif olamaz)
+    if (f.type === 'number' && v !== '' && f.min !== undefined && parseFloat(v) < f.min) {
+      notify(`"${f.label}" en az ${f.min} olmalı`, 'error'); el && el.focus(); return;
+    }
     data[f.id] = v;
   }
   if (data.startDate && data.endDate && data.endDate < data.startDate) {
