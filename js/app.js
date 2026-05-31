@@ -31959,3 +31959,144 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   syncWindowState();
   console.log('✅ v7 aktif liste yükleme düzeltmesi aktif');
 })();
+
+
+/* =====================================================================
+   WORD MODE — CÜMLE GÖRSELİ SABİTLEME FIX v8
+   - Cümle görselini gerçek kullanım düğmesinin altına değil kartın üstüne taşır.
+   - Görsel alanı render sonrası kaybolmasın diye yeniden konumlandırır.
+   - Wikipedia + Wikimedia Commons fallback kullanır.
+   ===================================================================== */
+(function(){
+  if(window.__WM_SENTENCE_IMAGE_FIX_V8__) return;
+  window.__WM_SENTENCE_IMAGE_FIX_V8__ = true;
+
+  function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+  function currentItem(){
+    try{ if(Array.isArray(words) && words[idx]) return words[idx]; }catch(e){}
+    try{ if(Array.isArray(window.words) && window.words[window.idx]) return window.words[window.idx]; }catch(e){}
+    return null;
+  }
+  function ensureImageTop(){
+    const wc=document.getElementById('wordCard');
+    if(!wc) return;
+    let wrap=document.getElementById('sentImgWrap');
+    if(!wrap){
+      wrap=document.createElement('div');
+      wrap.id='sentImgWrap';
+      wrap.className='sent-img-wrap';
+      wrap.innerHTML='<img class="sent-img" id="sentImg" alt=""><div class="img-credit" id="imgCredit"></div>';
+    }
+    wrap.style.cssText='display:none;margin:8px 0 14px 0;width:100%;border-radius:20px;overflow:hidden;background:var(--bg3);border:1px solid var(--border);min-height:0';
+    const img=wrap.querySelector('#sentImg') || wrap.querySelector('img');
+    if(img){
+      img.id='sentImg'; img.className='sent-img';
+      img.style.cssText='width:100%;max-height:260px;object-fit:cover;border-radius:18px;display:block';
+    }
+    let credit=wrap.querySelector('#imgCredit');
+    if(!credit){credit=document.createElement('div'); credit.id='imgCredit'; credit.className='img-credit'; wrap.appendChild(credit);}
+    credit.style.cssText='font-size:10px;color:var(--muted);text-align:right;padding:4px 8px';
+    const label=wc.querySelector('.wc-label');
+    const status=wc.querySelector('.wm-sentence-status');
+    if(label && label.nextSibling !== wrap){
+      wc.insertBefore(wrap, status || label.nextSibling);
+    }
+  }
+  function keywords(sentence, word){
+    const stop=new Set('the a an is are was were be have had do did will would could should to of in on at by for with and or but not it this that they we he she i you my as so very from into about after before all lot much many'.split(' '));
+    const bits=String(sentence||'').replace(/[^a-zA-Z ]/g,' ').split(/\s+/).map(x=>x.toLowerCase()).filter(x=>x.length>3 && !stop.has(x));
+    const arr=[String(word||'').toLowerCase(), ...bits];
+    return [...new Set(arr)].filter(Boolean).slice(0,4);
+  }
+  async function tryWikiSummary(q){
+    try{
+      const r=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(q));
+      if(!r.ok) return null;
+      const d=await r.json();
+      return d?.thumbnail?.source || d?.originalimage?.source || null;
+    }catch(e){return null;}
+  }
+  async function tryWikiPageImage(q){
+    try{
+      const url='https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=pageimages&piprop=thumbnail|original&pithumbsize=900&redirects=1&titles='+encodeURIComponent(q);
+      const r=await fetch(url); const d=await r.json();
+      const pages=Object.values((d.query&&d.query.pages)||{});
+      const p=pages.find(x=>x.thumbnail||x.original);
+      return p?.thumbnail?.source || p?.original?.source || null;
+    }catch(e){return null;}
+  }
+  async function tryCommons(q){
+    try{
+      const url='https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrsearch='+encodeURIComponent(q)+'&gsrlimit=8&prop=imageinfo&iiprop=url&iiurlwidth=900';
+      const r=await fetch(url); const d=await r.json();
+      const pages=Object.values((d.query&&d.query.pages)||{});
+      for(const p of pages){
+        const ii=p.imageinfo&&p.imageinfo[0];
+        const u=ii?.thumburl || ii?.url;
+        if(u && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(u)) return u;
+      }
+    }catch(e){}
+    return null;
+  }
+
+  loadSentenceImage = async function(sentence, word){
+    ensureImageTop();
+    const wrap=document.getElementById('sentImgWrap');
+    const img=document.getElementById('sentImg');
+    const credit=document.getElementById('imgCredit');
+    if(!wrap||!img) return;
+    wrap.style.display='none';
+    img.removeAttribute('src');
+    if(credit) credit.innerHTML='';
+    try{ if(typeof enableWordImages!=='undefined' && !enableWordImages) return; }catch(e){}
+
+    const item=currentItem()||{};
+    const direct=item.imageUrl||item.image||item.imgUrl||item.photo||item.picture||item.visual;
+    if(direct && /^https?:\/\//i.test(String(direct))){
+      img.onload=()=>{wrap.style.display='block'; if(credit) credit.innerHTML='📷 Kaynak dosya';};
+      img.onerror=()=>{wrap.style.display='none';};
+      img.src=direct;
+      return;
+    }
+
+    const kw=keywords(sentence, word);
+    const queries=[];
+    if(kw[0]) queries.push(kw[0]);
+    if(kw.length>=2) queries.push(kw.slice(0,2).join(' '));
+    if(sentence) queries.push(String(sentence).split(/\s+/).slice(0,6).join(' '));
+    // Soyut kelimeler için sahne aramaları
+    if(kw[0]) queries.push(kw[0]+' concept');
+
+    for(const q of [...new Set(queries)].filter(Boolean)){
+      let u = await tryWikiSummary(q) || await tryWikiPageImage(q) || await tryCommons(q);
+      if(u){
+        img.onload=()=>{wrap.style.display='block'; if(credit) credit.innerHTML='📷 Wikipedia / Wikimedia';};
+        img.onerror=()=>{wrap.style.display='none';};
+        img.src=u;
+        return;
+      }
+    }
+
+    // Görsel bulunamadıysa alan tamamen kaybolmasın; kullanıcı neden olmadığını görsün.
+    wrap.style.display='block';
+    wrap.style.minHeight='82px';
+    wrap.innerHTML='<div style="padding:18px;text-align:center;color:var(--muted);font-weight:800">🖼️ Bu cümle için uygun görsel bulunamadı</div><div class="img-credit" id="imgCredit" style="font-size:10px;color:var(--muted);text-align:right;padding:4px 8px">Wikipedia/Wikimedia arandı</div>';
+  };
+
+  const prevRender = window.renderLearn;
+  if(typeof prevRender === 'function'){
+    window.renderLearn = async function(){
+      const r = await prevRender.apply(this, arguments);
+      setTimeout(()=>{
+        try{
+          ensureImageTop();
+          const it=currentItem();
+          if(it) loadSentenceImage(it.sentence||'', it.word||'');
+        }catch(e){console.warn('v8 image patch', e);}
+      }, 30);
+      return r;
+    };
+  }
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{ensureImageTop();}catch(e){}},500));
+  console.log('✅ v8 cümle görseli üst konum + Wikimedia fallback aktif');
+})();
