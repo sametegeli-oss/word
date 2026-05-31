@@ -10717,6 +10717,19 @@ function renderDesigner(c) {
 
   // TUVAL MODU: tam ekran sürükle-bırak
   if (state.canvasMode) {
+    const existingWrap = document.querySelector('.canvas-wrap');
+    // Fullscreen aktif ve tuval zaten varsa: tüm sayfayı değil, sadece tuvalin içini güncelle
+    // (yoksa fullscreen elementi DOM'dan silinince tam ekran kopuyor)
+    if (document.fullscreenElement && existingWrap) {
+      const newWrap = document.createElement('div');
+      newWrap.innerHTML = renderCanvas(def);
+      const fresh = newWrap.firstElementChild;
+      existingWrap.innerHTML = fresh.innerHTML;
+      existingWrap.className = fresh.className; // canvas-fullscreen class'ını koru
+      existingWrap.classList.add('canvas-fullscreen');
+      setTimeout(attachCanvasHandlers, 0);
+      return;
+    }
     c.innerHTML = `
       <div class="admin-head">
         <div>
@@ -14224,6 +14237,12 @@ function renderStationDetail(c) {
 // ============== 8) MODAL & TOAST & BİLDİRİM ==============
 
 function openModal(opts) {
+  // Tam ekran tuvaldeyken modal fullscreen'in dışında kalır görünmez — önce çık
+  if (document.fullscreenElement) {
+    if (document.exitFullscreen) document.exitFullscreen();
+    const w = document.querySelector('.canvas-wrap');
+    if (w) w.classList.remove('canvas-fullscreen');
+  }
   document.getElementById('modal-title').textContent = opts.title;
   document.getElementById('modal-body').innerHTML = opts.body;
   document.getElementById('modal-foot').innerHTML = opts.foot || '';
