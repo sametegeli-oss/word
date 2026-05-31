@@ -31270,7 +31270,7 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   if(window.__WM_SENTENCE_ONLY_V5__) return;
   window.__WM_SENTENCE_ONLY_V5__ = true;
 
-  const KEY = 'wm_sentence_status_v5';
+  const KEY = 'wm_sentence_status_v10';
   const ONE_DAY = 24*60*60*1000;
   const INTERVALS = [1,3,7,14,30,90,180];
   const LEVELS = [
@@ -31288,10 +31288,14 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
   function normalizeSentence(s){ return String(s||'').toLowerCase().replace(/\s+/g,' ').replace(/[“”]/g,'"').replace(/[’]/g,"'").trim(); }
   function sentenceKey(item){
-    const sent = normalizeSentence(item && item.sentence);
-    if(sent) return 'sent:' + sent;
-    // Cümlesiz eski kayıtlar için mecburi geçiş anahtarı. Öğrenme yine "cümle kartı" olarak yürür.
-    return 'sent:__no_sentence__:' + normalizeSentence(item && (item.word || item.tr || ''));
+    // v10: Durum kaydı kesinlikle cümleye bağlanır.
+    // Kelime / kategori / aktif liste adı asla anahtar yapılmaz.
+    // Böylece bir cümle çalışmaya alınınca bütün liste "başladı" görünmez.
+    const sent = normalizeSentence(item && (item.sentence || item.en || item.text));
+    const raw = sent || ('__no_sentence__:' + normalizeSentence(item && (item.word || item.tr || item.translation || '')));
+    let h = 2166136261;
+    for(let i=0;i<raw.length;i++){ h ^= raw.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return 'sent_v10:' + (h >>> 0).toString(36) + ':' + raw.slice(0,80);
   }
   function getStatus(item){
     const data = load();
@@ -31630,7 +31634,7 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
     }
     return `<div class="wm-sentence-status" style="${cardStyle(s)}padding:10px;border-radius:14px;margin:10px 0;display:grid;gap:5px">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
-        <span style="font-size:12px;font-weight:900;color:var(--text)">${s.learned?'✅ Öğrenildi':'🚀 Öğrenmeye Başlandı'} · ${i.label} · SRS-${s.srsLevel||1}</span>
+        <span style="font-size:12px;font-weight:900;color:var(--text)">🚀 Öğrenmeye Başlandı · ${i.label} · SRS-${s.srsLevel||1}</span>
         <span style="font-size:11px;font-weight:900;color:${isDue(w)?'#f87171':'var(--muted)'}">${dueText(s)}</span>
       </div>
       <div style="font-size:11px;color:var(--muted);line-height:1.55">🚀 Başlama: ${fmt(s.startedAt||s.learnedAt)}<br>🔄 Son tekrar: ${fmt(s.lastReview)}<br>⏰ Sonraki tekrar: ${fmt(s.nextReview)}${s.realLifeUsed?`<br>🏆 Gerçek kullanım: ${s.realLifeUsed} kez`:''}</div>
@@ -31779,7 +31783,7 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
           <div style="font-size:14px;font-weight:800;color:var(--text);margin-top:4px;line-height:1.35">${sentence}</div>${tr}${meta}
         </div>
         <div class="wi-badges" style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;min-width:122px;z-index:5;visibility:visible;opacity:1">
-          <span class="wm-sent-mini" style="background:${badgeBg};color:#fff">${due?'🔴 Tekrar':(started?(s.learned?'✅ Öğrenildi':'🚀 Başladı'):'⚪ Yeni')}</span>
+          <span class="wm-sent-mini" style="background:${badgeBg};color:#fff">${due?'🔴 Tekrar':(started?'🚀 Başladı':'⚪ Yeni')}</span>
           <span class="wm-sent-mini" style="background:var(--bg3);color:var(--muted)">${dueText(s)}</span>
           <span class="wm-sent-mini" style="background:${ii.color};color:#fff">SRS-${s?.srsLevel||0}</span>
           ${s&&s.realLifeUsed?`<span class="wm-sent-mini" style="background:#f59e0b;color:#fff">🏆 ${s.realLifeUsed} kez</span>`:''}
@@ -32117,4 +32121,24 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   }
   document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{ensureImageTop();}catch(e){}},500));
   console.log('✅ v9 görsel önbellek + JS döngüsü temizliği aktif');
+})();
+
+
+/* =====================================================================
+   WORD MODE — SENTENCE KEY FIX v10
+   - Eski v5/v6 hatalı toplu cümle durumları okunmaz.
+   - Kayıt anahtarı sadece cümle metninden üretilir.
+   - İstersen eski hatalı tüm kayıtları temizlemek için konsolda:
+     WM_clearOldSentenceStatus()
+   ===================================================================== */
+(function(){
+  if(window.__WM_SENTENCE_KEY_FIX_V10__) return;
+  window.__WM_SENTENCE_KEY_FIX_V10__ = true;
+  window.WM_clearOldSentenceStatus = function(){
+    ['wm_sentence_status_v1','wm_sentence_status_v5','wm_sentence_status_v10','sentenceStatus','wm_sentence_status'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+    try{ window.sentenceStatus = {}; }catch(e){}
+    try{ showToast('🧹 Temizlendi','Cümle SRS kayıtları sıfırlandı'); }catch(e){}
+    try{ renderLearn(); renderWordList(); }catch(e){}
+  };
+  console.log('✅ v10 cümle anahtarı düzeltmesi aktif — eski toplu kayıtlar ayrı tutuluyor');
 })();
