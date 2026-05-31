@@ -6361,7 +6361,7 @@ function renderWorkMain() {
   const taskCount = state.tasks.filter(t => t.assignee === state.currentUser && t.status === 'open').length;
   const myCount = state.instances.filter(i => i.ownerId === state.currentUser).length;
   const allCount = state.instances.length;
-  const upcomingDates = getAllUpcomingDates();
+  let upcomingDates = getAllUpcomingDates();
   // Yaklaşan: 30 gün içindekiler (geçmiş dahil)
   const upcomingCount = upcomingDates.filter(d => d.diffDays <= 30).length;
 
@@ -6689,6 +6689,17 @@ function renderTaskCard(task) {
 
 function renderInstanceCard(inst) {
   const def = getDef(inst.defId);
+  if (!def) {
+    // Süreç tanımı bulunamadı (silinmiş/değişmiş def) - güvenli kart göster
+    return `
+      <div class="item-card" onclick="selectInstance('${inst.id}')">
+        <div class="item-row1">
+          <div class="item-title">⚠️ Bilinmeyen süreç<span class="item-id">${inst.id}</span></div>
+          <div class="item-time">${formatAge(inst.createdAt)}</div>
+        </div>
+        <div class="item-meta"><span style="color:var(--text-dim);">Süreç tanımı bulunamadı (${escapeHtml(inst.defId)})</span></div>
+      </div>`;
+  }
   const owner = getUser(inst.ownerId);
   const isSel = state.selected && state.selected.type === 'instance' && state.selected.id === inst.id;
   const step = def.steps.find(s => s.id === inst.state);
