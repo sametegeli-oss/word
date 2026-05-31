@@ -5286,6 +5286,16 @@ function advance(instanceId) {
       continue;
     }
 
+    // Aktif izleme adımı: görev/onay oluşturmaz, instance 'running' kalır.
+    // Hatırlatıcılar (Takip Kaydı, Araç Kaydı) için: onay beklemeden aktif izlemede durur.
+    if (step.type === 'monitor') {
+      recordHistory(inst.id, 'system', step.message || step.title || 'Aktif izlemede — tarihler takip ediliyor');
+      pushNotif(inst.ownerId, `${def.icon} ${def.name} (${inst.id}) — ${step.message || 'tarihler izleniyor'}`, inst.id);
+      // running durumunda kal, dur (görev yok)
+      inst.updatedAt = Date.now();
+      return;
+    }
+
     if (step.type === 'human') {
       const resolved = resolveAssignee(step.assign, inst, step);
       if (!resolved || !resolved.userId) {
@@ -6798,6 +6808,18 @@ function renderDetail() {
             <div class="who-box-label">ŞU ANDA</div>
             <div class="who-box-name">${escapeHtml(assignee?.name || '?')}</div>
             <div class="who-box-sub">${escapeHtml(stepLabel)} • ${ageStr} beklemede</div>
+          </div>
+        </div>
+      `;
+    } else {
+      // Açık görev yok = aktif izleme adımı (hatırlatıcı). Onay beklemiyor.
+      whoBox = `
+        <div class="who-box">
+          <div class="who-box-avatar" style="background:var(--accent);">⏰</div>
+          <div class="who-box-info">
+            <div class="who-box-label">AKTİF İZLEMEDE</div>
+            <div class="who-box-name">Tarihler takip ediliyor</div>
+            <div class="who-box-sub">Tarih yaklaşınca otomatik bildirim alırsınız</div>
           </div>
         </div>
       `;
