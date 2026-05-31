@@ -5414,10 +5414,10 @@ function getSeniorityYears(user) {
   return (Date.now() - new Date(user.hireDate)) / (365.25 * 24 * 3600 * 1000);
 }
 
-function startProcess(defId, ownerId, formData, silent=false) {
+function startProcess(defId, ownerId, formData, silent=false, allowInactive=false) {
   const def = getDef(defId);
   if (!def) throw new Error('Süreç tanımı bulunamadı: ' + defId);
-  if (!def.active) throw new Error('Süreç pasif: ' + defId);
+  if (!def.active && !allowInactive) throw new Error('Süreç pasif: ' + defId);
 
   const instance = {
     id: uid('TR'),
@@ -11545,22 +11545,51 @@ function renderFormPreview(def) {
 
 function testProcess(defId) {
   const def = getDef(defId);
-  if (def.fields.length === 0) {
-    if (!confirm('Bu sürecin form alanı yok. Boş veri ile test edilsin mi?')) return;
+  if (!def.steps || def.steps.length === 0) {
+    notify('Önce adım ekleyin', 'error'); return;
   }
-  // Test verisi üret
+  if (!def.startStep) {
+    notify('Başlangıç adımı belirleyin (bir kutuya sağ tık → Başlangıç yap)', 'error'); return;
+  }
+  // Form alanı yoksa direkt boş test
+  if (!def.fields || def.fields.length === 0) {
+    runTestProcess(defId, {});
+    return;
+  }
+  // Form alanları varsa: test değerlerini sor
+  const fieldsHtml = def.fields.map(f => {
+    let input = '';
+    if (f.type === 'number') input = `<input type="number" id="tf-${f.id}" value="0" style="width:100%;background:var(--bg);border:1px solid var(--border-hi);color:var(--text);padding:8px 10px;border-radius:4px;">`;
+    else if (f.type === 'date') input = `<input type="date" id="tf-${f.id}" value="${new Date().toISOString().slice(0,10)}" style="width:100%;background:var(--bg);border:1px solid var(--border-hi);color:var(--text);padding:8px 10px;border-radius:4px;">`;
+    else if (f.type === 'select') input = `<select id="tf-${f.id}" style="width:100%;background:var(--bg);border:1px solid var(--border-hi);color:var(--text);padding:8px 10px;border-radius:4px;">${(f.options||[]).map(o=>`<option value="${o.value}">${escapeHtml(o.label)}</option>`).join('')}</select>`;
+    else input = `<input type="text" id="tf-${f.id}" value="Test" style="width:100%;background:var(--bg);border:1px solid var(--border-hi);color:var(--text);padding:8px 10px;border-radius:4px;">`;
+    return `<div style="margin-bottom:12px;"><label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:4px;">${escapeHtml(f.label)}</label>${input}</div>`;
+  }).join('');
+  openModal({
+    title: '▶ Test Et — ' + def.name,
+    body: `<div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;">Test değerlerini gir, akışın hangi yola gittiğini gör. (Süreç pasif olsa bile test çalışır.)</div>${fieldsHtml}`,
+    foot: `<button class="ghost-btn" onclick="closeModal()">İptal</button>
+           <button class="btn approve" style="flex:0;padding:7px 14px;" onclick="submitTestProcess('${defId}')">Testi Başlat</button>`
+  });
+}
+
+function submitTestProcess(defId) {
+  const def = getDef(defId);
   const data = {};
   def.fields.forEach(f => {
-    if (f.type === 'number') data[f.id] = '1';
-    else if (f.type === 'date') data[f.id] = new Date().toISOString().slice(0,10);
-    else if (f.type === 'select' && f.options && f.options.length) data[f.id] = f.options[0].value;
-    else data[f.id] = 'Test verisi';
+    const el = document.getElementById('tf-' + f.id);
+    data[f.id] = el ? el.value : '';
   });
+  closeModal();
+  runTestProcess(defId, data);
+}
+
+function runTestProcess(defId, data) {
   try {
-    const inst = startProcess(defId, state.currentUser, data);
-    notify(`Test örneği oluşturuldu: ${inst.id}`, 'success');
+    const inst = startProcess(defId, state.currentUser, data, false, true); // allowInactive=true
+    notify(`Test örneği oluşturuldu: ${inst.id} — İş Akışları'nda görebilirsin`, 'success');
   } catch(e) {
-    notify(e.message, 'error');
+    notify('Test hatası: ' + e.message, 'error');
   }
 }
 
