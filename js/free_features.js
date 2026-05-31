@@ -105,3 +105,19 @@ document.addEventListener('DOMContentLoaded',()=>ensureUI());setTimeout(ensureUI
     }
   });
 })();
+
+/* WORD MODE FREE FEATURES — CÜMLE TABANLI PANEL OVERRIDE v5 */
+(function(){
+  if(window.__WM_FF_SENTENCE_ONLY_V5__) return; window.__WM_FF_SENTENCE_ONLY_V5__=true;
+  function $(id){return document.getElementById(id)}
+  function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+  function core(){return window.WMSentenceCore}
+  function ensure(){
+    if($('ffFabs')) return;
+    document.body.insertAdjacentHTML('beforeend',`<div id="ffFabs" class="ff-fabs"><button class="ff-fab" onclick="ffOpen('dash')">📊 Panel</button><button class="ff-fab" onclick="ffOpen('rev')">🧠 Cümle Tekrar</button><button class="ff-fab" onclick="ffOpen('shad')">🎧 Shadow</button></div><div id="ffDash" class="ff-ov"><div class="ff-wrap"><div class="ff-top"><button class="ff-close" onclick="ffClose('dash')">← Kapat</button><h2>📊 Cümle Dashboard</h2></div><div id="ffDashC"></div></div></div><div id="ffRev" class="ff-ov"><div class="ff-wrap"><div class="ff-top"><button class="ff-close" onclick="ffClose('rev')">← Kapat</button><h2>🧠 Cümle Smart Review</h2></div><div id="ffRevC"></div></div></div><div id="ffShad" class="ff-ov"><div class="ff-wrap"><div class="ff-top"><button class="ff-close" onclick="ffClose('shad')">← Kapat</button><h2>🎧 Shadowing Studio</h2></div><div class="ff-card"><input id="ffST" class="ff-input" value="Can I get some water?"><div class="ff-row"><button class="ff-btn ff-blue" onclick="shSpeak&&shSpeak()">🔊 Dinle</button><button class="ff-btn ff-ghost" onclick="shStop&&shStop()">Durdur</button></div></div></div></div>`);
+  }
+  window.ffOpen=function(w){ensure();['ffDash','ffRev','ffShad'].forEach(id=>$(id)?.classList.remove('active')); const id={dash:'ffDash',rev:'ffRev',shad:'ffShad'}[w]; if($(id)){$(id).classList.add('active');document.body.style.overflow='hidden';} if(w==='dash')dash(); if(w==='rev')rev();}
+  window.ffClose=function(w){const id={dash:'ffDash',rev:'ffRev',shad:'ffShad'}[w]; if($(id))$(id).classList.remove('active'); document.body.style.overflow='';}
+  function dash(){const c=core(); const arr=Array.isArray(window.allWords)?window.allWords:[]; const s=c?c.sentenceStats():{total:arr.length,learned:0,due:0,unseen:arr.length}; const due=arr.filter(x=>c&&c.isDueSentence(x)).slice(0,10); $('ffDashC').innerHTML=`<div class="ff-grid"><div class="ff-stat"><b>${s.total}</b><span>CÜMLE</span></div><div class="ff-stat"><b>${s.learned}</b><span>ÖĞRENİLDİ</span></div><div class="ff-stat"><b>${s.due}</b><span>TEKRAR</span></div><div class="ff-stat"><b>${s.unseen}</b><span>YENİ</span></div></div><div class="ff-card"><div class="ff-title">⚠️ Bugün unutma riski yüksek cümleler</div>${due.length?due.map((x,i)=>`<div class="ff-item"><div class="ff-body"><div class="ff-w">${i+1}. ${esc(x.word||'')}</div><div class="ff-m">${esc(x.sentence||'')}</div></div></div>`).join(''):'<div class="ff-sub">Bugün acil tekrar yok.</div>'}</div>`;}
+  function rev(){const c=core(); const arr=Array.isArray(window.allWords)?window.allWords:[]; const due=arr.filter(x=>c&&c.isDueSentence(x)); $('ffRevC').innerHTML=`<div class="ff-card"><div class="ff-title">Bugünün cümle tekrarları</div>${due.length?due.map((x,i)=>`<div class="ff-item"><div class="ff-body"><div class="ff-w">${esc(x.word||'')}</div><div class="ff-m">${esc(x.sentence||'')}</div></div><button class="ff-mini ff-green" onclick="goToWord(${arr.indexOf(x)}, allWords);ffClose('rev');showScreen('sc-word')">Aç</button></div>`).join(''):'<div class="ff-sub">Bugün tekrar yok.</div>'}</div>`;}
+})();
