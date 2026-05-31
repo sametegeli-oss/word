@@ -5635,7 +5635,13 @@ function scanAndFireReminders() {
       for (const r of field.reminders) {
         const reminderKey = `${field.id}:${r.id}`;
         if (inst.triggeredReminders.includes(reminderKey)) continue;
-        const daysBefore = parseFloat(r.daysBefore) || 0;
+        // daysBefore sabit sayı olabilir VEYA "form.xxx" referansı (kullanıcının girdiği gün)
+        let daysRaw = r.daysBefore;
+        if (typeof daysRaw === 'string' && daysRaw.startsWith('form.')) {
+          daysRaw = inst.form[daysRaw.slice(5)];
+        }
+        const daysBefore = parseFloat(daysRaw);
+        if (isNaN(daysBefore)) continue; // gün girilmemişse bu hatırlatmayı atla
         // Hatırlatma tarihi: targetDate - daysBefore gün
         const reminderMs = targetMs - daysBefore * 24 * 3600 * 1000;
         if (now >= reminderMs) {
