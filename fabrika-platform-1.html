@@ -918,6 +918,12 @@
 
   /* ===== GÖRSEL TUVAL ===== */
   .canvas-wrap { display: flex; flex-direction: column; height: calc(100vh - 140px); }
+  .canvas-wrap.canvas-fullscreen {
+    height: 100vh; width: 100vw; background: var(--bg);
+    padding: 0; margin: 0;
+  }
+  .canvas-wrap.canvas-fullscreen .canvas-stage { border-radius: 0; }
+  .canvas-wrap.canvas-fullscreen .canvas-toolbar { border-radius: 0; }
   .canvas-toolbar {
     display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
     padding: 10px 14px; background: var(--panel-2); border: 1px solid var(--border);
@@ -4317,6 +4323,8 @@ let state = {
   canvasPan: { x: 0, y: 0 },// Tuval kaydırma
   canvasSelected: null,     // Seçili kutu id
   canvasLinkFrom: null,     // Ok çekilen kaynak kutu id (null=çekmiyor)
+  canvasUndoStack: [],      // Geri al için süreç anlık görüntüleri
+  canvasRedoStack: [],      // Yinele için
   selected: null,
   selectedOrderId: null,
   selectedStationIdx: null,
@@ -9889,14 +9897,24 @@ function renderCanvas(def) {
     const x1 = from.x + CANVAS_NODE_W/2, y1 = from.y + CANVAS_NODE_H;
     const x2 = to.x + CANVAS_NODE_W/2, y2 = to.y;
     const midY = (y1 + y2) / 2;
-    const label = canvasTransLabel(t.when);
+    let label = canvasTransLabel(t.when);
+    // Sistem kararından çıkan doğru/yanlış oklarına koşul özetini ekle
+    if (from.type === 'system' && (t.when === 'pass' || t.when === 'fail')) {
+      const cond = describeRuleStatic(from.rule);
+      if (cond && cond !== 'koşul yok') {
+        const shortCond = cond.length > 28 ? cond.slice(0,28) + '…' : cond;
+        label = t.when === 'pass' ? `✓ ${shortCond}` : `✕ değilse`;
+      }
+    }
     const labelColor = (t.when==='approve'||t.when==='pass') ? '#1D9E75' : (t.when==='reject'||t.when==='fail') ? '#E24B4A' : '#888';
     const path = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+    const lw = Math.max(48, label.length * 6.2 + 14); // etiket genişliği içeriğe göre
+    const cx = (x1+x2)/2;
     edgesHtml += `
       <path d="${path}" fill="none" stroke="${labelColor}" stroke-width="2" marker-end="url(#cv-arrow)" opacity="0.85"
             class="cv-edge" onclick="canvasEditEdge('${t.from}','${t.when}')" style="cursor:pointer;"/>
-      <rect x="${(x1+x2)/2 - 28}" y="${midY - 10}" width="56" height="18" rx="9" fill="var(--panel)" stroke="${labelColor}" stroke-width="1" onclick="canvasEditEdge('${t.from}','${t.when}')" style="cursor:pointer;"/>
-      <text x="${(x1+x2)/2}" y="${midY + 3}" text-anchor="middle" font-size="10" fill="${labelColor}" style="pointer-events:none;">${label}</text>`;
+      <rect x="${cx - lw/2}" y="${midY - 10}" width="${lw}" height="19" rx="9" fill="var(--panel)" stroke="${labelColor}" stroke-width="1" onclick="canvasEditEdge('${t.from}','${t.when}')" style="cursor:pointer;"/>
+      <text x="${cx}" y="${midY + 3}" text-anchor="middle" font-size="10" fill="${labelColor}" style="pointer-events:none;">${escapeHtml(label)}</text>`;
   }
 
   let nodesHtml = '';
@@ -9941,10 +9959,16 @@ function renderCanvas(def) {
           <button class="cv-add" onclick="canvasAddNode('end-bad')">❌ Red</button>
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
+          <button class="cv-zoom" onclick="canvasUndo()" title="Geri al (Ctrl+Z)">↩</button>
+          <button class="cv-zoom" onclick="canvasRedo()" title="Yinele (Ctrl+Y)">↪</button>
+          <button class="cv-add" onclick="canvasAutoLayout()" title="Kutuları otomatik hizala">✨ Düzenle</button>
+          <button class="cv-add" onclick="canvasValidate()" title="Akışı kontrol et">🔍 Doğrula</button>
+          <span style="width:1px;height:20px;background:var(--border);margin:0 2px;"></span>
           <button class="cv-zoom" onclick="canvasZoom(-0.1)">−</button>
           <span style="font-size:11px;color:var(--text-dim);min-width:38px;text-align:center;">${Math.round(z*100)}%</span>
           <button class="cv-zoom" onclick="canvasZoom(0.1)">+</button>
-          <button class="cv-zoom" onclick="canvasZoom(0)" title="Sığdır">⤢</button>
+          <button class="cv-zoom" onclick="canvasZoom(0)" title="Sığdır">⊡</button>
+          <button class="cv-zoom" onclick="canvasFullscreen()" title="Tam ekran">⤢</button>
         </div>
       </div>
       ${linkingHint}
@@ -10064,6 +10088,7 @@ function describeRuleStatic(rule) {
 
 function canvasAddNode(type) {
   const def = getDef(state.designerProcessId);
+  canvasSnapshot();
   ensureNodePositions(def);
   const id = 's_' + Math.random().toString(36).substr(2,4);
   const td = CANVAS_NODE_TYPES[type];
@@ -10116,6 +10141,7 @@ function canvasUpdateParallel(id, str) {
 
 function canvasSetStart(id) {
   const def = getDef(state.designerProcessId);
+  canvasSnapshot();
   def.startStep = id;
   persist();
   renderDesignerOnly();
@@ -10124,6 +10150,7 @@ function canvasSetStart(id) {
 function canvasDeleteNode(id) {
   const def = getDef(state.designerProcessId);
   if (!confirm('Bu kutuyu ve ona bağlı okları sil?')) return;
+  canvasSnapshot();
   def.steps = def.steps.filter(s => s.id !== id);
   def.transitions = (def.transitions||[]).filter(t => t.from !== id && t.to !== id);
   if (def.startStep === id) def.startStep = def.steps[0]?.id || null;
@@ -10178,6 +10205,7 @@ function canvasDuplicateNode(id) {
   const def = getDef(state.designerProcessId);
   const n = def.steps.find(s => s.id === id);
   if (!n) return;
+  canvasSnapshot();
   const copy = JSON.parse(JSON.stringify(n));
   copy.id = 's_' + Math.random().toString(36).substr(2,4);
   copy.x = (n.x||0) + 30;
@@ -10194,6 +10222,16 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('#cv-ctx-menu')) closeContextMenu();
 });
 
+// Tuval klavye kısayolları (sadece tuval modunda)
+document.addEventListener('keydown', (e) => {
+  if (!state.canvasMode) return;
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return; // yazarken karışma
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); canvasUndo(); }
+  else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); canvasRedo(); }
+  else if ((e.key === 'Delete' || e.key === 'Backspace') && state.canvasSelected) { e.preventDefault(); canvasDeleteNode(state.canvasSelected); }
+});
+
 function canvasStartLink(id) {
   state.canvasLinkFrom = id;
   state.canvasSelected = null;
@@ -10204,6 +10242,7 @@ function canvasCompleteLink(toId) {
   const fromId = state.canvasLinkFrom;
   if (!fromId || fromId === toId) { state.canvasLinkFrom = null; renderDesignerOnly(); return; }
   const def = getDef(state.designerProcessId);
+  canvasSnapshot();
   const fromNode = def.steps.find(s => s.id === fromId);
   let when = 'next';
   if (fromNode.type === 'human' || fromNode.type === 'parallel') {
@@ -10230,6 +10269,7 @@ function canvasEditEdge(from, when) {
   if (!t) return;
   const toNode = def.steps.find(s=>s.id===t.to);
   if (confirm(`Bu oku sil?\n\n${from} —[${canvasTransLabel(when)}]→ ${toNode?.title||t.to}`)) {
+    canvasSnapshot();
     def.transitions = def.transitions.filter(x => !(x.from===from && x.when===when));
     persist();
     renderDesignerOnly();
@@ -10240,6 +10280,182 @@ function canvasZoom(delta) {
   if (delta === 0) { state.canvasZoom = 1; state.canvasPan = {x:0,y:0}; }
   else state.canvasZoom = Math.max(0.4, Math.min(2, (state.canvasZoom||1) + delta));
   renderDesignerOnly();
+}
+
+// --- GERİ AL / YİNELE ---
+// Değişiklik YAPMADAN ÖNCE çağrılır: mevcut steps+transitions+startStep'i yığına atar
+function canvasSnapshot() {
+  const def = getDef(state.designerProcessId);
+  if (!def) return;
+  const snap = JSON.stringify({ steps: def.steps, transitions: def.transitions, startStep: def.startStep });
+  state.canvasUndoStack.push(snap);
+  if (state.canvasUndoStack.length > 40) state.canvasUndoStack.shift(); // en fazla 40 adım
+  state.canvasRedoStack = []; // yeni değişiklik → yinele geçmişi sıfırlanır
+}
+
+function canvasUndo() {
+  if (state.canvasUndoStack.length === 0) { notify('Geri alınacak işlem yok', 'info'); return; }
+  const def = getDef(state.designerProcessId);
+  // Mevcut durumu redo'ya at
+  state.canvasRedoStack.push(JSON.stringify({ steps: def.steps, transitions: def.transitions, startStep: def.startStep }));
+  const snap = JSON.parse(state.canvasUndoStack.pop());
+  def.steps = snap.steps; def.transitions = snap.transitions; def.startStep = snap.startStep;
+  state.canvasSelected = null; state.canvasLinkFrom = null;
+  persist();
+  renderDesignerOnly();
+}
+
+function canvasRedo() {
+  if (state.canvasRedoStack.length === 0) { notify('Yinelenecek işlem yok', 'info'); return; }
+  const def = getDef(state.designerProcessId);
+  state.canvasUndoStack.push(JSON.stringify({ steps: def.steps, transitions: def.transitions, startStep: def.startStep }));
+  const snap = JSON.parse(state.canvasRedoStack.pop());
+  def.steps = snap.steps; def.transitions = snap.transitions; def.startStep = snap.startStep;
+  state.canvasSelected = null; state.canvasLinkFrom = null;
+  persist();
+  renderDesignerOnly();
+}
+
+// --- OTOMATİK DÜZENLE (kutuları akış katmanlarına göre hizala) ---
+function canvasAutoLayout() {
+  const def = getDef(state.designerProcessId);
+  if (!def || def.steps.length === 0) return;
+  canvasSnapshot(); // geri alınabilir olsun
+
+  // Katmanları hesapla: başlangıçtan başlayarak BFS ile derinlik
+  const stepMap = {}; def.steps.forEach(s => stepMap[s.id] = s);
+  const depth = {};
+  const start = def.startStep || def.steps[0].id;
+  const queue = [{ id: start, d: 0 }];
+  const visited = new Set();
+  while (queue.length) {
+    const { id, d } = queue.shift();
+    if (visited.has(id)) { if (d > (depth[id]||0)) depth[id] = d; continue; }
+    visited.add(id);
+    depth[id] = Math.max(depth[id]||0, d);
+    const outs = (def.transitions||[]).filter(t => t.from === id);
+    outs.forEach(t => { if (stepMap[t.to]) queue.push({ id: t.to, d: d+1 }); });
+  }
+  // Bağlantısız kutular en alta
+  let maxD = 0; Object.values(depth).forEach(d => { if (d>maxD) maxD = d; });
+  def.steps.forEach(s => { if (depth[s.id] === undefined) depth[s.id] = maxD + 1; });
+
+  // Katmanlara grupla
+  const layers = {};
+  def.steps.forEach(s => { (layers[depth[s.id]] = layers[depth[s.id]] || []).push(s); });
+
+  // Yerleştir: her katman bir satır, içindekiler yan yana ortalı
+  const COL_W = 200, ROW_H = 130, TOP = 40;
+  const layerKeys = Object.keys(layers).map(Number).sort((a,b)=>a-b);
+  layerKeys.forEach(d => {
+    const row = layers[d];
+    const totalW = row.length * COL_W;
+    const startX = Math.max(40, (900 - totalW) / 2);
+    row.forEach((s, i) => {
+      s.x = Math.round(startX + i * COL_W);
+      s.y = TOP + d * ROW_H;
+    });
+  });
+  persist();
+  renderDesignerOnly();
+  notify('Kutular düzenlendi', 'success');
+}
+
+// Tuvali gerçek tam ekran yap (browser Fullscreen API)
+function canvasFullscreen() {
+  const el = document.querySelector('.canvas-wrap');
+  if (!el) return;
+  if (!document.fullscreenElement) {
+    el.classList.add('canvas-fullscreen');
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    // Tam ekrandan çıkınca class'ı temizle
+    const onFsChange = () => {
+      if (!document.fullscreenElement) {
+        el.classList.remove('canvas-fullscreen');
+        document.removeEventListener('fullscreenchange', onFsChange);
+        // Tuvali yeniden çiz + sürükle olaylarını tazele
+        renderDesignerOnly();
+        setTimeout(attachCanvasHandlers, 0);
+      }
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    el.classList.remove('canvas-fullscreen');
+  }
+}
+
+// --- DOĞRULAMA: süreçteki mantık hatalarını bul ---
+function canvasValidate() {
+  const def = getDef(state.designerProcessId);
+  const issues = [];
+  const steps = def.steps || [];
+  const trans = def.transitions || [];
+
+  if (steps.length === 0) { issues.push({ sev:'error', msg:'Hiç adım yok' }); }
+  if (!def.startStep || !steps.find(s => s.id === def.startStep)) {
+    issues.push({ sev:'error', msg:'Başlangıç adımı belirlenmemiş (bir kutuya sağ tık → Başlangıç yap)' });
+  }
+  if (!steps.some(s => s.type === 'end-good' || s.type === 'end-bad')) {
+    issues.push({ sev:'error', msg:'Hiç bitiş kutusu yok (✅ veya ❌ ekle)' });
+  }
+  for (const s of steps) {
+    const outs = trans.filter(t => t.from === s.id);
+    const ins = trans.filter(t => t.to === s.id);
+    const td = CANVAS_NODE_TYPES[s.type]?.label || s.type;
+    if (s.type !== 'end-good' && s.type !== 'end-bad' && outs.length === 0) {
+      issues.push({ sev:'error', msg:`"${s.title}" (${td}) kutusundan çıkış oku yok` });
+    }
+    if (s.id !== def.startStep && ins.length === 0) {
+      issues.push({ sev:'warn', msg:`"${s.title}" kutusuna gelen ok yok (kopuk olabilir)` });
+    }
+    if (s.type === 'human') {
+      if (!outs.some(t=>t.when==='approve')) issues.push({ sev:'warn', msg:`"${s.title}" onaylanınca nereye gideceği belirsiz (onayla oku yok)` });
+      if (!outs.some(t=>t.when==='reject')) issues.push({ sev:'warn', msg:`"${s.title}" reddedilince nereye gideceği belirsiz (reddet oku yok)` });
+    }
+    if (s.type === 'parallel') {
+      if (!outs.some(t=>t.when==='approve')) issues.push({ sev:'warn', msg:`"${s.title}" (paralel) onayla oku yok` });
+      if (!s.assignees || s.assignees.length === 0) issues.push({ sev:'warn', msg:`"${s.title}" (paralel) için onaylayacak rol seçilmemiş` });
+    }
+    if (s.type === 'system') {
+      if (!outs.some(t=>t.when==='pass')) issues.push({ sev:'error', msg:`"${s.title}" (karar) doğru yolu yok (doğru oku çek)` });
+      if (!outs.some(t=>t.when==='fail')) issues.push({ sev:'error', msg:`"${s.title}" (karar) yanlış yolu yok (yanlış oku çek)` });
+      const condTxt = describeRuleStatic(s.rule);
+      if (!s.rule || condTxt === 'koşul yok') issues.push({ sev:'warn', msg:`"${s.title}" (karar) için koşul tanımlanmamış` });
+    }
+    if (s.type === 'wait' && !outs.some(t=>t.when==='timeout'||t.when==='next')) {
+      issues.push({ sev:'warn', msg:`"${s.title}" (bekleme) süre dolunca nereye gideceği belirsiz` });
+    }
+  }
+
+  const errors = issues.filter(i=>i.sev==='error');
+  const warns = issues.filter(i=>i.sev==='warn');
+  let body;
+  if (issues.length === 0) {
+    body = `<div style="text-align:center;padding:24px;">
+      <div style="font-size:40px;">✅</div>
+      <div style="font-size:15px;font-weight:600;margin-top:8px;">Akış geçerli!</div>
+      <div style="font-size:13px;color:var(--text-dim);margin-top:4px;">Hiçbir sorun bulunamadı. Bu süreci güvenle yayınlayabilirsin.</div>
+    </div>`;
+  } else {
+    body = `<div style="font-size:13px;margin-bottom:12px;">
+      ${errors.length} hata, ${warns.length} uyarı bulundu:</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;">
+      ${issues.map(i => `
+        <div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:6px;background:${i.sev==='error'?'rgba(226,75,74,0.1)':'rgba(239,159,39,0.1)'};">
+          <span>${i.sev==='error'?'🔴':'🟡'}</span>
+          <span style="font-size:13px;">${escapeHtml(i.msg)}</span>
+        </div>`).join('')}
+      </div>
+      ${errors.length===0 ? '<div style="font-size:12px;color:var(--text-dim);margin-top:12px;">Sadece uyarı var — yayınlayabilirsin ama kontrol etmen iyi olur.</div>' : '<div style="font-size:12px;color:var(--red);margin-top:12px;">🔴 Hatalar düzeltilmeden süreç düzgün çalışmaz.</div>'}`;
+  }
+  openModal({
+    title: '🔍 Akış Doğrulama',
+    body,
+    foot: `<button class="btn approve" style="flex:0;padding:7px 14px;" onclick="closeModal()">Tamam</button>`
+  });
 }
 
 function canvasOpenCondition(id) {
@@ -10434,6 +10650,7 @@ function attachCanvasHandlers() {
       const id = nodeEl.getAttribute('data-id');
       if (state.canvasLinkFrom) { canvasCompleteLink(id); evt.preventDefault(); return; }
       dragId = id; moved = false;
+      canvasSnapshot(); // taşımayı geri alınabilir yap
       const n = def.steps.find(s => s.id === id);
       const p = svgPoint(evt);
       dragOffset = { x: p.x - n.x, y: p.y - n.y };
@@ -10456,7 +10673,11 @@ function attachCanvasHandlers() {
   function onUp() {
     if (dragId) {
       if (moved) persist();
-      else if (!state.canvasLinkFrom) { state.canvasSelected = dragId; renderDesignerOnly(); }
+      else {
+        // Taşınmadı (sadece tıklama) → drag başında alınan snapshot'ı geri al
+        if (state.canvasUndoStack.length) state.canvasUndoStack.pop();
+        if (!state.canvasLinkFrom) { state.canvasSelected = dragId; renderDesignerOnly(); }
+      }
     }
     dragId = null;
   }
