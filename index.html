@@ -6091,7 +6091,7 @@ body.wm-tool-panel-open{overflow:hidden}
   }
   document.addEventListener('DOMContentLoaded',function(){patch();setTimeout(patch,500);});
   if(document.readyState!=='loading') setTimeout(patch,0);
-  new MutationObserver(function(){setTimeout(patch,0)}).observe(document.documentElement,{childList:true,subtree:true});
+  // v13: sürekli MutationObserver kapalı; durum güncellemeleri render sonrası yapılır.
 })();
 </script>
 

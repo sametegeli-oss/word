@@ -1,0 +1,13 @@
+{
+  "count": 13862,
+  "headers": [
+    "word",
+    "translation",
+    "phonetic",
+    "sentence",
+    "sentenceTr",
+    "highlights",
+    "sentenceLevel",
+    "grammarStructure"
+  ]
+}
