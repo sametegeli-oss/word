@@ -1,14 +1,8 @@
-# Word Mode — Cümle Tabanlı Paket v13
+# WordMode v17 — AI Senaryodan Cümle Listesi Fix
 
-Bu paket `cumleler.xlsx` şemasını kullanır:
+Bu sürümde Konuşma Simülasyonu içindeki “Seçilen Senaryodan Çalışma Listesi Oluştur” bölümü kelime listesi yerine cümle tabanlı liste üretir.
 
+Üretilen/veri şeması:
 `word | translation | phonetic | sentence | sentenceTr | highlights | sentenceLevel | grammarStructure`
 
-Ana öğrenme birimi **sentence** alanıdır. `word` sadece hedef kelime etiketi olarak kullanılır.
-
-GitHub Pages'e klasör içeriğini olduğu gibi yükleyin. Ana dosya: `index.html`.
-
-
-## v14
-- sentenceLevel ve grammarStructure kelime ekranında ve liste ekranında görünür.
-- Eklenen katman sürekli döngü kullanmaz; sadece render/navigasyon/list scroll sonrası çalışır.
+Oluşan liste otomatik aktif liste yapılır ve program kapatılıp açıldığında boş gelmeden yeniden yüklenir.

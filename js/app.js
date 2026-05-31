@@ -4887,6 +4887,36 @@ function updateScoreBar(){
 // ══════════════════════════════════════════════════════════
 // RENDER LEARN
 // ══════════════════════════════════════════════════════════
+
+
+/* WM v15 direct sentence meta helpers */
+function wmSentenceMetaEsc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function wmGetSentenceLevel(item){return String((item&& (item.sentenceLevel||item.level||item.cefr||item.CEFR)) || '').trim();}
+function wmGetGrammarStructure(item){return String((item&& (item.grammarStructure||item.grammar||item.grammar_structure||item.structure)) || '').trim();}
+function wmSentenceMetaBlock(item, mode){
+  const lvl = wmGetSentenceLevel(item);
+  const gr = wmGetGrammarStructure(item);
+  if(!lvl && !gr) return '';
+  const cls = mode==='list' ? 'wm-v15-meta wm-v15-list-meta' : 'wm-v15-meta wm-v15-main-meta';
+  return `<div class="${cls}">${lvl?`<span class="wm-v15-chip wm-v15-level">📊 ${wmSentenceMetaEsc(lvl)}</span>`:''}${gr?`<span class="wm-v15-chip wm-v15-grammar">🏗️ ${wmSentenceMetaEsc(gr)}</span>`:''}</div>`;
+}
+function wmEnsureSentenceMetaCss(){
+  if(document.getElementById('wm-v15-sentence-meta-css')) return;
+  const st=document.createElement('style');
+  st.id='wm-v15-sentence-meta-css';
+  st.textContent=`
+    .wm-v15-meta{display:flex!important;gap:6px!important;flex-wrap:wrap!important;align-items:center!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:30!important;clear:both!important;}
+    .wm-v15-main-meta{margin:10px 0 14px!important;padding:8px 10px!important;border:1px solid rgba(96,165,250,.30)!important;background:rgba(59,130,246,.09)!important;border-radius:14px!important;}
+    .wm-v15-list-meta{margin:7px 0 4px!important;padding:0!important;}
+    .wm-v15-chip{display:inline-flex!important;align-items:center!important;gap:4px!important;padding:5px 9px!important;border-radius:999px!important;font-size:11px!important;font-weight:900!important;line-height:1.15!important;white-space:normal!important;max-width:100%!important;}
+    .wm-v15-level{background:linear-gradient(135deg,#2563eb,#3b82f6)!important;color:#fff!important;}
+    .wm-v15-grammar{background:rgba(168,85,247,.18)!important;color:#d8b4fe!important;border:1px solid rgba(168,85,247,.35)!important;}
+    #wordListEl .wi{min-height:112px!important;height:112px!important;overflow:visible!important;}
+    #wordListEl .virtual-content{overflow:visible!important;}
+  `;
+  document.head.appendChild(st);
+}
+
 function mkSentColored(sentence,highlights,colors){
   if(!sentence) return "";
   
@@ -4920,6 +4950,7 @@ function mkSentColored(sentence,highlights,colors){
 
 async function renderLearn(){
   phase="learn";stopSpeech();
+  try{wmEnsureSentenceMetaCss();}catch(e){}
   const item=words[idx];
   if(!item || !item.word) return;
   
@@ -4928,6 +4959,7 @@ async function renderLearn(){
   const sb=document.getElementById("streakBadge");
   if(streak>=2){sb.style.display="";sb.textContent="🔥 "+streak;}else sb.style.display="none";
   const ph=item.phonetic?`<div class="wc-phonetic">${item.phonetic}</div>`:"";
+  const wmDirectMetaHTML = wmSentenceMetaBlock(item, "main");
   let sentHTML="";
   if(item.sentence){
     sentHTML=`<div class="wc-sent">${mkSentColored(item.sentence,item.highlights,item.colors)}</div>`;
@@ -4962,6 +4994,7 @@ async function renderLearn(){
   document.getElementById("wordCard").innerHTML=`
     <div class="wc-label">${activeListDisplayName}${item.rowNum?`<span style="opacity:0.5;font-size:10px;margin-left:8px">#${item.rowNum}</span>`:''}</div>
     ${srsBadge}
+    ${wmDirectMetaHTML}
     <div class="wc-word" style="cursor:pointer;transition:all 0.2s" onclick="explainWord('${item.word.replace(/'/g,"\\'")}','wordCard')" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">${item.word}</div>
     ${ph}
     <div class="wc-tr">${item.tr}</div>
@@ -5064,7 +5097,7 @@ function showList(){
 }
 
 // Virtual Scrolling Değişkenleri
-const ITEM_HEIGHT = 85; // Her kelime item yüksekliği (px)
+const ITEM_HEIGHT = 112; // v15: seviye/gramer rozetleri için daha yüksek liste kartı
 const BUFFER_SIZE = 5; // Ekstra yüklenecek item sayısı
 let virtualScrollData = {
   scrollTop: 0,
@@ -5121,6 +5154,7 @@ function renderWordList(){
 }
 
 function updateVisibleItems(){
+  try{wmEnsureSentenceMetaCss();}catch(e){}
   const listEl = document.getElementById("wordListEl");
   const contentWrapper = listEl?.querySelector('.virtual-content');
   if(!contentWrapper) return;
@@ -5182,6 +5216,7 @@ function updateVisibleItems(){
     // Cümle formatı: İngilizce (bold) üstte, Türkçe altta
     const sentenceHTML = w.sentence ? `<div style="font-size:14px;font-weight:700;color:var(--text);margin-top:4px;line-height:1.4">${w.sentence.length > 80 ? w.sentence.substring(0, 80) + '...' : w.sentence}</div>` : "";
     const sentenceTrHTML = w.sentenceTr ? `<div style="font-size:13px;color:var(--muted);margin-top:2px;line-height:1.4">${w.sentenceTr.length > 80 ? w.sentenceTr.substring(0, 80) + '...' : w.sentenceTr}</div>` : "";
+    const wmDirectListMetaHTML = wmSentenceMetaBlock(w, "list");
     
     const itemDiv = document.createElement("div");
     itemDiv.className = `wi ${cls}`;
@@ -5196,6 +5231,7 @@ function updateVisibleItems(){
         ${pronHTML}
         ${sentenceHTML}
         ${sentenceTrHTML}
+        ${wmDirectListMetaHTML}
       </div>
       <div class="wi-badges">${mb}${pb}</div>
       <button onclick="deleteWord('${w.word.replace(/'/g,"\\'")}', event)" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:18px;cursor:pointer;margin-left:8px">🗑️</button>`;
@@ -32907,4 +32943,509 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
   console.log('✅ WM v14 sentence level/grammar görünürlük katmanı aktif');
+})();
+
+/* =====================================================================
+   WORD MODE v16 — cumleler.xlsx KALICI CÜMLE LİSTESİ / AUTO RESTORE FIX
+   Amaç:
+   - Kullanıcı cumleler.xlsx veya aynı şemadaki bir Excel dosyasını yüklediğinde
+     liste TAM olarak kaydedilir.
+   - Program kapatılıp açıldığında aktif liste otomatik olarak aynı içerikle açılır.
+   - sentenceLevel ve grammarStructure dahil bütün cümle alanları korunur.
+   - Eski kelime şeması yerine cümle şeması ana şema olur.
+   ===================================================================== */
+(function(){
+  if(window.__WM_CUMLELER_PERSIST_V16__) return;
+  window.__WM_CUMLELER_PERSIST_V16__ = true;
+
+  const SENTENCE_LIST_ID = 'wm_cumleler_xlsx_active';
+  const SENTENCE_LIST_SCHEMA = 'sentence-v16';
+
+  function toast(a,b){ try{ if(typeof showToast==='function') showToast(a,b||''); else console.log(a,b||''); }catch(e){ console.log(a,b||''); } }
+  function clean(s){ return String(s??'').replace(/\s+/g,' ').trim(); }
+  function normHeader(s){
+    return String(s??'').trim().toLowerCase()
+      .replace(/[ıİ]/g,'i').replace(/[şŞ]/g,'s').replace(/[ğĞ]/g,'g')
+      .replace(/[üÜ]/g,'u').replace(/[öÖ]/g,'o').replace(/[çÇ]/g,'c')
+      .replace(/[^a-z0-9]/g,'');
+  }
+  function firstCol(headers, names, fallback){
+    for(const n of names){ const k=normHeader(n); if(headers[k] !== undefined) return headers[k]; }
+    return fallback;
+  }
+  function safeJSONParse(v, fallback){ try{ const x=JSON.parse(v||''); return x ?? fallback; }catch(e){ return fallback; } }
+  function slugName(fileName){ return clean(String(fileName||'cumleler').replace(/\.[^.]+$/,'')) || 'cumleler'; }
+  function getCell(ws,r,c){ if(c===null || c===undefined) return ''; const cell=ws[XLSX.utils.encode_cell({r,c})]; return cell ? clean(cell.v) : ''; }
+  function parseHighlights(raw, word){
+    const arr = String(raw||'').split(',').map(x=>clean(x)).filter(Boolean);
+    if(!arr.length && word) arr.push(word);
+    return arr;
+  }
+  function parseColors(raw){
+    const map={};
+    String(raw||'').split(',').forEach(part=>{
+      const i=part.lastIndexOf(':');
+      if(i<1) return;
+      const k=part.slice(0,i).trim().toLowerCase().replace(/[^a-z]/g,'');
+      let v=part.slice(i+1).trim();
+      if(k && v){ if(!v.startsWith('#')) v='#'+v; map[k]=v; }
+    });
+    return map;
+  }
+  function makeSentenceKey(item){
+    const raw = clean((item&&item.sentence)||'').toLowerCase() || ('__no_sentence__:' + clean((item&&item.word)||'').toLowerCase());
+    let h=2166136261;
+    for(let i=0;i<raw.length;i++){ h ^= raw.charCodeAt(i); h = Math.imul(h,16777619); }
+    return 'sent_v16:' + (h>>>0).toString(36) + ':' + raw.slice(0,80);
+  }
+  function parseWorkbookToSentenceRows(arrayBuffer){
+    if(!window.XLSX) throw new Error('XLSX kütüphanesi yüklenmedi.');
+    const wb = XLSX.read(arrayBuffer,{type:'array',cellStyles:true,cellRichText:true});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    const headers={};
+    for(let c=range.s.c;c<=range.e.c;c++){
+      const cell=ws[XLSX.utils.encode_cell({r:range.s.r,c})];
+      if(cell && cell.v !== undefined && cell.v !== null) headers[normHeader(cell.v)] = c;
+    }
+
+    const colWord = firstCol(headers,['word','kelime','targetWord','target','english','en'],0);
+    const colTr = firstCol(headers,['translation','translations','tr','turkce','türkçe','ceviri','çeviri','anlam','meaning'],1);
+    const colPh = firstCol(headers,['phonetic','fonetik','ipa','pronunciation','okunus','okunuş'],null);
+    const colSent = firstCol(headers,['sentence','cumle','cümle','example','ornek','örnek'],null);
+    const colSentTr = firstCol(headers,['sentenceTr','sentence_tr','sentence translation','cumleTr','cumleCeviri','cümleçeviri','cumle_ceviri','turkishSentence'],null);
+    const colHL = firstCol(headers,['highlights','highlight','vurgular','vurgu'],null);
+    const colColors = firstCol(headers,['colors','renkler','color'],null);
+    const colLevel = firstCol(headers,['sentenceLevel','sentence_level','level','cefr','seviye','cumleSeviyesi','cümleSeviyesi'],null);
+    const colGrammar = firstCol(headers,['grammarStructure','grammar_structure','grammar','structure','gramer','gramerYapisi','gramerYapısı'],null);
+
+    const parsed=[];
+    for(let r=range.s.r+1;r<=range.e.r;r++){
+      let word = getCell(ws,r,colWord);
+      let tr = getCell(ws,r,colTr);
+      const sentence = colSent!==null ? getCell(ws,r,colSent) : '';
+      const sentenceTr = colSentTr!==null ? getCell(ws,r,colSentTr) : '';
+      if(!sentence && !word) continue;
+      if(!sentence) continue; // v16 ana birim cümle: cümlesiz satır listeye alınmaz.
+      if(!word){
+        const m = sentence.match(/\b[a-zA-Z][a-zA-Z'’-]{2,}\b/);
+        word = m ? m[0].toLowerCase() : 'sentence';
+      }
+      if(!tr) tr = 'çeviri yok';
+      const level = colLevel!==null ? getCell(ws,r,colLevel) : '';
+      const grammar = colGrammar!==null ? getCell(ws,r,colGrammar) : '';
+      const item = {
+        rowNum:r+1,
+        en:word,
+        word,
+        targetWord:word,
+        tr,
+        translation:tr,
+        phonetic: colPh!==null ? getCell(ws,r,colPh) : '',
+        sentence,
+        sentenceTr,
+        highlights: parseHighlights(colHL!==null ? getCell(ws,r,colHL) : '', word),
+        colors: parseColors(colColors!==null ? getCell(ws,r,colColors) : ''),
+        sentenceLevel: level,
+        level,
+        grammarStructure: grammar,
+        grammar,
+        sentenceKey:null,
+        source:'uploaded-xlsx',
+        schema:SENTENCE_LIST_SCHEMA
+      };
+      item.sentenceKey = makeSentenceKey(item);
+      parsed.push(item);
+    }
+    return parsed;
+  }
+
+  function readMultiLists(){
+    try{
+      if(typeof multiLists!=='undefined' && Array.isArray(multiLists)) return multiLists;
+    }catch(e){}
+    const arr=safeJSONParse(localStorage.getItem('multiLists'),[]);
+    try{ window.multiLists=arr; }catch(e){}
+    return arr;
+  }
+  function writeMultiLists(lists){
+    const slim = lists.map(l=>Object.assign({},l,{words:undefined}));
+    localStorage.setItem('multiLists', JSON.stringify(slim));
+    try{ if(typeof WMStore!=='undefined' && WMStore.set) WMStore.set('multiLists', JSON.stringify(slim)).catch(()=>{}); }catch(e){}
+  }
+  function saveSentenceList(name, words, fileInfo){
+    if(!Array.isArray(words) || !words.length) throw new Error('Kaydedilecek cümle yok.');
+    const id = SENTENCE_LIST_ID;
+    const lists = readMultiLists();
+    const existingIndex = lists.findIndex(l=>String(l.id)===id);
+    const meta = {
+      id,
+      name: name || 'cumleler',
+      displayName: name || 'cumleler',
+      wordCount: words.length,
+      sentenceCount: words.length,
+      schema:SENTENCE_LIST_SCHEMA,
+      source:'uploaded-xlsx',
+      fileName:fileInfo?.name || name || 'cumleler.xlsx',
+      fileSize:fileInfo?.size || 0,
+      addedAt:new Date().toLocaleDateString('tr-TR'),
+      updatedAt:new Date().toISOString(),
+      progress:{}
+    };
+    if(existingIndex>=0) lists[existingIndex] = Object.assign({}, lists[existingIndex], meta, {words});
+    else lists.push(Object.assign({}, meta, {words}));
+
+    try{ multiLists = lists; }catch(e){ window.multiLists=lists; }
+    writeMultiLists(lists);
+    localStorage.setItem('multiList_words_' + id, JSON.stringify(words));
+    localStorage.setItem('lastFileData', JSON.stringify(words));
+    localStorage.setItem('lastUploadedFile', JSON.stringify({
+      name:meta.fileName,
+      size:meta.fileSize,
+      wordCount:words.length,
+      sentenceCount:words.length,
+      uploadDate:new Date().toISOString(),
+      fileKey:'wm_sentence_list_' + id,
+      activeListId:id,
+      schema:SENTENCE_LIST_SCHEMA
+    }));
+    localStorage.setItem('activeListId', id);
+    localStorage.setItem('prevActiveListId', id);
+    localStorage.setItem('activeListName', meta.name);
+    localStorage.setItem('wm.activeListName', meta.name);
+    localStorage.setItem('currentListName', meta.name);
+    localStorage.setItem('wm_active_sentence_dataset','uploaded_cumleler_xlsx');
+    return meta;
+  }
+
+  function applyWordsToRuntime(words, id, name){
+    if(!Array.isArray(words) || !words.length) return false;
+    try{ allWords = words; }catch(e){ window.allWords=words; }
+    try{ window.allWords = words; }catch(e){}
+    try{ words.forEach(w=>{ if(!w.sentenceKey) w.sentenceKey=makeSentenceKey(w); }); }catch(e){}
+    try{ window.words = words; }catch(e){}
+    try{ window.idx = 0; }catch(e){}
+    try{ words = words; }catch(e){}
+    try{ if(typeof idx!=='undefined') idx=0; }catch(e){}
+    try{ if(typeof fileKey!=='undefined') fileKey = 'wm_sentence_list_' + id; }catch(e){}
+    try{ activeListId = id; }catch(e){ window.activeListId=id; }
+    try{ setActiveListTitle(name); }catch(e){}
+    return true;
+  }
+
+  async function activateSentenceList(id=SENTENCE_LIST_ID, silent=false){
+    const lists = readMultiLists();
+    let list = lists.find(l=>String(l.id)===String(id));
+    let data = safeJSONParse(localStorage.getItem('multiList_words_' + id), null);
+    if(!Array.isArray(data) || !data.length){
+      data = safeJSONParse(localStorage.getItem('lastFileData'), null);
+    }
+    if(!Array.isArray(data) || !data.length) return false;
+    const name = (list&&list.name) || localStorage.getItem('activeListName') || 'cumleler';
+    data = data.map(x=>{
+      const y=Object.assign({},x);
+      y.sentenceLevel = clean(y.sentenceLevel || y.level || '');
+      y.level = clean(y.level || y.sentenceLevel || '');
+      y.grammarStructure = clean(y.grammarStructure || y.grammar || '');
+      y.grammar = clean(y.grammar || y.grammarStructure || '');
+      y.sentenceKey = y.sentenceKey || makeSentenceKey(y);
+      return y;
+    });
+    saveSentenceList(name, data, {name:(list&&list.fileName)||name+'.xlsx'});
+    applyWordsToRuntime(data, id, name);
+    try{ if(typeof showScreen==='function') showScreen('sc-word'); }catch(e){}
+    try{ if(typeof renderMultiListUI==='function') renderMultiListUI(); }catch(e){}
+    try{ if(typeof renderMultiStats==='function') renderMultiStats(); }catch(e){}
+    try{ if(typeof updateScoreBar==='function') updateScoreBar(); }catch(e){}
+    try{ if(typeof renderLearn==='function') renderLearn(); }catch(e){}
+    try{ if(typeof renderWordList==='function') renderWordList(); }catch(e){}
+    try{ setActiveListTitle(name); }catch(e){}
+    if(!silent) toast('✅ Cümle listesi açıldı', `${name} — ${data.length} cümle`);
+    return true;
+  }
+
+  async function loadXlsxAsPersistentSentenceList(file, listNameOverride){
+    if(!file || !/\.(xlsx|xls)$/i.test(file.name||'')) throw new Error('Sadece .xlsx veya .xls dosyası yüklenebilir.');
+    const buf = await file.arrayBuffer();
+    const rows = parseWorkbookToSentenceRows(buf);
+    if(rows.length < 1) throw new Error('Cümle bulunamadı. Excel içinde sentence sütunu dolu olmalı.');
+    const name = clean(listNameOverride || slugName(file.name));
+    saveSentenceList(name, rows, {name:file.name, size:file.size});
+    await activateSentenceList(SENTENCE_LIST_ID, true);
+    toast('✅ Cümle listesi kaydedildi', `${name} — ${rows.length} cümle. Program açıldığında otomatik yüklenecek.`);
+    return rows;
+  }
+
+  // Ana dosya yükleme fonksiyonunu cümle şemasına göre değiştir.
+  const oldLoadFile = window.loadFile;
+  window.loadFile = async function(file){
+    try{
+      // Excel içinde sentence sütunu varsa %100 cümle listesi olarak işle.
+      await loadXlsxAsPersistentSentenceList(file, slugName(file&&file.name));
+      return false;
+    }catch(e){
+      console.error('v16 cümle yükleme hatası:', e);
+      toast('❌ Cümle listesi yüklenemedi', e.message || String(e));
+      return false;
+    }
+  };
+  try{ loadFile = window.loadFile; }catch(e){}
+
+  // Çoklu liste ekranındaki dosya eklemeyi de aynı kalıcı yapıya bağla.
+  const oldProcessMultiFile = window.processMultiFile;
+  window.processMultiFile = function(file){
+    const nameInput = document.getElementById('newListName');
+    const listName = clean(nameInput&&nameInput.value) || slugName(file&&file.name);
+    loadXlsxAsPersistentSentenceList(file, listName).then(()=>{
+      if(nameInput) nameInput.value='';
+      try{ if(typeof renderMultiListUI==='function') renderMultiListUI(); }catch(e){}
+      try{ if(typeof renderMultiStats==='function') renderMultiStats(); }catch(e){}
+    }).catch(err=>{
+      console.error('v16 çoklu liste yükleme hatası:', err);
+      toast('❌ Hata', err.message || String(err));
+    });
+  };
+  try{ processMultiFile = window.processMultiFile; }catch(e){}
+
+  // Liste seçimini daha dayanıklı yap: veri localStorage'da varsa boş gelmez.
+  const oldSwitchToList = window.switchToList;
+  window.switchToList = function(id){
+    if(String(id) === SENTENCE_LIST_ID){ activateSentenceList(SENTENCE_LIST_ID, false); return false; }
+    // Başka liste seçilirse de cümle alanlarını koruyarak yükle.
+    const lists=readMultiLists();
+    const list=lists.find(l=>String(l.id)===String(id));
+    const data=safeJSONParse(localStorage.getItem('multiList_words_'+id), null) || (list&&list.words);
+    if(Array.isArray(data) && data.length){
+      const normalized=data.map(x=>Object.assign({},x,{
+        sentenceLevel:clean(x.sentenceLevel||x.level||''), level:clean(x.level||x.sentenceLevel||''),
+        grammarStructure:clean(x.grammarStructure||x.grammar||''), grammar:clean(x.grammar||x.grammarStructure||''),
+        sentenceKey:x.sentenceKey||makeSentenceKey(x)
+      }));
+      try{ localStorage.setItem('multiList_words_'+id, JSON.stringify(normalized)); }catch(e){}
+      try{ allWords=normalized; words=normalized; idx=0; window.allWords=normalized; window.words=normalized; window.idx=0; }catch(e){}
+      try{ activeListId=id; localStorage.setItem('activeListId',id); }catch(e){}
+      const name=(list&&list.name)||'Liste';
+      localStorage.setItem('activeListName',name); localStorage.setItem('wm.activeListName',name); localStorage.setItem('currentListName',name);
+      try{ showScreen('sc-word'); }catch(e){}
+      try{ setActiveListTitle(name); }catch(e){}
+      try{ renderLearn(); }catch(e){}
+      try{ renderWordList(); }catch(e){}
+      toast('✅ Liste açıldı', `${name} — ${normalized.length} cümle`);
+      return false;
+    }
+    if(typeof oldSwitchToList==='function') return oldSwitchToList.apply(this, arguments);
+  };
+  try{ switchToList = window.switchToList; }catch(e){}
+
+  // Açılışta aktif cümle listesini otomatik yükle.
+  function bootAutoRestore(){
+    setTimeout(async ()=>{
+      const active = localStorage.getItem('activeListId');
+      const last = safeJSONParse(localStorage.getItem('lastFileData'), null);
+      const should = active===SENTENCE_LIST_ID || localStorage.getItem('wm_active_sentence_dataset')==='uploaded_cumleler_xlsx' || (Array.isArray(last)&&last.some(x=>x&&x.sentence));
+      if(should){
+        const ok = await activateSentenceList(active || SENTENCE_LIST_ID, true);
+        if(ok) console.log('✅ v16 aktif cümle listesi otomatik yüklendi');
+      }
+    }, 650);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bootAutoRestore); else bootAutoRestore();
+
+  window.WM_activateCumlelerList = activateSentenceList;
+  window.WM_parseCumlelerXlsx = parseWorkbookToSentenceRows;
+  console.log('✅ WM v16 cumleler.xlsx kalıcı yükleme/otomatik açılış katmanı aktif');
+})();
+
+/* =====================================================================
+   WORD MODE v17 — AI SENARYODAN CÜMLE LİSTESİ OLUŞTURMA FIX
+   Amaç:
+   - Konuşma Simülasyonu > “Seçilen Senaryodan Çalışma Listesi Oluştur”
+     artık kelime listesi değil, sentence tabanlı çalışma listesi üretir.
+   - Üretilen JSON şeması cumleler.xlsx ile aynıdır:
+     word | translation | phonetic | sentence | sentenceTr | highlights | sentenceLevel | grammarStructure
+   - Liste kalıcı kaydedilir, aktif liste yapılır, program tekrar açılınca boş gelmez.
+   ===================================================================== */
+(function(){
+  if(window.__WM_AI_SCENARIO_SENTENCE_LIST_V17__) return;
+  window.__WM_AI_SCENARIO_SENTENCE_LIST_V17__ = true;
+
+  const SCHEMA = 'sentence-v17-ai-scenario';
+
+  function toast(a,b){ try{ if(typeof showToast==='function') showToast(a,b||''); else console.log(a,b||''); }catch(e){ console.log(a,b||''); } }
+  function clean(s){ return String(s??'').replace(/\s+/g,' ').trim(); }
+  function safeJSONParse(v, fallback){ try{ const x=JSON.parse(v||''); return x ?? fallback; }catch(e){ return fallback; } }
+  function slug(s){ return clean(String(s||'senaryo').toLowerCase()
+    .replace(/[ıİ]/g,'i').replace(/[şŞ]/g,'s').replace(/[ğĞ]/g,'g')
+    .replace(/[üÜ]/g,'u').replace(/[öÖ]/g,'o').replace(/[çÇ]/g,'c')
+    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')) || 'senaryo'; }
+  function esc(s){ return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+  function makeSentenceKey(item){
+    const raw = clean((item&&item.sentence)||'').toLowerCase() || ('__no_sentence__:' + clean((item&&item.word)||'').toLowerCase());
+    let h=2166136261;
+    for(let i=0;i<raw.length;i++){ h ^= raw.charCodeAt(i); h = Math.imul(h,16777619); }
+    return 'sent_ai_v17:' + (h>>>0).toString(36) + ':' + raw.slice(0,80);
+  }
+
+  function extractJSONArray(raw){
+    let t = typeof raw==='object' ? (raw.content || raw.text || raw.message || JSON.stringify(raw)) : String(raw||'');
+    t = t.trim().replace(/^```(?:json|javascript|js)?\s*/i,'').replace(/```$/,'').trim();
+    // Bazen model açıklama ekler; ilk [ ile son ] arasını al.
+    const start = t.indexOf('[');
+    const end = t.lastIndexOf(']');
+    if(start>=0 && end>start) t = t.slice(start,end+1);
+    const arr = JSON.parse(t);
+    if(!Array.isArray(arr)) throw new Error('AI JSON array döndürmedi.');
+    return arr;
+  }
+
+  function inferWordFromSentence(sentence){
+    const stop = new Set('a an the and or but if then because as at by for from in into on onto of off over under with without to too very is are was were be been being am do does did done have has had having i you he she it we they me him her us them my your his its our their this that these those there here not no yes can could should would will shall may might must just so than also more most some any each every all both either neither about after before during through across again against ago up down out now new old'.split(' '));
+    const words = String(sentence||'').match(/[A-Za-z][A-Za-z'’-]{2,}/g)||[];
+    return (words.find(w=>!stop.has(w.toLowerCase())) || words[0] || 'sentence').toLowerCase();
+  }
+
+  function normalizeAIItems(items, scenario, level){
+    const out=[];
+    const seen=new Set();
+    for(const x of items){
+      if(!x || typeof x!=='object') continue;
+      const sentence = clean(x.sentence || x.enSentence || x.example || x.text || x.en || '');
+      if(!sentence || sentence.length < 5) continue;
+      const keyBase = sentence.toLowerCase();
+      if(seen.has(keyBase)) continue;
+      seen.add(keyBase);
+      const word = clean(x.word || x.targetWord || x.highlight || inferWordFromSentence(sentence));
+      const translation = clean(x.translation || x.tr || x.meaning || x.wordTr || 'çeviri yok');
+      const sentenceTr = clean(x.sentenceTr || x.sentenceTR || x.trSentence || x.translationSentence || x.turkish || '');
+      const sentenceLevel = clean(x.sentenceLevel || x.level || x.cefr || level || 'A2');
+      const grammarStructure = clean(x.grammarStructure || x.grammar || x.structure || 'Temel cümle yapısı');
+      let highlights = x.highlights;
+      if(Array.isArray(highlights)) highlights = highlights.map(clean).filter(Boolean);
+      else highlights = String(highlights||word).split(',').map(clean).filter(Boolean);
+      if(!highlights.length) highlights=[word];
+      const item = {
+        word,
+        targetWord:word,
+        en:word,
+        tr:translation,
+        translation,
+        phonetic: clean(x.phonetic || x.ipa || x.pronunciation || ''),
+        sentence,
+        sentenceTr,
+        highlights,
+        colors: x.colors || {},
+        sentenceLevel,
+        level: sentenceLevel,
+        grammarStructure,
+        grammar: grammarStructure,
+        scenario: clean(scenario),
+        source:'ai-scenario',
+        schema:SCHEMA,
+        createdAt:new Date().toISOString()
+      };
+      item.sentenceKey = makeSentenceKey(item);
+      out.push(item);
+    }
+    return out.slice(0,25);
+  }
+
+  function readMultiLists(){
+    try{ if(typeof multiLists!=='undefined' && Array.isArray(multiLists)) return multiLists; }catch(e){}
+    const arr=safeJSONParse(localStorage.getItem('multiLists'),[]);
+    try{ window.multiLists=arr; }catch(e){}
+    return arr;
+  }
+  function writeMultiLists(lists){
+    const slim = lists.map(l=>Object.assign({},l,{words:undefined}));
+    localStorage.setItem('multiLists', JSON.stringify(slim));
+    try{ if(typeof WMStore!=='undefined' && WMStore.set) WMStore.set('multiLists', JSON.stringify(slim)).catch(()=>{}); }catch(e){}
+    try{ if(typeof saveMultiLists==='function') saveMultiLists(); }catch(e){}
+  }
+
+  function saveAIScenarioSentenceList(name, words, scenario, level){
+    if(!Array.isArray(words) || !words.length) throw new Error('Kaydedilecek cümle yok.');
+    const id = 'ai_scenario_' + slug(scenario) + '_' + Date.now();
+    const lists = readMultiLists();
+    const meta = {
+      id,
+      name,
+      displayName:name,
+      wordCount:words.length,
+      sentenceCount:words.length,
+      schema:SCHEMA,
+      source:'ai-scenario',
+      scenario:clean(scenario),
+      level:clean(level),
+      addedAt:new Date().toLocaleDateString('tr-TR'),
+      updatedAt:new Date().toISOString(),
+      progress:{}
+    };
+    lists.push(Object.assign({}, meta, {words}));
+    try{ multiLists = lists; window.multiLists = lists; }catch(e){ window.multiLists=lists; }
+    writeMultiLists(lists);
+
+    localStorage.setItem('multiList_words_' + id, JSON.stringify(words));
+    localStorage.setItem('lastFileData', JSON.stringify(words));
+    localStorage.setItem('lastUploadedFile', JSON.stringify({
+      name:name + '.json',
+      wordCount:words.length,
+      sentenceCount:words.length,
+      uploadDate:new Date().toISOString(),
+      fileKey:'wm_sentence_list_' + id,
+      activeListId:id,
+      schema:SCHEMA,
+      source:'ai-scenario',
+      scenario:clean(scenario),
+      level:clean(level)
+    }));
+    localStorage.setItem('activeListId', id);
+    localStorage.setItem('prevActiveListId', id);
+    localStorage.setItem('activeListName', name);
+    localStorage.setItem('wm.activeListName', name);
+    localStorage.setItem('currentListName', name);
+    localStorage.setItem('wm_active_sentence_dataset','ai_scenario_sentence_list');
+    return {id, meta};
+  }
+
+  function applyListRuntime(id, name, words){
+    try{ allWords=words; window.allWords=words; }catch(e){ window.allWords=words; }
+    try{ window.words=words; }catch(e){}
+    try{ idx=0; window.idx=0; }catch(e){ window.idx=0; }
+    try{ activeListId=id; window.activeListId=id; }catch(e){ window.activeListId=id; }
+    try{ if(typeof setActiveListTitle==='function') setActiveListTitle(name); }catch(e){}
+    try{ if(typeof showScreen==='function') showScreen('sc-word'); }catch(e){}
+    try{ if(typeof renderMultiListUI==='function') renderMultiListUI(); }catch(e){}
+    try{ if(typeof renderMultiStats==='function') renderMultiStats(); }catch(e){}
+    try{ if(typeof updateScoreBar==='function') updateScoreBar(); }catch(e){}
+    try{ if(typeof renderLearn==='function') renderLearn(); }catch(e){}
+    try{ if(typeof renderWordList==='function') renderWordList(); }catch(e){}
+  }
+
+  window.createListFromConv = async function(){
+    const scenario = clean(window.convScenario || (typeof convScenario!=='undefined'?convScenario:'') || 'Günlük konuşma');
+    const level = clean(window.convLevel || (typeof convLevel!=='undefined'?convLevel:'') || 'A2-B1');
+    if(!scenario){ toast('⚠️','Senaryo seçin'); return; }
+    toast('⏳','AI cümle listesi oluşturuyor...');
+    try{
+      const system = `Sen bir İngilizce öğretmeni ve cümle tabanlı SRS içerik üreticisisin. Sadece geçerli JSON array döndür. Açıklama, markdown, kod bloğu yazma.`;
+      const user = `Senaryo: ${scenario}\nSeviye: ${level}\n\nBu senaryoya uygun 25 adet gerçek hayatta kullanılabilir İngilizce cümle üret.\n\nZORUNLU JSON ŞEMASI:\n[\n  {\n    "word": "hedef kelime veya en önemli fiil",\n    "translation": "hedef kelimenin Türkçe anlamı",\n    "phonetic": "hedef kelimenin basit telaffuzu veya IPA",\n    "sentence": "tam İngilizce cümle",\n    "sentenceTr": "cümleyi doğal Türkçe çevir",\n    "highlights": ["cümlede vurgulanacak hedef kelime/kalıp"],\n    "sentenceLevel": "A1/A2/B1/B2/C1",\n    "grammarStructure": "cümledeki ana gramer yapısı"\n  }\n]\n\nKURALLAR:\n1. Ana öğrenme birimi kelime değil sentence alanıdır.\n2. word sadece hedef kelime etiketi olmalı.\n3. sentenceTr mutlaka Türkçe olmalı.\n4. translation mutlaka Türkçe olmalı.\n5. highlights mümkünse cümledeki en önemli fiil veya kalıp olsun.\n6. Her cümle senaryoda gerçekten kullanılabilir olsun.\n7. Sadece JSON array döndür.`;
+      const r = (typeof callAIWithRetry==='function')
+        ? await callAIWithRetry(system, user, 'conversation')
+        : await callAI(system, user, 'conversation');
+      const rawItems = extractJSONArray(r);
+      const words = normalizeAIItems(rawItems, scenario, level);
+      if(words.length < 3) throw new Error('AI yeterli sayıda geçerli cümle üretmedi.');
+      const listName = '🗣️ ' + scenario;
+      const saved = saveAIScenarioSentenceList(listName, words, scenario, level);
+      applyListRuntime(saved.id, listName, words);
+      toast('✅ Senaryo cümle listesi hazır', words.length + ' cümle oluşturuldu ve aktif liste yapıldı.');
+    }catch(e){
+      console.error('AI senaryo cümle listesi hatası:', e);
+      toast('❌ Liste oluşturulamadı', e.message || String(e));
+    }
+  };
+  try{ createListFromConv = window.createListFromConv; }catch(e){}
+
+  console.log('✅ WM v17 AI senaryodan cümle listesi oluşturma düzeltmesi aktif');
 })();
