@@ -33449,3 +33449,266 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
 
   console.log('✅ WM v17 AI senaryodan cümle listesi oluşturma düzeltmesi aktif');
 })();
+
+/* =====================================================================
+   WM v18 — sentenceLevel + grammarStructure çalışma sistemi
+   - Seviye ve gramer alanlarına göre filtreleme
+   - Seçilen seviye/gramerle çalışma oturumu başlatma
+   - Liste ve kelime ekranında aynı filtre durumunu gösterme
+   - Ana öğrenme birimi hâlâ sentenceStatus / sentence'tır
+   ===================================================================== */
+(function(){
+  if(window.__WM_LEVEL_GRAMMAR_STUDY_V18__) return;
+  window.__WM_LEVEL_GRAMMAR_STUDY_V18__ = true;
+
+  const FILTER_KEY = 'wm_sentence_meta_filter_v18';
+  const SESSION_KEY = 'wm_sentence_meta_session_v18';
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function clean(s){ return String(s ?? '').replace(/\s+/g,' ').trim(); }
+  function lower(s){ return clean(s).toLowerCase(); }
+  function toast(a,b){ try{ if(typeof showToast==='function') showToast(a,b||''); else console.log(a,b||''); }catch(e){ console.log(a,b||''); } }
+  function readJSON(k,f){ try{ const v=JSON.parse(localStorage.getItem(k)||''); return v ?? f; }catch(e){ return f; } }
+  function writeJSON(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function arr(){ try{ return Array.isArray(allWords) ? allWords : []; }catch(e){ return Array.isArray(window.allWords) ? window.allWords : []; } }
+  function runtimeWords(){ try{ return Array.isArray(words) ? words : []; }catch(e){ return Array.isArray(window.words) ? window.words : []; } }
+  function setRuntimeWords(a){ try{ words = a; }catch(e){} try{ window.words = a; }catch(e){} }
+  function setRuntimeIndex(n){ try{ idx = n; }catch(e){} try{ window.idx = n; }catch(e){} }
+  function levelOf(w){ return clean(w && (w.sentenceLevel || w.level || w.cefr || w.CEFR)); }
+  function grammarOf(w){ return clean(w && (w.grammarStructure || w.grammar || w.grammar_structure || w.structure)); }
+  function sentenceOf(w){ return clean(w && (w.sentence || w.text || w.enSentence || '')); }
+  function uniqueSorted(vals){
+    const seen = new Map();
+    vals.map(clean).filter(Boolean).forEach(v=>{ const k=lower(v); if(!seen.has(k)) seen.set(k,v); });
+    const levelOrder = {a0:0,a1:1,a2:2,b1:3,b2:4,c1:5,c2:6};
+    return [...seen.values()].sort((a,b)=>{
+      const la=levelOrder[lower(a)], lb=levelOrder[lower(b)];
+      if(la!==undefined || lb!==undefined) return (la??99)-(lb??99);
+      return a.localeCompare(b,'tr');
+    });
+  }
+  function getFilter(){
+    const f = readJSON(FILTER_KEY,{});
+    return { level: clean(f.level||''), grammar: clean(f.grammar||''), mode: clean(f.mode||'') };
+  }
+  function setFilter(next){
+    const f = Object.assign(getFilter(), next||{});
+    writeJSON(FILTER_KEY, f);
+    return f;
+  }
+  function applyMetaFilter(list, f=getFilter()){
+    let out = Array.isArray(list) ? list : [];
+    if(f.level) out = out.filter(w => lower(levelOf(w)) === lower(f.level));
+    if(f.grammar) out = out.filter(w => lower(grammarOf(w)) === lower(f.grammar));
+    return out;
+  }
+  function getOptions(){
+    const data = arr();
+    return {
+      levels: uniqueSorted(data.map(levelOf)),
+      grammars: uniqueSorted(data.map(grammarOf))
+    };
+  }
+  function countsBy(fn){
+    const m = new Map();
+    arr().forEach(w=>{ const v=clean(fn(w)); if(!v) return; const k=lower(v); const old=m.get(k)||{label:v,count:0}; old.count++; m.set(k,old); });
+    return [...m.values()].sort((a,b)=>b.count-a.count || a.label.localeCompare(b.label,'tr'));
+  }
+  function currentFiltered(){ return applyMetaFilter(arr()); }
+
+  function ensureCSS(){
+    if($('wm-v18-meta-study-css')) return;
+    const st=document.createElement('style');
+    st.id='wm-v18-meta-study-css';
+    st.textContent=`
+      .wm-v18-panel{background:linear-gradient(135deg,rgba(14,165,233,.10),rgba(168,85,247,.10));border:1.5px solid rgba(96,165,250,.35);border-radius:16px;padding:12px;margin:12px 0;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+      .wm-v18-title{font-size:14px;font-weight:900;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+      .wm-v18-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+      .wm-v18-select{width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg2);color:var(--text);font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;outline:none}
+      .wm-v18-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      .wm-v18-btn{padding:10px 12px;border:0;border-radius:12px;font-family:'Nunito',sans-serif;font-weight:900;font-size:13px;cursor:pointer;color:#fff;transition:transform .15s,opacity .15s}
+      .wm-v18-btn:hover{transform:translateY(-1px)}
+      .wm-v18-blue{background:linear-gradient(135deg,#2563eb,#0ea5e9)}
+      .wm-v18-purple{background:linear-gradient(135deg,#7c3aed,#a855f7)}
+      .wm-v18-ghost{background:var(--bg3)!important;color:var(--text)!important;border:1.5px solid var(--border)!important}
+      .wm-v18-info{font-size:12px;color:var(--muted);line-height:1.45;margin-top:8px}
+      .wm-v18-chiprow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;max-height:86px;overflow:auto}
+      .wm-v18-chip{padding:6px 9px;border-radius:999px;background:var(--bg3);border:1px solid var(--border);color:var(--sub);font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap}
+      .wm-v18-chip.active{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border-color:transparent}
+      .wm-v18-wordbar{margin:10px 0 12px;padding:9px 10px;border-radius:14px;background:rgba(34,197,94,.09);border:1px solid rgba(34,197,94,.28);font-size:12px;color:var(--sub);font-weight:800;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+      .wm-v18-statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+      .wm-v18-stat{padding:9px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);cursor:pointer}
+      .wm-v18-stat b{display:block;color:var(--text);font-size:16px}.wm-v18-stat span{font-size:11px;color:var(--muted);font-weight:800}
+      @media(max-width:420px){.wm-v18-row,.wm-v18-actions{grid-template-columns:1fr}.wm-v18-statgrid{grid-template-columns:1fr}}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function optionHTML(options, selected, placeholder){
+    return `<option value="">${esc(placeholder)}</option>` + options.map(v=>`<option value="${esc(v)}" ${lower(v)===lower(selected)?'selected':''}>${esc(v)}</option>`).join('');
+  }
+
+  function panelHTML(){
+    const opts=getOptions(), f=getFilter();
+    const filteredCount = currentFiltered().length;
+    const total = arr().length;
+    const activeText = f.level || f.grammar
+      ? `${f.level?('Seviye: '+esc(f.level)) : ''}${f.level&&f.grammar?' • ':''}${f.grammar?('Gramer: '+esc(f.grammar)):''}`
+      : 'Filtre yok';
+    const levelCounts = countsBy(levelOf).slice(0,10);
+    const grammarCounts = countsBy(grammarOf).slice(0,10);
+    return `
+      <div class="wm-v18-panel" id="wmMetaStudyPanel">
+        <div class="wm-v18-title">🎯 Seviye & Gramer Çalışma Sistemi</div>
+        <div class="wm-v18-row">
+          <select class="wm-v18-select" id="wmMetaLevelSelect" onchange="wmApplyMetaStudyFilter()">${optionHTML(opts.levels, f.level, '📊 Seviye seç')}</select>
+          <select class="wm-v18-select" id="wmMetaGrammarSelect" onchange="wmApplyMetaStudyFilter()">${optionHTML(opts.grammars, f.grammar, '🏗️ Gramer yapısı seç')}</select>
+        </div>
+        <div class="wm-v18-actions">
+          <button class="wm-v18-btn wm-v18-blue" onclick="wmStartMetaStudySession()">▶️ Bu Cümlelerle Çalış</button>
+          <button class="wm-v18-btn wm-v18-ghost" onclick="wmClearMetaStudyFilter()">✕ Temizle</button>
+        </div>
+        <div class="wm-v18-info">Aktif: <b>${activeText}</b> — ${filteredCount}/${total} cümle.</div>
+        ${levelCounts.length?`<div class="wm-v18-chiprow">${levelCounts.map(x=>`<button class="wm-v18-chip ${lower(x.label)===lower(f.level)?'active':''}" onclick="wmQuickMetaStudy('level','${encodeURIComponent(x.label)}')">📊 ${esc(x.label)} (${x.count})</button>`).join('')}</div>`:''}
+        ${grammarCounts.length?`<div class="wm-v18-chiprow">${grammarCounts.map(x=>`<button class="wm-v18-chip ${lower(x.label)===lower(f.grammar)?'active':''}" onclick="wmQuickMetaStudy('grammar','${encodeURIComponent(x.label)}')">🏗️ ${esc(x.label)} (${x.count})</button>`).join('')}</div>`:''}
+      </div>`;
+  }
+
+  function injectListPanel(){
+    ensureCSS();
+    const listScreen = $('sc-list');
+    if(!listScreen) return;
+    let host = $('wmMetaStudyHost');
+    if(!host){
+      host=document.createElement('div');
+      host.id='wmMetaStudyHost';
+      const search = $('wordSearchInput');
+      const parent = search ? search.closest('div') : null;
+      if(parent && parent.parentNode) parent.parentNode.insertBefore(host, parent.nextSibling);
+      else {
+        const stats=$('listStats');
+        if(stats && stats.parentNode) stats.parentNode.insertBefore(host, stats);
+        else listScreen.appendChild(host);
+      }
+    }
+    host.innerHTML = panelHTML();
+  }
+
+  function injectWordBar(){
+    ensureCSS();
+    const f=getFilter();
+    const card=$('wordCard');
+    if(!card) return;
+    let bar=$('wmMetaStudyWordBar');
+    if(!bar){
+      bar=document.createElement('div');
+      bar.id='wmMetaStudyWordBar';
+      card.parentNode && card.parentNode.insertBefore(bar, card);
+    }
+    if(f.level || f.grammar){
+      const count = runtimeWords().length || currentFiltered().length;
+      bar.style.display='flex';
+      bar.className='wm-v18-wordbar';
+      bar.innerHTML = `<span>🎯 Çalışma:</span>${f.level?`<span>📊 ${esc(f.level)}</span>`:''}${f.grammar?`<span>🏗️ ${esc(f.grammar)}</span>`:''}<span>• ${count} cümle</span><button onclick="wmClearMetaStudyFilter()" style="margin-left:auto;padding:4px 8px;border:0;border-radius:8px;background:var(--bg3);color:var(--text);font-weight:900;cursor:pointer">✕</button>`;
+    }else{
+      bar.style.display='none';
+      bar.innerHTML='';
+    }
+  }
+
+  function updateUI(){
+    try{ injectListPanel(); }catch(e){ console.warn('v18 list panel',e); }
+    try{ injectWordBar(); }catch(e){ console.warn('v18 wordbar',e); }
+  }
+
+  window.wmApplyMetaStudyFilter = function(){
+    const lvl = clean($('wmMetaLevelSelect') && $('wmMetaLevelSelect').value);
+    const gr = clean($('wmMetaGrammarSelect') && $('wmMetaGrammarSelect').value);
+    setFilter({level:lvl, grammar:gr, mode:(lvl||gr)?'filter':''});
+    try{ if(typeof renderWordList==='function') renderWordList(); }catch(e){}
+    updateUI();
+  };
+
+  window.wmQuickMetaStudy = function(type, enc){
+    const val = decodeURIComponent(enc||'');
+    if(type==='level') setFilter({level:val});
+    if(type==='grammar') setFilter({grammar:val});
+    try{ if(typeof renderWordList==='function') renderWordList(); }catch(e){}
+    updateUI();
+  };
+
+  window.wmStartMetaStudySession = function(){
+    const f=getFilter();
+    const filtered = applyMetaFilter(arr(), f);
+    if(!filtered.length){ toast('⚠️ Cümle yok','Bu seviye/gramer için cümle bulunamadı'); return; }
+    writeJSON(SESSION_KEY,{startedAt:Date.now(), level:f.level, grammar:f.grammar, count:filtered.length});
+    setRuntimeWords(filtered.slice());
+    setRuntimeIndex(0);
+    try{ if(typeof showScreen==='function') showScreen('sc-word'); }catch(e){}
+    try{ if(typeof renderLearn==='function') renderLearn(); }catch(e){}
+    updateUI();
+    const label = `${f.level?('Seviye '+f.level):''}${f.level&&f.grammar?' • ':''}${f.grammar?f.grammar:''}` || 'Seçili cümleler';
+    toast('▶️ Çalışma başladı', `${label} — ${filtered.length} cümle`);
+  };
+
+  window.wmClearMetaStudyFilter = function(){
+    setFilter({level:'',grammar:'',mode:''});
+    localStorage.removeItem(SESSION_KEY);
+    setRuntimeWords(arr().slice());
+    setRuntimeIndex(0);
+    try{ if(typeof renderWordList==='function') renderWordList(); }catch(e){}
+    try{ if(typeof renderLearn==='function') renderLearn(); }catch(e){}
+    updateUI();
+    toast('🔄 Filtre temizlendi','Tüm cümlelerle çalışıyorsun');
+  };
+
+  // Liste filtreleme altyapısına sentenceLevel/grammarStructure filtresini ekle.
+  const oldGetFilteredWords = window.getFilteredWords || (typeof getFilteredWords==='function' ? getFilteredWords : null);
+  if(oldGetFilteredWords){
+    window.getFilteredWords = function(){
+      let base=[];
+      try{ base = oldGetFilteredWords.apply(this, arguments); }catch(e){ base = arr(); }
+      return applyMetaFilter(base, getFilter());
+    };
+    try{ getFilteredWords = window.getFilteredWords; }catch(e){}
+  }
+
+  // Eski çalışma modu metinlerini cümle diline çevir.
+  const oldFilterWordsBySentence = window.filterWordsBySentence || (typeof filterWordsBySentence==='function' ? filterWordsBySentence : null);
+  if(oldFilterWordsBySentence){
+    window.filterWordsBySentence = function(q){
+      const r = oldFilterWordsBySentence.apply(this, arguments);
+      setTimeout(()=>{
+        document.querySelectorAll('#filteredListControls button,#listStats').forEach(el=>{
+          if(el && el.innerHTML) el.innerHTML = el.innerHTML.replace(/kelime/gi,'cümle').replace(/Kelime/g,'Cümle');
+          if(el && el.textContent) el.textContent = el.textContent.replace(/kelime/gi,'cümle').replace(/Kelime/g,'Cümle');
+        });
+        updateUI();
+      },30);
+      return r;
+    };
+    try{ filterWordsBySentence = window.filterWordsBySentence; }catch(e){}
+  }
+
+  // Ekran yenilenmelerinde paneli canlı tut.
+  ['renderWordList','showList','renderLearn','showScreen','switchToList'].forEach(fn=>{
+    const old = window[fn] || (typeof globalThis[fn]==='function' ? globalThis[fn] : null);
+    if(typeof old !== 'function' || old.__wmV18Wrapped) return;
+    const wrapped = function(){
+      const r = old.apply(this, arguments);
+      setTimeout(updateUI, 40);
+      return r;
+    };
+    wrapped.__wmV18Wrapped = true;
+    window[fn]=wrapped;
+    try{ eval(fn + ' = window[fn]'); }catch(e){}
+  });
+
+  // Açılışta aktif filtre varsa liste ve kelime barını geri getir.
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(updateUI, 300));
+  setTimeout(updateUI, 500);
+  setTimeout(updateUI, 1500);
+
+  console.log('✅ WM v18 sentenceLevel + grammarStructure çalışma sistemi aktif');
+})();

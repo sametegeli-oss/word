@@ -6,3 +6,10 @@ Bu sürümde Konuşma Simülasyonu içindeki “Seçilen Senaryodan Çalışma L
 `word | translation | phonetic | sentence | sentenceTr | highlights | sentenceLevel | grammarStructure`
 
 Oluşan liste otomatik aktif liste yapılır ve program kapatılıp açıldığında boş gelmeden yeniden yüklenir.
+
+
+## v18 Seviye & Gramer Çalışma Sistemi
+- sentenceLevel alanına göre çalışma filtresi eklendi.
+- grammarStructure alanına göre çalışma filtresi eklendi.
+- Liste ekranından seçilen seviye/gramer ile doğrudan çalışma oturumu başlatılır.
+- Ana veri yapısı cümle tabanlıdır; word sadece hedef kelime etiketi olarak kalır.
