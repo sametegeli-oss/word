@@ -31575,3 +31575,237 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
 
   console.log('✅ %100 cümle tabanlı öğrenme/SRS katmanı aktif');
 })();
+
+/* =====================================================================
+   WORD MODE — CÜMLE TABANLI "ÖĞRENMEYE BAŞLADIM" KATMANI v6
+   - "Öğrendim" mantığı iptal edildi.
+   - Ana eylem: Öğrenmeye Başladım.
+   - Liste kartları kaydırma bitince de durum/gerçek kullanım bilgisini gösterir.
+   ===================================================================== */
+(function(){
+  if(window.__WM_SENTENCE_STARTED_V6__) return;
+  window.__WM_SENTENCE_STARTED_V6__ = true;
+
+  const ONE_DAY = 24*60*60*1000;
+  const HEIGHT = 148;
+  const LEVELS = [
+    {label:'⚪ Yeni', color:'#64748b'},
+    {label:'🟡 Başlandı', color:'#eab308'},
+    {label:'🟠 Pekişiyor', color:'#f97316'},
+    {label:'🔵 Anlıyorum', color:'#3b82f6'},
+    {label:'🟢 Kullanabiliyorum', color:'#22c55e'},
+    {label:'💚 Güçlü', color:'#16a34a'},
+    {label:'💎 Otomatikleşti', color:'#06b6d4'}
+  ];
+  function core(){ return window.WMSentenceCore || null; }
+  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function item(){ return (Array.isArray(window.words) ? window.words[window.idx] : null) || null; }
+  function get(w){ const c=core(); return c && w ? c.getStatus(w) : null; }
+  function put(w,p){ const c=core(); return c && w ? c.putStatus(w,p) : null; }
+  function fmt(ts){ if(!ts) return '—'; try{return new Date(ts).toLocaleString('tr-TR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return '—';} }
+  function isStarted(w){ const s=get(w); return !!(s && (s.learningStarted || s.startedAt || s.learned || s.realLifeUsed)); }
+  function isDue(w){ const s=get(w); return !!(s && isStarted(w) && s.nextReview && s.nextReview <= Date.now()); }
+  function inf(s){ const n=Math.max(0,Math.min(Number(s?.srsLevel||0),LEVELS.length-1)); return LEVELS[n] || LEVELS[0]; }
+  function dueText(s){
+    if(!s || !isStarted({sentence:s.sentence, word:s.word})) return '⚪ Yeni cümle';
+    if(!s.nextReview) return '⏰ Tekrar planlanmadı';
+    const diff=s.nextReview-Date.now();
+    if(diff<=0) return '🔴 Tekrar bekliyor';
+    const d=Math.ceil(diff/ONE_DAY);
+    return d===1?'⏰ Yarın':'⏰ '+d+' gün sonra';
+  }
+  function cardStyle(s){
+    if(isDue({sentence:s?.sentence, word:s?.word})) return 'border:2px solid #ef4444;background:linear-gradient(135deg,rgba(239,68,68,.18),rgba(127,29,29,.10));';
+    if(!s || !isStarted({sentence:s.sentence, word:s.word})) return 'border:1.5px solid var(--border);background:var(--bg2);';
+    const c=inf(s).color;
+    return `border:2px solid ${c};background:linear-gradient(135deg,${c}26,rgba(15,23,42,.08));`;
+  }
+  function statusHTML(w){
+    const s=get(w); const i=inf(s);
+    if(!isStarted(w)){
+      return `<div class="wm-sentence-status" style="border:1.5px solid var(--border);background:var(--bg2);padding:10px;border-radius:14px;margin:10px 0;display:grid;gap:4px">
+        <div style="font-size:12px;font-weight:900;color:#e2e8f0">⚪ Yeni cümle</div>
+        <div style="font-size:11px;color:var(--muted)">🚀 Öğrenmeye Başladım düğmesine basınca bu cümle SRS-1 olarak çalışmaya alınır.</div>
+      </div>`;
+    }
+    return `<div class="wm-sentence-status" style="${cardStyle(s)}padding:10px;border-radius:14px;margin:10px 0;display:grid;gap:5px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:900;color:var(--text)">${s.learned?'✅ Öğrenildi':'🚀 Öğrenmeye Başlandı'} · ${i.label} · SRS-${s.srsLevel||1}</span>
+        <span style="font-size:11px;font-weight:900;color:${isDue(w)?'#f87171':'var(--muted)'}">${dueText(s)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.55">🚀 Başlama: ${fmt(s.startedAt||s.learnedAt)}<br>🔄 Son tekrar: ${fmt(s.lastReview)}<br>⏰ Sonraki tekrar: ${fmt(s.nextReview)}${s.realLifeUsed?`<br>🏆 Gerçek kullanım: ${s.realLifeUsed} kez`:''}</div>
+    </div>`;
+  }
+
+  function ensureCss(){
+    if(document.getElementById('wmSentenceStartedV6Css')) return;
+    const st=document.createElement('style'); st.id='wmSentenceStartedV6Css';
+    st.textContent=`
+      #wmFixedLearnedBar{border-color:rgba(245,158,11,.55)!important;background:rgba(245,158,11,.10)!important;}
+      #wmFixedLearnedBar .wm-fixed-status{font-size:12px!important;font-weight:900!important;color:var(--muted,#94a3b8)!important;}
+      #wmFixedLearnedBtn{background:linear-gradient(135deg,#f59e0b,#f97316)!important;border-color:rgba(251,146,60,.9)!important;min-width:154px!important;}
+      #wmFixedLearnedBtn::after{content:"🚀 Öğrenmeye Başladım"!important;font-size:13px!important;}
+      #wmFixedLearnedBtn.done{background:rgba(245,158,11,.18)!important;color:#fbbf24!important;box-shadow:none!important;}
+      #wmFixedLearnedBtn.done::after{content:"🚀 Çalışmaya Alındı"!important;}
+      .wm-sent-mini{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;padding:3px 8px!important;border-radius:999px!important;font-size:10.5px!important;font-weight:900!important;white-space:nowrap!important;line-height:1.2!important;}
+      .wi .wi-badges{position:relative!important;z-index:4!important;opacity:1!important;visibility:visible!important;display:flex!important;}
+      .wi{overflow:visible!important;min-height:${HEIGHT-8}px!important;}
+      #wordListEl{padding-bottom:90px!important;}
+    `;
+    document.head.appendChild(st);
+  }
+  ensureCss();
+
+  window.beginSentenceLearning = function(){
+    const w=item(); if(!w) return false;
+    const old=get(w)||{}; const now=Date.now();
+    put(w,{
+      learningStarted:true,
+      startedAt:old.startedAt||old.learnedAt||now,
+      learned:false,
+      lastReview:now,
+      nextReview:now+ONE_DAY,
+      srsLevel:Math.max(1,Number(old.srsLevel||0)),
+      correctStreak:Math.max(1,Number(old.correctStreak||0))
+    });
+    try{showToast('🚀 Çalışmaya alındı', w.sentence||w.word||'');}catch(e){}
+    try{saveProgress();}catch(e){}
+    try{saveCurrentListProgress();}catch(e){}
+    try{renderWordList();}catch(e){}
+    try{renderLearn();}catch(e){}
+    return false;
+  };
+
+  // Eski markLearned artık öğrenme başlatır; kesin öğrenildi yapmaz.
+  window.markLearned = window.beginSentenceLearning;
+
+  const oldReal = window.markSentenceRealUsed;
+  window.markSentenceRealUsed = function(){
+    const w=item(); if(!w) return false;
+    const old=get(w)||{}; const now=Date.now();
+    const nextLevel=Math.min(Math.max(Number(old.srsLevel||1)+1,2),6);
+    put(w,{
+      learningStarted:true,
+      startedAt:old.startedAt||old.learnedAt||now,
+      realLifeUsed:Number(old.realLifeUsed||0)+1,
+      lastRealUse:now,
+      lastReview:now,
+      nextReview:now+([1,3,7,14,30,90,180][Math.max(0,nextLevel-1)]||3)*ONE_DAY,
+      srsLevel:nextLevel,
+      learned: nextLevel>=4 || !!old.learned
+    });
+    try{showToast('🏆 Gerçek kullanım kaydedildi', w.sentence||w.word||'');}catch(e){}
+    try{renderWordList();}catch(e){}
+    try{renderLearn();}catch(e){}
+    return false;
+  };
+
+  function patchMainCard(){
+    const w=item(); if(!w) return;
+    const panel=document.querySelector('#wordCard .wm-sentence-status');
+    if(panel){ panel.outerHTML=statusHTML(w); }
+    const wc=document.getElementById('wordCard'); if(wc){ const s=get(w); wc.style.cssText += ';'+cardStyle(s); }
+    const fixedStatus=document.querySelector('#wmFixedLearnedBar .wm-fixed-status');
+    if(fixedStatus){ fixedStatus.textContent = isStarted(w) ? 'Bu cümle çalışmaya alınmış. İstersen gerçek kullanım ile seviyesini yükselt.' : 'Bu cümleyi çalışmaya almak için başlat.'; }
+    const b=document.getElementById('wmFixedLearnedBtn');
+    if(b){ b.classList.toggle('done', isStarted(w)); b.setAttribute('aria-label','Öğrenmeye Başladım'); }
+    const old=document.getElementById('btnLearned');
+    if(old){ old.textContent = isStarted(w)?'🚀 Çalışmaya Alındı':'🚀 Öğrenmeye Başladım'; old.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} return window.beginSentenceLearning(); }; }
+  }
+
+  const oldRender=window.renderLearn;
+  if(typeof oldRender==='function'){
+    window.renderLearn = async function(){
+      const r=await oldRender.apply(this,arguments);
+      setTimeout(patchMainCard,0);
+      return r;
+    };
+  }
+
+  // Final fixed button script WM_coreMarkLearned çağırmasın diye aynı fonksiyonu da yönlendir.
+  window.WM_coreMarkLearned = window.beginSentenceLearning;
+
+  window.getFilteredWords = function(){
+    const arr=Array.isArray(window.allWords)?window.allWords:[];
+    switch(window.currentFilter){
+      case 'learned': return arr.filter(isStarted);
+      case 'failed': return arr.filter(w=>{const s=get(w); return !!(s&&s.wrong>0&&!isStarted(w));});
+      case 'unseen': return arr.filter(w=>!isStarted(w));
+      case 'review': return arr.filter(isDue);
+      default: return arr;
+    }
+  };
+
+  window.renderWordList = function(){
+    const listEl=document.getElementById('wordListEl'); if(!listEl) return;
+    let filteredWords=window.getFilteredWords();
+    if(window.currentSearchQuery){ const q=String(window.currentSearchQuery).toLowerCase(); filteredWords=filteredWords.filter(w=>(w.sentence||w.word||'').toLowerCase().includes(q)); }
+    const totalHeight=filteredWords.length*HEIGHT;
+    listEl.style.position='relative'; listEl.style.height=`${Math.min(totalHeight,620)}px`; listEl.style.overflowY='auto';
+    let contentWrapper=listEl.querySelector('.virtual-content');
+    if(!contentWrapper){
+      contentWrapper=document.createElement('div'); contentWrapper.className='virtual-content'; contentWrapper.style.position='relative'; listEl.innerHTML=''; listEl.appendChild(contentWrapper);
+      listEl.addEventListener('scroll',()=>{ if(window.virtualScrollData) window.virtualScrollData.scrollTop=listEl.scrollTop; window.updateVisibleItems(); });
+    }
+    contentWrapper.style.height=`${totalHeight}px`;
+    window.virtualScrollData = window.virtualScrollData || {};
+    virtualScrollData.filteredWords=filteredWords; virtualScrollData.visibleStart=-1; virtualScrollData.visibleEnd=-1; virtualScrollData.scrollTop=listEl.scrollTop||0;
+    window.updateVisibleItems();
+  };
+
+  window.updateVisibleItems = function(){
+    const listEl=document.getElementById('wordListEl'); const contentWrapper=listEl?.querySelector('.virtual-content'); if(!contentWrapper) return;
+    const wordList=(window.virtualScrollData&&virtualScrollData.filteredWords)||window.allWords||[];
+    const scrollTop=(window.virtualScrollData&&virtualScrollData.scrollTop)||listEl.scrollTop||0;
+    const containerHeight=listEl.clientHeight||620;
+    const start=Math.floor(scrollTop/HEIGHT); const end=Math.ceil((scrollTop+containerHeight)/HEIGHT)+6;
+    const visibleStart=Math.max(0,start-6); const visibleEnd=Math.min(wordList.length,end);
+    if(window.virtualScrollData){virtualScrollData.visibleStart=visibleStart; virtualScrollData.visibleEnd=visibleEnd;}
+    const fragment=document.createDocumentFragment();
+    for(let i=visibleStart;i<visibleEnd;i++){
+      const w=wordList[i]; if(!w) continue;
+      const s=get(w); const started=isStarted(w); const due=isDue(w); const ii=inf(s);
+      const div=document.createElement('div');
+      div.className=`wi ${started?'learned wm-sent-learned':'unseen'} ${due?'wm-sent-due':''}`;
+      div.style.cssText=`position:absolute;top:${i*HEIGHT}px;left:0;right:0;width:100%;height:${HEIGHT-8}px;box-sizing:border-box;display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:14px;overflow:visible;${cardStyle(s)}`;
+      const badgeBg=due?'#ef4444':(started?ii.color:'#64748b');
+      const sentence=w.sentence?esc(w.sentence.length>105?w.sentence.slice(0,105)+'...':w.sentence):'Cümle yok';
+      const tr=w.sentenceTr?`<div style="font-size:12px;color:var(--muted);margin-top:3px;line-height:1.35">${esc(w.sentenceTr.length>90?w.sentenceTr.slice(0,90)+'...':w.sentenceTr)}</div>`:'';
+      const meta=started?`<div style="font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.35">🚀 ${fmt(s.startedAt||s.learnedAt)} · 🔄 ${fmt(s.lastReview)} · ⏰ ${fmt(s.nextReview)}</div>`:'<div style="font-size:10.5px;color:var(--muted);margin-top:5px">Henüz çalışmaya alınmadı</div>';
+      div.innerHTML=`
+        <div class="wi-ico" style="font-size:22px;line-height:1.2;margin-top:2px">${started?'🚀':due?'🔴':'⬜'}</div>
+        <div class="wi-body" onclick="goToWord(${i}, virtualScrollData.filteredWords || allWords)" style="flex:1;cursor:pointer;min-width:0;overflow:hidden">
+          <div class="wi-word" style="font-weight:900;color:${started?ii.color:'var(--text)'}">${esc(w.word||'')}<span style="opacity:.55;font-size:11px;margin-left:6px">hedef kelime</span></div>
+          <div style="font-size:14px;font-weight:800;color:var(--text);margin-top:4px;line-height:1.35">${sentence}</div>${tr}${meta}
+        </div>
+        <div class="wi-badges" style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;min-width:122px;z-index:5;visibility:visible;opacity:1">
+          <span class="wm-sent-mini" style="background:${badgeBg};color:#fff">${due?'🔴 Tekrar':(started?(s.learned?'✅ Öğrenildi':'🚀 Başladı'):'⚪ Yeni')}</span>
+          <span class="wm-sent-mini" style="background:var(--bg3);color:var(--muted)">${dueText(s)}</span>
+          <span class="wm-sent-mini" style="background:${ii.color};color:#fff">SRS-${s?.srsLevel||0}</span>
+          ${s&&s.realLifeUsed?`<span class="wm-sent-mini" style="background:#f59e0b;color:#fff">🏆 ${s.realLifeUsed} kez</span>`:''}
+        </div>
+        <button onclick="deleteWord('${String(w.word||'').replace(/'/g,"\\'")}', event)" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:16px;cursor:pointer;margin-left:4px;min-width:40px">🗑️</button>`;
+      fragment.appendChild(div);
+    }
+    contentWrapper.innerHTML=''; contentWrapper.appendChild(fragment);
+  };
+
+  const oldShowList=window.showList;
+  window.showList=function(){
+    if(typeof showScreen==='function') showScreen('sc-list');
+    const arr=Array.isArray(window.allWords)?window.allWords:[];
+    const started=arr.filter(isStarted).length, due=arr.filter(isDue).length, fresh=arr.length-started;
+    const ls=document.getElementById('listStats');
+    if(ls) ls.innerHTML=`
+      <div class="list-stat"><div class="sn" style="color:#f59e0b">${started}</div><div class="sl">🚀 Başlanan Cümle</div></div>
+      <div class="list-stat"><div class="sn" style="color:#ef4444">${due}</div><div class="sl">🔴 Tekrar</div></div>
+      <div class="list-stat"><div class="sn" style="color:var(--muted)">${fresh}</div><div class="sl">⬜ Yeni</div></div>`;
+    window.renderWordList();
+  };
+
+  // Mutation sonrası sabit düğmeyi tekrar yamala.
+  const mo=new MutationObserver(()=>setTimeout(patchMainCard,0));
+  mo.observe(document.documentElement,{childList:true,subtree:true});
+  setTimeout(()=>{try{patchMainCard();}catch(e){}},300);
+  console.log('✅ v6 Öğrenmeye Başladım + kalıcı liste rozetleri aktif');
+})();

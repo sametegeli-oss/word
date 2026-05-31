@@ -6075,6 +6075,26 @@ body.wm-tool-panel-open{overflow:hidden}
 })();
 </script>
 
+
+<!-- WM SENTENCE STARTED V6: Öğrendim yerine Öğrenmeye Başladım -->
+<style id="wm-sentence-started-v6-index-css">
+  #wmFixedLearnedBtn::after{content:"🚀 Öğrenmeye Başladım"!important;}
+  #wmFixedLearnedBtn.done::after{content:"🚀 Çalışmaya Alındı"!important;}
+</style>
+<script id="wm-sentence-started-v6-index-script">
+(function(){
+  function patch(){
+    var s=document.querySelector('#wmFixedLearnedBar .wm-fixed-status');
+    if(s && /kelime|öğrenildi/i.test(s.textContent||'')) s.textContent='Bu cümleyi çalışmaya almak için başlat.';
+    var b=document.getElementById('wmFixedLearnedBtn');
+    if(b){b.setAttribute('aria-label','Öğrenmeye Başladım');}
+  }
+  document.addEventListener('DOMContentLoaded',function(){patch();setTimeout(patch,500);});
+  if(document.readyState!=='loading') setTimeout(patch,0);
+  new MutationObserver(function(){setTimeout(patch,0)}).observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
+
 </body></html>
 
 
