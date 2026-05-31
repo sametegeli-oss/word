@@ -5982,6 +5982,99 @@ body.wm-tool-panel-open{overflow:hidden}
 
 <!-- WM CLEAN FIX: Eski HF11/REPAIR13 yamaları kaldırıldı.
      Aktif liste adı ve Öğrendim düğmesi js/app.js içinde tek merkezden yönetilir. -->
+
+
+<!-- WM FINAL LEARNED BUTTON V2: resimden bağımsız sabit Öğrendim düğmesi -->
+<style id="wm-final-learned-v2-style">
+  #wmFixedLearnedBar{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:10px!important;
+    margin:10px 0 14px 0!important;
+    padding:10px 12px!important;
+    border:1.5px solid rgba(34,197,94,.42)!important;
+    background:rgba(34,197,94,.08)!important;
+    border-radius:16px!important;
+  }
+  #wmFixedLearnedBar .wm-fixed-status{
+    color:var(--muted,#94a3b8)!important;
+    font-size:12px!important;
+    font-weight:800!important;
+    line-height:1.3!important;
+  }
+  #wmFixedLearnedBtn{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-width:112px!important;
+    border:1.5px solid rgba(34,197,94,.85)!important;
+    background:linear-gradient(135deg,#22c55e,#16a34a)!important;
+    color:#fff!important;
+    border-radius:999px!important;
+    padding:9px 15px!important;
+    font-size:0!important;
+    font-weight:900!important;
+    font-family:Nunito,Arial,sans-serif!important;
+    cursor:pointer!important;
+    box-shadow:0 8px 24px rgba(34,197,94,.24)!important;
+    pointer-events:auto!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+  #wmFixedLearnedBtn::after{content:"✅ Öğrendim";font-size:13px!important;}
+  #wmFixedLearnedBtn.done{background:rgba(34,197,94,.16)!important;color:#4ade80!important;box-shadow:none!important;}
+  #wmFixedLearnedBtn.done::after{content:"✓ Öğrenildi";}
+  /* Eski resim üstü Öğrenildi butonlarını gizle; yeni düğme resimden bağımsızdır. */
+  .wm-image-learned-btn{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+</style>
+<script id="wm-final-learned-v2-script">
+(function(){
+  if(window.__WM_FINAL_LEARNED_V2__) return; window.__WM_FINAL_LEARNED_V2__ = true;
+  function $(id){return document.getElementById(id)}
+  function txt(el){return (el && el.textContent || '').replace(/\s+/g,' ').trim()}
+  function currentWord(){
+    var w = document.querySelector('#wordCard .wc-word');
+    return txt(w).toLowerCase();
+  }
+  function learnedNow(){
+    if(typeof window.WM_coreMarkLearned === 'function') return window.WM_coreMarkLearned();
+    if(typeof window.markLearned === 'function') return window.markLearned();
+    return false;
+  }
+  function install(){
+    var wc = $('wordCard');
+    if(!wc) return;
+    var bar = $('wmFixedLearnedBar');
+    if(!bar){
+      bar = document.createElement('div');
+      bar.id = 'wmFixedLearnedBar';
+      bar.innerHTML = '<div class="wm-fixed-status">Bu kelimeyi biliyorsan öğrenildi olarak işaretle.</div><button id="wmFixedLearnedBtn" type="button" aria-label="Öğrendim"><span style="display:none">OK</span></button>';
+      wc.insertBefore(bar, wc.firstChild);
+    }
+    var btn = $('wmFixedLearnedBtn');
+    if(btn && !btn.__wmBound){
+      btn.__wmBound = true;
+      // Eski click-capture scriptleri "Öğrendim" yazısını yakalamasın diye görünen yazı CSS ::after ile verildi.
+      ['pointerdown','mousedown','touchstart'].forEach(function(evName){
+        btn.addEventListener(evName,function(ev){
+          ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+          learnedNow();
+          return false;
+        },true);
+      });
+      btn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();return false;},true);
+    }
+    var old = $('btnLearned');
+    if(old){ old.style.display='none'; old.style.visibility='hidden'; old.style.pointerEvents='none'; }
+  }
+  function tick(){install();}
+  document.addEventListener('DOMContentLoaded',function(){tick();setTimeout(tick,250);setTimeout(tick,900);});
+  if(document.readyState !== 'loading') setTimeout(tick,0);
+  new MutationObserver(function(){setTimeout(tick,0)}).observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
+
 </body></html>
 
 

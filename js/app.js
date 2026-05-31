@@ -31195,3 +31195,67 @@ window.WM_testAI = async function(){
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
+
+
+// === WM CORE LEARNED BUTTON FIX V2 ===
+// Gerçek "Öğrendim" işlemini dış yama scriptlerinden bağımsız çalıştırır.
+// Bu fonksiyon app.js içinde tanımlandığı için words/idx/learnedSet gibi ana state'e doğrudan erişir.
+window.WM_coreMarkLearned = function WM_coreMarkLearned(){
+  try{
+    const item = words[idx];
+    if(!item || !item.word) return false;
+
+    const word = item.word;
+    const listNameBefore = (typeof getActiveListName === 'function') ? getActiveListName() : 'Ana Liste';
+
+    learnedSet.add(word);
+    item.learned = true;
+    item.isLearned = true;
+    item.status = 'learned';
+    item.lastReviewed = Date.now();
+
+    if(!wordStatus[word]) wordStatus[word] = {attempts:1, correct:1, pronScore:null};
+    wordStatus[word].attempts = Math.max(1, wordStatus[word].attempts || 0);
+    wordStatus[word].correct = Math.max(1, wordStatus[word].correct || 0);
+
+    try { recordLearningTime(word); } catch(e) {}
+    try { updateSRS(word, true); } catch(e) {}
+    try { incrementTodayLearned(); } catch(e) {}
+
+    // Ana ilerlemeyi ve aktif listeye özel ilerlemeyi birlikte kaydet.
+    try { saveProgress(); } catch(e) {}
+    try { saveCurrentListProgress(); } catch(e) {}
+
+    // LearnedWords deposuna nesne olarak da yaz; ama allWords listesini ezme.
+    try{
+      const raw = localStorage.getItem('learnedWords');
+      let arr = raw ? JSON.parse(raw) : [];
+      if(!Array.isArray(arr)) arr = [];
+      const exists = arr.some(x => String((typeof x === 'string' ? x : (x && x.word)) || '').toLowerCase() === String(word).toLowerCase());
+      if(!exists){
+        arr.push(Object.assign({}, item, {word: word, learned: true, date: Date.now(), source: 'learned-button'}));
+        localStorage.setItem('learnedWords', JSON.stringify(arr.slice(-1000)));
+      }
+    }catch(e){}
+
+    try { renderWordList(); } catch(e) {}
+
+    // Sonraki öğrenilmemiş kelimeye geç.
+    let nextIndex = words.findIndex((w, i) => i > idx && w && w.word && !learnedSet.has(w.word));
+    if(nextIndex === -1) nextIndex = words.findIndex(w => w && w.word && !learnedSet.has(w.word));
+
+    if(nextIndex !== -1){
+      idx = nextIndex;
+      renderLearn();
+    }else{
+      renderLearn();
+      try { showToast('🎉 Liste tamamlandı', listNameBefore + ' listesindeki tüm kelimeler öğrenildi'); } catch(e) {}
+    }
+
+    try { setActiveListTitle(listNameBefore); } catch(e) {}
+    return false;
+  }catch(err){
+    console.error('[WM_coreMarkLearned] hata:', err);
+    return false;
+  }
+};
