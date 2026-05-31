@@ -1234,9 +1234,22 @@
     .view-work .detail.open {
       transform: translateX(0);
     }
+    /* Tablet drawer kapatma butonu */
+    .view-work .detail.open::before {
+      content: '✕ Kapat';
+      display: block;
+      padding: 10px 14px;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
   }
-
-  /* MOBİL (< 768px) */
   @media (max-width: 768px) {
     /* HEADER — Sıkıştır */
     header {
@@ -6726,12 +6739,13 @@ function renderInstanceCard(inst) {
 function selectTask(id) {
   state.selected = { type:'task', id };
   renderWorkMain(); renderDetail();
-  if (window.innerWidth <= 768) openMobileDetail();
+  if (window.innerWidth <= 1024) openMobileDetail();
 }
 function selectInstance(id) {
   state.selected = { type:'instance', id };
   renderWorkMain(); renderDetail();
-  if (window.innerWidth <= 768) openMobileDetail();
+  // Detay paneli 1024px altında drawer olur (CSS), açmak için open class gerekir
+  if (window.innerWidth <= 1024) openMobileDetail();
 }
 
 function renderDetail() {
@@ -13028,7 +13042,7 @@ function closeMobileProdDetail() {
 document.addEventListener('click', (e) => {
   // İş Akışları detay paneli
   const workDetail = e.target.closest('.view-work .detail');
-  if (workDetail && window.innerWidth <= 768) {
+  if (workDetail && window.innerWidth <= 1024) {
     const rect = workDetail.getBoundingClientRect();
     if (e.clientY - rect.top < 44) {
       closeMobileDetail();
