@@ -31809,3 +31809,153 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   setTimeout(()=>{try{patchMainCard();}catch(e){}},300);
   console.log('✅ v6 Öğrenmeye Başladım + kalıcı liste rozetleri aktif');
 })();
+
+
+/* =====================================================================
+   WORD MODE — AKTİF LİSTE SEÇİMİ KALICI YÜKLEME FIX v7
+   - Liste seçildiğinde gerçekten o listenin cümleleri yüklenir.
+   - v5/v6 cümle katmanı window.allWords/window.words yerine ana state ile senkronize edilir.
+   - Liste ekranı rozetleri kaydırma durunca kaybolmasın diye tekrar sabitlenir.
+   ===================================================================== */
+(function(){
+  if(window.__WM_LIST_SWITCH_FIX_V7__) return;
+  window.__WM_LIST_SWITCH_FIX_V7__ = true;
+
+  function syncWindowState(){
+    try{ window.allWords = allWords; }catch(e){}
+    try{ window.words = words; }catch(e){}
+    try{ window.idx = idx; }catch(e){}
+  }
+  function getLists(){
+    try{
+      if(typeof multiLists !== 'undefined' && Array.isArray(multiLists)) return multiLists;
+    }catch(e){}
+    try{return JSON.parse(localStorage.getItem('multiLists')||'[]')||[];}catch(e){return[];}
+  }
+  function getListWords(id, list){
+    let data = null;
+    try{ if(list && Array.isArray(list.words)) data = list.words; }catch(e){}
+    if(!data){ try{ data = loadMultiListWords(String(id)); }catch(e){} }
+    if(!data){ try{ data = JSON.parse(localStorage.getItem('multiList_words_'+id)||'null'); }catch(e){} }
+    if(!Array.isArray(data)) data = [];
+    return data;
+  }
+  function saveActiveProgress(){
+    try{
+      const aid = (typeof activeListId !== 'undefined') ? activeListId : localStorage.getItem('activeListId');
+      if(!aid) return;
+      const progress = {
+        wordStatus: (typeof wordStatus !== 'undefined' ? wordStatus : {}),
+        learnedSet: (typeof learnedSet !== 'undefined' ? [...learnedSet] : []),
+        spacedRepetition: (typeof spacedRepetition !== 'undefined' ? spacedRepetition : {}),
+        sentenceStatus: JSON.parse(localStorage.getItem('wm_sentence_status_v1')||'{}'),
+        idx: (typeof idx !== 'undefined' ? idx : 0),
+        score: (typeof score !== 'undefined' ? score : 100),
+        streak: (typeof streak !== 'undefined' ? streak : 0),
+        correctCount: (typeof correctCount !== 'undefined' ? correctCount : 0)
+      };
+      localStorage.setItem('listProgress_'+aid, JSON.stringify(progress));
+    }catch(e){ console.warn('[v7] aktif liste ilerlemesi kaydedilemedi', e); }
+  }
+  function loadProgress(id){
+    try{
+      const raw = localStorage.getItem('listProgress_'+id);
+      if(!raw) return;
+      const p = JSON.parse(raw);
+      if(typeof wordStatus !== 'undefined') wordStatus = p.wordStatus || {};
+      if(typeof learnedSet !== 'undefined') learnedSet = new Set(p.learnedSet || []);
+      if(typeof spacedRepetition !== 'undefined') spacedRepetition = p.spacedRepetition || {};
+      if(p.sentenceStatus) localStorage.setItem('wm_sentence_status_v1', JSON.stringify(p.sentenceStatus));
+      if(typeof idx !== 'undefined') idx = Number(p.idx||0);
+      if(typeof score !== 'undefined') score = p.score ?? 100;
+      if(typeof streak !== 'undefined') streak = p.streak ?? 0;
+      if(typeof correctCount !== 'undefined') correctCount = p.correctCount ?? 0;
+    }catch(e){ console.warn('[v7] liste ilerlemesi yüklenemedi', e); }
+  }
+  function setTitle(name){
+    try{
+      localStorage.setItem('activeListName', name);
+      localStorage.setItem('wm.activeListName', name);
+      localStorage.setItem('currentListName', name);
+      const h=document.getElementById('currentListName'); if(h) h.textContent=name;
+      if(typeof setActiveListTitle==='function') setActiveListTitle(name);
+    }catch(e){}
+  }
+
+  window.switchToList = switchToList = function(id){
+    const lists = getLists();
+    const list = lists.find(l => String(l.id) === String(id));
+    if(!list){ try{showToast('❌ Liste bulunamadı', String(id));}catch(e){} return false; }
+    const data = getListWords(id, list);
+    if(!data.length){ try{showToast('❌ Liste boş', 'Bu listenin cümle verisi bulunamadı');}catch(e){} return false; }
+
+    saveActiveProgress();
+
+    try{ activeListId = String(list.id); }catch(e){}
+    localStorage.setItem('activeListId', String(list.id));
+    localStorage.setItem('prevActiveListId', String(list.id));
+
+    try{ allWords = data; words = [...data]; }catch(e){ window.allWords=data; window.words=[...data]; }
+    try{ smWords=[...data]; smIdx=0; lmWords=[...data]; lmIdx=0; fcWords=[...data]; fcIdx=0; }catch(e){}
+    try{ idx = 0; }catch(e){}
+    loadProgress(String(list.id));
+    try{ if(idx < 0 || idx >= words.length) idx = 0; }catch(e){}
+    syncWindowState();
+    setTitle(list.name || 'Liste');
+
+    try{ document.querySelectorAll('div[style*="position:fixed"][style*="z-index:10000"]').forEach(el=>el.remove()); }catch(e){}
+    try{ document.getElementById('bottomNav').style.display='flex'; }catch(e){}
+    try{ showScreen('sc-word'); }catch(e){}
+    try{ renderMultiListUI(); }catch(e){}
+    try{ updateScoreBar(); }catch(e){}
+    try{ renderLearn(); }catch(e){}
+    try{ renderStats(); }catch(e){}
+    setTimeout(()=>{ try{syncWindowState(); renderLearn();}catch(e){} },80);
+    try{ showToast('✅ Liste yüklendi', `${list.name||'Liste'} — ${data.length} cümle`); }catch(e){}
+    return false;
+  };
+
+  window._pickMultiList = function(id){
+    try{ document.querySelectorAll('div[style*="position:fixed"][style*="z-index:10000"]').forEach(el=>el.remove()); }catch(e){}
+    return window.switchToList(id);
+  };
+
+  window._pickMainList = function(){
+    saveActiveProgress();
+    try{ activeListId = null; }catch(e){}
+    localStorage.removeItem('activeListId');
+    setTitle('Ana Liste');
+    try{
+      const saved = JSON.parse(localStorage.getItem('learnedWords')||'[]');
+      if(Array.isArray(saved) && saved.length){ allWords=saved; words=[...saved]; idx=0; }
+    }catch(e){}
+    syncWindowState();
+    try{ showScreen('sc-word'); renderLearn(); }catch(e){}
+    try{ showToast('📖 Ana Liste', 'Ana liste yüklendi'); }catch(e){}
+    return false;
+  };
+
+  // Liste ekranı kendi hesaplarını window yerine gerçek ana state'ten alsın.
+  const oldShowList = window.showList;
+  window.showList = showList = function(){
+    syncWindowState();
+    if(typeof oldShowList === 'function'){
+      const r = oldShowList.apply(this, arguments);
+      setTimeout(syncWindowState, 0);
+      return r;
+    }
+    try{ showScreen('sc-list'); renderWordList(); }catch(e){}
+  };
+
+  // Render sonrası rozet alanlarını tekrar görünür yap.
+  function forceBadges(){
+    document.querySelectorAll('.wi .wi-badges').forEach(el=>{
+      el.style.display='flex'; el.style.visibility='visible'; el.style.opacity='1'; el.style.position='relative'; el.style.zIndex='20';
+    });
+    document.querySelectorAll('.wi').forEach(el=>{ el.style.overflow='visible'; });
+  }
+  ['scroll','touchend','mouseup','wheel'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(forceBadges,120),true));
+  setInterval(forceBadges,1000);
+  syncWindowState();
+  console.log('✅ v7 aktif liste yükleme düzeltmesi aktif');
+})();
