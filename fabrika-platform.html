@@ -437,7 +437,7 @@
     margin-top: 10px; max-height: 0; overflow: hidden;
     transition: max-height 0.25s;
   }
-  .process-pick.open { max-height: 400px; }
+  .process-pick.open { max-height: 400px; overflow-y: auto; }
   .process-pick button {
     background: var(--panel-2); color: var(--text);
     border: 1px solid var(--border-hi);
@@ -6862,6 +6862,13 @@ function renderDetail() {
   if (instance.ownerId === state.currentUser && instance.status === 'running') {
     extraActions += `<button class="ghost-btn" onclick="withdrawInstance('${instance.id}')" style="margin-right:6px;color:var(--red);border-color:var(--red);">🚫 Talebi Geri Çek</button>`;
   }
+  // Düzenle: SADECE izleme tipli (hatırlatıcı) kayıtlar, sahibi veya admin
+  const _curStep = def.steps.find(s => s.id === instance.state);
+  const _isMonitor = _curStep && _curStep.type === 'monitor';
+  if (_isMonitor && instance.status === 'running' &&
+      (instance.ownerId === state.currentUser || hasPermission(state.currentUser, 'admin_view'))) {
+    extraActions += `<button class="ghost-btn" onclick="editInstance('${instance.id}')" style="margin-right:6px;color:var(--accent);border-color:var(--accent);">✏️ Düzenle</button>`;
+  }
 
   // Vekil bilgisi (sadece görev seçiliyse ve vekil zinciri varsa)
   let delegationInfo = '';
@@ -7138,6 +7145,71 @@ function withdrawInstance(instanceId) {
   state.selected = null;
   renderAll();
   notify('Talep geri çekildi', 'success');
+}
+
+// İzleme tipli (hatırlatıcı) kaydı düzenle — mevcut değerlerle dolu form açar
+function editInstance(instanceId) {
+  const inst = state.instances.find(i => i.id === instanceId);
+  if (!inst) return;
+  const def = getDef(inst.defId);
+  if (!def) return;
+  // Yetki: sahip veya admin
+  if (inst.ownerId !== state.currentUser && !hasPermission(state.currentUser, 'admin_view')) {
+    notify('Bu kaydı düzenleme yetkiniz yok', 'error');
+    return;
+  }
+  // Sadece izleme tipli adımda olan kayıtlar düzenlenebilir
+  const curStep = def.steps.find(s => s.id === inst.state);
+  if (!curStep || curStep.type !== 'monitor') {
+    notify('Bu kayıt türü düzenlenemez', 'error');
+    return;
+  }
+  openModal({
+    title: '✏️ Düzenle — ' + def.name,
+    body: `
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;">Bilgileri güncelle. Tarihleri değiştirirsen hatırlatmalar yeni tarihlere göre yeniden hesaplanır.</div>
+      ${def.fields.map(f => renderField(f, inst.form[f.id])).join('')}
+    `,
+    foot: `
+      <button class="ghost-btn" onclick="closeModal()">İptal</button>
+      <button class="btn approve" style="flex:0;padding:7px 14px;" onclick="submitEditInstance('${instanceId}')">Kaydet</button>
+    `
+  });
+}
+
+function submitEditInstance(instanceId) {
+  const inst = state.instances.find(i => i.id === instanceId);
+  if (!inst) return;
+  const def = getDef(inst.defId);
+  const newData = {};
+  for (const f of def.fields) {
+    const el = document.getElementById('f-' + f.id);
+    const v = el ? el.value.trim() : '';
+    if (f.required && !v) { notify(`"${f.label}" zorunlu`, 'error'); el && el.focus(); return; }
+    if (f.type === 'number' && v !== '' && f.min !== undefined && parseFloat(v) < f.min) {
+      notify(`"${f.label}" en az ${f.min} olmalı`, 'error'); el && el.focus(); return;
+    }
+    newData[f.id] = v;
+  }
+  // Tarih değişti mi? Değiştiyse o tarihle ilgili tetiklenmiş hatırlatmaları sıfırla
+  if (!inst.triggeredReminders) inst.triggeredReminders = [];
+  for (const f of def.fields) {
+    if (f.type === 'date' && Array.isArray(f.reminders)) {
+      if (inst.form[f.id] !== newData[f.id]) {
+        // Bu alanın tüm tetiklenmiş hatırlatmalarını temizle (yeni tarihe göre tekrar hesaplanır)
+        inst.triggeredReminders = inst.triggeredReminders.filter(k => !k.startsWith(f.id + ':'));
+      }
+    }
+  }
+  inst.form = { ...inst.form, ...newData };
+  inst.updatedAt = Date.now();
+  recordHistory(inst.id, 'system', `${getUser(state.currentUser).name} kaydı düzenledi`);
+  // Hemen yeniden tara (yeni tarihlere göre gerekiyorsa bildirim düşsün)
+  scanAndFireReminders();
+  persist();
+  closeModal();
+  renderAll();
+  notify('Kayıt güncellendi', 'success');
 }
 
 function openNewRequest(defId) {
