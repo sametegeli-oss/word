@@ -21,3 +21,8 @@ Oluşan liste otomatik aktif liste yapılır ve program kapatılıp açıldığ�
 - Liste ekranında “Bugün Çalış” paneli gösterir.
 - Tek tıkla önerilen seviye + gramer oturumunu başlatır.
 - İstatistik ekranında küçük günlük çalışma kartı gösterir.
+
+## v20 fix
+- sentenceLevel ve grammarStructure Excel'den okunur ve kalıcı saklanır.
+- Eski kayıtlarda boşsa cümleden otomatik tahmin edilir.
+- Seviye & Gramer dropdown seçenekleri runtime/aktif liste değişiminden sonra yeniden oluşturulur.
