@@ -232,6 +232,10 @@
   .view-home {
     grid-template-columns: 1fr;
   }
+  .view-reminders {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
 
   /* RAPORLAR */
   .rep-wrap { padding: 16px 24px; overflow-y: auto; height: 100%; }
@@ -446,6 +450,46 @@
     font-family: var(--sans);
   }
   .process-pick button:hover { border-color: var(--accent); background: var(--panel-3); }
+
+  /* ===== HATIRLATICILAR SAYFASI ===== */
+  .rem-page { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
+  .rem-header h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
+  .rem-subtitle { font-size: 13px; color: var(--text-dim); margin: 0 0 20px; }
+  .rem-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .rem-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border-hi); border-radius: 20px;
+    padding: 7px 14px; font-size: 13px; cursor: pointer;
+    font-family: var(--sans); transition: all 0.15s;
+  }
+  .rem-chip:hover { border-color: var(--accent); }
+  .rem-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .rem-chip-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    background: var(--panel-3); color: var(--text-dim);
+    border-radius: 9px; font-size: 11px; font-weight: 600;
+  }
+  .rem-chip.active .rem-chip-count { background: rgba(255,255,255,0.25); color: #fff; }
+  .rem-list { display: flex; flex-direction: column; gap: 10px; }
+  .rem-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-left: 4px solid var(--text-mute); border-radius: 8px;
+    padding: 14px 16px; cursor: pointer; transition: all 0.15s;
+  }
+  .rem-card:hover { border-color: var(--border-hi); transform: translateX(2px); }
+  .rem-card-main { display: flex; align-items: flex-start; gap: 12px; }
+  .rem-card-icon { font-size: 22px; line-height: 1; flex-shrink: 0; }
+  .rem-card-body { flex: 1; min-width: 0; }
+  .rem-card-title { font-weight: 600; font-size: 15px; }
+  .rem-card-meta { font-size: 13px; color: var(--text-dim); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rem-card-badge { font-size: 12px; padding: 4px 10px; border-radius: 12px; white-space: nowrap; flex-shrink: 0; font-weight: 600; }
+  .rem-card-foot { display: flex; gap: 16px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-mute); }
+  .rem-empty { text-align: center; padding: 60px 20px; }
+  .rem-empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+  .rem-empty-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .rem-empty-sub { font-size: 13px; color: var(--text-dim); max-width: 380px; margin: 0 auto; line-height: 1.5; }
 
   /* FAB varsayılan gizli (masaüstü dahil); sadece mobilde body.show-fab açar */
   .fab-new-request { display: none; }
@@ -1398,6 +1442,16 @@
     }
     .fab-new-request:active { transform: scale(0.92); }
     body.show-fab .fab-new-request { display: inline-flex; }
+
+    /* Hatırlatıcılar — mobil */
+    .rem-page { padding: 16px 12px 80px; }
+    .rem-header h1 { font-size: 20px; }
+    .rem-filters { gap: 6px; }
+    .rem-chip { padding: 8px 12px; font-size: 13px; }
+    .rem-card { padding: 14px; }
+    .rem-card-title { font-size: 15px; }
+    .rem-card-badge { font-size: 11px; padding: 4px 8px; }
+    .rem-card-foot { flex-wrap: wrap; gap: 10px; }
 
     /* DETAY PANEL — mobilde fullscreen modal */
     .view-work .detail {
@@ -4146,6 +4200,8 @@ let state = {
   workTab: 'tasks',
   adminTab: 'processes',
   prodTab: 'stations', // 'stations' | 'orders' | 'mystation'
+  reminderFilter: 'all',    // 'past' | 'week' | 'month' | 'all'  (Hatırlatıcılar sekmesi)
+  reminderScope: 'auto',    // 'mine' | 'all' (yetkiye göre otomatik)
   designerProcessId: null,
   selected: null,
   selectedOrderId: null,
@@ -6203,6 +6259,7 @@ function renderTopTabs() {
     { id:'home', label:'🏠 Anasayfa' }  // Anasayfa herkese açık
   ];
   if (hasPermission(u, 'workflows_view'))   tabs.push({ id:'work', label:'İş Akışları' });
+  if (hasPermission(u, 'workflows_view'))   tabs.push({ id:'reminders', label:'⏰ Hatırlatıcılar' });
   if (hasPermission(u, 'production_view'))  tabs.push({ id:'production', label:'🏭 Üretim' });
   if (hasPermission(u, 'calendar_view'))    tabs.push({ id:'calendar', label:'📅 Takvim' });
   if (hasPermission(u, 'reports_view'))     tabs.push({ id:'reports', label:'📊 Raporlar' });
@@ -6225,6 +6282,7 @@ function setTopTab(id) {
   const u = getUser(state.currentUser);
   const permMap = {
     'work': 'workflows_view',
+    'reminders': 'workflows_view',
     'production': 'production_view',
     'calendar': 'calendar_view',
     'reports': 'reports_view',
@@ -6250,6 +6308,7 @@ function renderView() {
   // Yetki kontrolü — yetki yoksa erişim engeli göster
   const permMap = {
     'work': 'workflows_view',
+    'reminders': 'workflows_view',
     'production': 'production_view',
     'calendar': 'calendar_view',
     'reports': 'reports_view',
@@ -6270,6 +6329,7 @@ function renderView() {
 
   if (state.currentTop === 'home') renderHomeView(v);
   else if (state.currentTop === 'work') renderWorkView(v);
+  else if (state.currentTop === 'reminders') renderRemindersView(v);
   else if (state.currentTop === 'production') renderProductionView(v);
   else if (state.currentTop === 'calendar') renderCalendarView(v);
   else if (state.currentTop === 'reports') renderReportsView(v);
@@ -6290,6 +6350,111 @@ function renderWorkView(v) {
   `;
   renderWorkMain();
   renderDetail();
+}
+
+// ============== HATIRLATICILAR GÖRÜNÜMÜ ==============
+function renderRemindersView(v) {
+  const u = getUser(state.currentUser);
+  const canViewAll = hasPermission(u, 'workflows_view_all');
+  const canViewTeam = hasPermission(u, 'workflows_view_team');
+
+  let all = getAllUpcomingDates();
+  all = all.filter(d => {
+    if (canViewAll) return true;
+    const ownerId = d.instance.ownerId;
+    if (ownerId === state.currentUser) return true;
+    if (canViewTeam) {
+      const owner = getUser(ownerId);
+      if (owner && owner.manager === state.currentUser) return true;
+    }
+    return false;
+  });
+
+  const cPast = all.filter(d => d.diffDays < 0).length;
+  const cWeek = all.filter(d => d.diffDays >= 0 && d.diffDays <= 7).length;
+  const cMonth = all.filter(d => d.diffDays >= 0 && d.diffDays <= 30).length;
+
+  let list = all;
+  const f = state.reminderFilter || 'all';
+  if (f === 'past') list = all.filter(d => d.diffDays < 0);
+  else if (f === 'week') list = all.filter(d => d.diffDays >= 0 && d.diffDays <= 7);
+  else if (f === 'month') list = all.filter(d => d.diffDays >= 0 && d.diffDays <= 30);
+
+  const chip = (id, label, count, accent) =>
+    `<button class="rem-chip ${f===id?'active':''}" onclick="setReminderFilter('${id}')">
+       ${label}${count>0?`<span class="rem-chip-count" style="${accent?`background:${accent};color:#fff;`:''}">${count}</span>`:''}
+     </button>`;
+
+  const cardsHtml = list.length === 0
+    ? `<div class="rem-empty">
+         <div class="rem-empty-icon">⏰</div>
+         <div class="rem-empty-title">${all.length===0 ? 'Henüz takip edilen tarih yok' : 'Bu filtrede kayıt yok'}</div>
+         <div class="rem-empty-sub">${all.length===0 ? 'Takip Kaydı veya Araç Bilgi Kaydı açarak tarih takibi başlatabilirsin.' : 'Farklı bir filtre dene.'}</div>
+       </div>`
+    : list.map(d => renderReminderCard(d)).join('');
+
+  v.innerHTML = `
+    <div class="rem-page">
+      <div class="rem-header">
+        <h1>⏰ Hatırlatıcılar</h1>
+        <p class="rem-subtitle">Takip edilen tüm tarihler — yaklaşana göre sıralı</p>
+      </div>
+      <div class="rem-filters">
+        ${chip('all','Tümü', all.length, '')}
+        ${chip('past','Geçti', cPast, '#E24B4A')}
+        ${chip('week','Bu hafta', cWeek, '#EF9F27')}
+        ${chip('month','Bu ay', cMonth, '#378ADD')}
+      </div>
+      <div class="rem-list">
+        ${cardsHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderReminderCard(d) {
+  const inst = d.instance;
+  const owner = getUser(inst.ownerId);
+  let accent, badgeBg, badgeColor;
+  if (d.state === 'past' || d.state === 'today') { accent = '#E24B4A'; badgeBg = '#FCEBEB'; badgeColor = '#A32D2D'; }
+  else if (d.state === 'soon') { accent = '#EF9F27'; badgeBg = '#FAEEDA'; badgeColor = '#854F0B'; }
+  else if (d.state === 'upcoming') { accent = '#378ADD'; badgeBg = '#E6F1FB'; badgeColor = '#185FA5'; }
+  else { accent = '#888780'; badgeBg = 'var(--panel-2)'; badgeColor = 'var(--text-dim)'; }
+
+  const dt = d.targetDate;
+  const dateFmt = `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+  const recordTitle = inst.form.title || inst.form.plate || d.def.name;
+  const fieldLabel = d.field.label;
+
+  return `
+    <div class="rem-card" style="border-left-color:${accent};" onclick="goToInstance('${inst.id}')">
+      <div class="rem-card-main">
+        <div class="rem-card-icon">${d.def.icon || '⏰'}</div>
+        <div class="rem-card-body">
+          <div class="rem-card-title">${escapeHtml(fieldLabel)}</div>
+          <div class="rem-card-meta">${escapeHtml(recordTitle)} · ${escapeHtml(d.def.name)}</div>
+        </div>
+        <span class="rem-card-badge" style="background:${badgeBg};color:${badgeColor};">${d.label}</span>
+      </div>
+      <div class="rem-card-foot">
+        <span>📅 ${dateFmt}</span>
+        ${owner ? `<span>👤 ${escapeHtml(owner.name)}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function setReminderFilter(id) {
+  state.reminderFilter = id;
+  renderView();
+}
+
+function goToInstance(instId) {
+  state.currentTop = 'work';
+  state.workTab = 'mine';
+  state.selected = { type: 'instance', id: instId };
+  renderAll();
+  if (window.innerWidth <= 1024) openMobileDetail();
 }
 
 function renderSidebarHTML() {
