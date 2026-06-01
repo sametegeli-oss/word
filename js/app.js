@@ -13378,7 +13378,7 @@ function renderMultiListUI() {
 function renderMultiStats() {
   const el = document.getElementById('multiListStats');
   if (!el) return;
-  const total = multiLists.reduce((s, l) => s + l.wordCount, 0);
+  const total = multiLists.reduce((s, l) => s + Number(l.wordCount || l.sentenceCount || (Array.isArray(l.words)?l.words.length:0) || 0), 0);
   el.innerHTML = `
     <div style="display:flex;gap:12px;flex-wrap:wrap">
       <div style="flex:1;background:var(--bg2);border-radius:10px;padding:12px;text-align:center">
@@ -34713,4 +34713,221 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
   console.log('✅ WM v22 büyük cümle listesi yükleme düzeltmesi aktif');
+})();
+
+
+/* =====================================================================
+   WM v23 — Depolama Hataları / Büyük Liste / NaN İstatistik FINAL FIX
+   Amaç:
+   - localStorage kota hatalarını durdurmak.
+   - multiList_words_* ve lastFileData gibi büyük verileri sadece IndexedDB'ye yazmak.
+   - Eski localStorage büyük verilerini IndexedDB'ye taşıyıp temizlemek.
+   - Liste istatistiklerinde NaN oluşmasını engellemek.
+   ===================================================================== */
+(function(){
+  if(window.__WM_STORAGE_V23_FINAL__) return;
+  window.__WM_STORAGE_V23_FINAL__ = true;
+
+  const DB_NAME='WordModeStore';
+  const DB_VERSION=2;
+  const STORE='kv';
+  const BIG_RE=/^(multiList_words_|lastFileData$|wm_big_|book_text_)/;
+  const BIG_LIMIT=450000; // localStorage için güvenli üst sınır
+
+  function log(){ try{ console.log.apply(console,arguments); }catch(e){} }
+  function warn(){ try{ console.warn.apply(console,arguments); }catch(e){} }
+  function toast(a,b){ try{ if(typeof showToast==='function') showToast(a,b||''); }catch(e){} }
+  function safeParse(v,f){ try{ const x=JSON.parse(v||''); return x ?? f; }catch(e){ return f; } }
+
+  function openDB(){
+    return new Promise((resolve,reject)=>{
+      if(!window.indexedDB) return reject(new Error('IndexedDB yok'));
+      const req=indexedDB.open(DB_NAME,DB_VERSION);
+      req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE); };
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error('IndexedDB açılamadı'));
+    });
+  }
+  async function idbSet(key,value){
+    const db=await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,'readwrite');
+      tx.objectStore(STORE).put(String(value ?? ''), key);
+      tx.oncomplete=()=>{ try{db.close();}catch(e){} resolve(true); };
+      tx.onerror=()=>{ try{db.close();}catch(e){} reject(tx.error); };
+    });
+  }
+  async function idbGet(key){
+    const db=await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,'readonly');
+      const r=tx.objectStore(STORE).get(key);
+      r.onsuccess=()=>{ try{db.close();}catch(e){} resolve(r.result ?? null); };
+      r.onerror=()=>{ try{db.close();}catch(e){} reject(r.error); };
+    });
+  }
+  async function idbDel(key){
+    const db=await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,'readwrite');
+      tx.objectStore(STORE).delete(key);
+      tx.oncomplete=()=>{ try{db.close();}catch(e){} resolve(true); };
+      tx.onerror=()=>{ try{db.close();}catch(e){} reject(tx.error); };
+    });
+  }
+  window.WM_v23_idbGet=idbGet;
+  window.WM_v23_idbSet=idbSet;
+
+  const proto=Storage.prototype;
+  const nativeSet=proto.setItem;
+  const nativeGet=proto.getItem;
+  const nativeRemove=proto.removeItem;
+  const nativeKey=proto.key;
+
+  function isBigKey(key,value){
+    key=String(key||'');
+    return BIG_RE.test(key) || (typeof value==='string' && value.length>BIG_LIMIT);
+  }
+  function purgeTemp(){
+    const kill=['lastFileData','aiResponseCache','groq_rate_info','offlineSettings'];
+    try{ kill.forEach(k=>nativeRemove.call(localStorage,k)); }catch(e){}
+    try{
+      const ks=[];
+      for(let i=0;i<localStorage.length;i++){ const k=nativeKey.call(localStorage,i); if(BIG_RE.test(k||'')) ks.push(k); }
+      ks.forEach(k=>nativeRemove.call(localStorage,k));
+    }catch(e){}
+  }
+
+  // Son ve yetkili localStorage yazma katmanı.
+  // Büyük veriler localStorage'a hiç yazılmaz, doğrudan IDB'ye gider.
+  proto.setItem=function(key,value){
+    key=String(key);
+    value=String(value ?? '');
+    if(isBigKey(key,value)){
+      idbSet(key,value).catch(e=>warn('[v23] Büyük veri IDB’ye yazılamadı:',key,e));
+      try{ nativeRemove.call(localStorage,key); }catch(e){}
+      return;
+    }
+    try{
+      nativeSet.call(localStorage,key,value);
+    }catch(e){
+      if(e && (e.name==='QuotaExceededError' || /quota|exceed|full/i.test(String(e.message||'')))){
+        warn('⚠️ localStorage dolu; büyük/geçici veriler temizleniyor...');
+        purgeTemp();
+        try{ nativeSet.call(localStorage,key,value); }catch(e2){ warn('❌ Küçük veri kaydedilemedi:',key,e2); }
+      }else{
+        warn('❌ localStorage yazma hatası:',key,e);
+      }
+    }
+    // Küçük verinin IDB yedeği sessizce alınır.
+    if(key!=='_wm_idb_migrated') idbSet(key,value).catch(()=>{});
+  };
+
+  proto.removeItem=function(key){
+    key=String(key);
+    try{ nativeRemove.call(localStorage,key); }catch(e){}
+    if(BIG_RE.test(key)) idbDel(key).catch(()=>{});
+  };
+
+  async function migrateAndCleanBigLocalStorage(){
+    const moved=[];
+    try{
+      const keys=[];
+      for(let i=0;i<localStorage.length;i++){ const k=nativeKey.call(localStorage,i); if(BIG_RE.test(k||'')) keys.push(k); }
+      for(const k of keys){
+        const v=nativeGet.call(localStorage,k);
+        if(v!=null){ try{ await idbSet(k,v); moved.push(k); }catch(e){} }
+        try{ nativeRemove.call(localStorage,k); }catch(e){}
+      }
+      if(moved.length) log('✅ v23 büyük localStorage verileri IndexedDB’ye taşındı:', moved.join(', '));
+    }catch(e){ warn('[v23] migration hata:',e); }
+  }
+
+  // Eski saveMultiLists fonksiyonunu güvenli hale getir.
+  window.saveMultiLists=function(){
+    try{
+      const lists = Array.isArray(window.multiLists) ? window.multiLists : (typeof multiLists!=='undefined' && Array.isArray(multiLists) ? multiLists : []);
+      const slim = lists.map(l=>{
+        const x=Object.assign({},l);
+        const count=Number(x.wordCount || x.sentenceCount || (Array.isArray(x.words)?x.words.length:0) || 0);
+        x.wordCount=count; x.sentenceCount=Number(x.sentenceCount||count);
+        delete x.words;
+        return x;
+      });
+      localStorage.setItem('multiLists', JSON.stringify(slim));
+      try{ if(typeof multiLists!=='undefined') multiLists=slim; }catch(e){} window.multiLists=slim;
+      lists.forEach(l=>{
+        if(Array.isArray(l.words) && l.words.length){
+          const str=JSON.stringify(l.words);
+          idbSet('multiList_words_'+l.id, str).catch(()=>{});
+          try{ nativeRemove.call(localStorage,'multiList_words_'+l.id); }catch(e){}
+        }
+      });
+    }catch(e){ warn('[v23] saveMultiLists hata:',e); toast('⚠️ Uyarı','Liste bilgisi kaydedilirken sorun oluştu.'); }
+  };
+  try{ saveMultiLists=window.saveMultiLists; }catch(e){}
+
+  // İstatistikte NaN görünmesini engelle.
+  window.renderMultiStats=function(){
+    const el=document.getElementById('multiListStats'); if(!el) return;
+    const lists=Array.isArray(window.multiLists)?window.multiLists:(typeof multiLists!=='undefined'?multiLists:[]);
+    const total=lists.reduce((s,l)=>s+Number(l.wordCount||l.sentenceCount||(Array.isArray(l.words)?l.words.length:0)||0),0);
+    const learned=(typeof learnedSet!=='undefined' && learnedSet && learnedSet.size) ? learnedSet.size : 0;
+    el.innerHTML=`
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;background:var(--bg2);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px;font-weight:900;color:var(--blue)">${lists.length}</div>
+          <div style="font-size:11px;color:var(--muted)">Liste</div>
+        </div>
+        <div style="flex:1;background:var(--bg2);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px;font-weight:900;color:var(--green)">${total.toLocaleString('tr-TR')}</div>
+          <div style="font-size:11px;color:var(--muted)">Toplam Cümle</div>
+        </div>
+        <div style="flex:1;background:var(--bg2);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px;font-weight:900;color:var(--purple)">${learned}</div>
+          <div style="font-size:11px;color:var(--muted)">Öğrenildi</div>
+        </div>
+      </div>`;
+  };
+  try{ renderMultiStats=window.renderMultiStats; }catch(e){}
+
+  // Liste verisini IDB’den açabilen son liste seçme katmanı.
+  const previousSwitch=window.switchToList;
+  window.switchToList=function(id){
+    (async()=>{
+      try{
+        const lists = safeParse(localStorage.getItem('multiLists'), Array.isArray(window.multiLists)?window.multiLists:[]);
+        const list = lists.find(l=>String(l.id)===String(id));
+        let raw = await idbGet('multiList_words_'+id).catch(()=>null);
+        if(!raw) raw = nativeGet.call(localStorage,'multiList_words_'+id);
+        const data=safeParse(raw,null);
+        if(Array.isArray(data) && data.length){
+          try{ allWords=data; words=data; idx=0; }catch(e){} window.allWords=data; window.words=data; window.idx=0;
+          try{ activeListId=id; }catch(e){} window.activeListId=id;
+          const name=(list&&list.name)||'Liste';
+          localStorage.setItem('activeListId',id); localStorage.setItem('activeListName',name); localStorage.setItem('wm.activeListName',name); localStorage.setItem('currentListName',name);
+          try{ if(typeof setActiveListTitle==='function') setActiveListTitle(name); }catch(e){}
+          try{ if(typeof showScreen==='function') showScreen('sc-word'); }catch(e){}
+          try{ if(typeof renderLearn==='function') renderLearn(); }catch(e){}
+          try{ if(typeof renderWordList==='function') renderWordList(); }catch(e){}
+          try{ if(typeof renderMultiListUI==='function') renderMultiListUI(); }catch(e){}
+          try{ if(typeof renderMultiStats==='function') renderMultiStats(); }catch(e){}
+          toast('✅ Liste açıldı', name+' — '+data.length+' cümle');
+          return;
+        }
+        if(typeof previousSwitch==='function') previousSwitch.call(window,id);
+      }catch(e){ warn('[v23] switchToList hata:',e); if(typeof previousSwitch==='function') previousSwitch.call(window,id); }
+    })();
+    return false;
+  };
+  try{ switchToList=window.switchToList; }catch(e){}
+
+  // Açılış temizliği.
+  function boot(){
+    migrateAndCleanBigLocalStorage().then(()=>{
+      try{ if(typeof renderMultiStats==='function') renderMultiStats(); }catch(e){}
+      log('✅ WM v23 depolama düzeltmesi aktif');
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();

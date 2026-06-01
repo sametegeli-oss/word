@@ -19,3 +19,10 @@ Ana öğrenme birimi **sentence** alanıdır. `word` yalnızca hedef kelime/etik
 
 ## Kurulum
 Klasörü GitHub Pages repo köküne yükleyin. Ana dosya `index.html`.
+
+
+## v23
+- Büyük listeler artık localStorage’a yazılmaz; IndexedDB kullanılır.
+- Eski büyük localStorage kayıtları taşınıp temizlenir.
+- multiList_words / lastFileData kota hataları giderildi.
+- Liste istatistiklerinde NaN düzeltildi.
