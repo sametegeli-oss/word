@@ -1,28 +1,21 @@
-# WordMode v17 — AI Senaryodan Cümle Listesi Fix
+# WordMode — Cümle Tabanlı Koç v21
 
-Bu sürümde Konuşma Simülasyonu içindeki “Seçilen Senaryodan Çalışma Listesi Oluştur” bölümü kelime listesi yerine cümle tabanlı liste üretir.
+Bu sürüm cümle tabanlı çalışma sisteminin üstüne gelişmiş koç özellikleri ekler.
 
-Üretilen/veri şeması:
+## Ana veri yapısı
 `word | translation | phonetic | sentence | sentenceTr | highlights | sentenceLevel | grammarStructure`
 
-Oluşan liste otomatik aktif liste yapılır ve program kapatılıp açıldığında boş gelmeden yeniden yüklenir.
+Ana öğrenme birimi **sentence** alanıdır. `word` yalnızca hedef kelime/etiket olarak kullanılır.
 
+## v21 eklenenler
+- Cümle Ailesi Sistemi
+- Gramer Haritası
+- Seviye Haritası
+- Konuşmada otomatik gerçek kullanım tespiti
+- Günlük görev sistemi
+- Unutma riski haritası
+- Telaffuz skorunu cümleye bağlama yardımcısı
+- Son 30 gün raporu
 
-## v18 Seviye & Gramer Çalışma Sistemi
-- sentenceLevel alanına göre çalışma filtresi eklendi.
-- grammarStructure alanına göre çalışma filtresi eklendi.
-- Liste ekranından seçilen seviye/gramer ile doğrudan çalışma oturumu başlatılır.
-- Ana veri yapısı cümle tabanlıdır; word sadece hedef kelime etiketi olarak kalır.
-
-
-## v19 Bugün Çalış / Akıllı Koç
-- sentenceLevel + grammarStructure verilerine göre en zayıf çalışma alanını otomatik bulur.
-- Cümle bazlı sentenceStatus kayıtlarını okur: yeni, tekrar bekleyen, kullanılan ve otomatikleşen cümleleri dikkate alır.
-- Liste ekranında “Bugün Çalış” paneli gösterir.
-- Tek tıkla önerilen seviye + gramer oturumunu başlatır.
-- İstatistik ekranında küçük günlük çalışma kartı gösterir.
-
-## v20 fix
-- sentenceLevel ve grammarStructure Excel'den okunur ve kalıcı saklanır.
-- Eski kayıtlarda boşsa cümleden otomatik tahmin edilir.
-- Seviye & Gramer dropdown seçenekleri runtime/aktif liste değişiminden sonra yeniden oluşturulur.
+## Kurulum
+Klasörü GitHub Pages repo köküne yükleyin. Ana dosya `index.html`.
