@@ -17,6 +17,30 @@
   };
 })();
 
+/* =====================================================================
+   WM CORE SAFETY PATCH v30 — toast + virtual scroll global
+   ===================================================================== */
+(function(){
+  if(window.__WM_CORE_SAFETY_V30__) return;
+  window.__WM_CORE_SAFETY_V30__ = true;
+  if(typeof window.virtualScrollData === 'undefined') window.virtualScrollData = {};
+  try{ if(typeof virtualScrollData === 'undefined') virtualScrollData = window.virtualScrollData; }catch(e){}
+  if(typeof window.showToast !== 'function'){
+    window.showToast = function(title, text){
+      try{
+        const msg = String(title||'') + (text ? ' - ' + String(text) : '');
+        console.log('[Toast]', msg);
+        const old=document.getElementById('wmFallbackToast'); if(old) old.remove();
+        const t=document.createElement('div');
+        t.id='wmFallbackToast';
+        t.style.cssText='position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:999999;background:#111827;color:#fff;padding:10px 14px;border:1px solid #334155;border-radius:12px;font:700 13px Nunito,Arial;box-shadow:0 8px 24px rgba(0,0,0,.35)';
+        t.textContent=msg; document.body.appendChild(t); setTimeout(()=>{try{t.remove()}catch(e){}},2600);
+      }catch(e){ console.log('[Toast]', title, text); }
+    };
+  }
+  try{ if(typeof showToast === 'undefined') showToast = window.showToast; }catch(e){}
+})();
+
 
 /* ===== extracted script block ===== */
 
@@ -28421,4 +28445,82 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
     wrapped.__wmTitleSafety29B=true; window.renderLearn=wrapped;
   }
   setTimeout(fixTitle,50); setInterval(fixTitle,2500);
+})();
+
+
+/* =====================================================================
+   WM LIST NAVIGATION FIX v30 — global goToWord + title protection
+   ===================================================================== */
+(function(){
+  if(window.__WM_LIST_NAV_FIX_V30__) return;
+  window.__WM_LIST_NAV_FIX_V30__ = true;
+
+  function safeArr(a){ return Array.isArray(a) ? a : []; }
+  function getAll(){
+    try{ if(Array.isArray(allWords) && allWords.length) return allWords; }catch(e){}
+    try{ if(Array.isArray(window.allWords) && window.allWords.length) return window.allWords; }catch(e){}
+    try{ if(Array.isArray(words) && words.length) return words; }catch(e){}
+    try{ if(Array.isArray(window.words) && window.words.length) return window.words; }catch(e){}
+    return [];
+  }
+  function itemKey(w){
+    if(!w) return '';
+    return String(w.sentenceKey || w.id || w.sentence || w.text || w.word || '').trim().toLowerCase();
+  }
+  function activeListTitle(){
+    try{ const n=localStorage.getItem('activeListName') || localStorage.getItem('currentListName') || localStorage.getItem('wm.activeListName'); if(n) return n; }catch(e){}
+    try{ if(window.activeMultiListId && Array.isArray(window.multiLists)){ const l=window.multiLists.find(x=>x&&String(x.id)===String(window.activeMultiListId)); if(l&&l.name) return l.name; } }catch(e){}
+    return 'Cümleler';
+  }
+  function fixTitle(){
+    try{ const el=document.getElementById('currentListName'); if(el) el.textContent=activeListTitle(); }catch(e){}
+  }
+  function applyRuntime(list, targetIndex){
+    const data=safeArr(list).length ? list : getAll();
+    const n=Math.max(0, Math.min(Number(targetIndex)||0, Math.max(0,data.length-1)));
+    try{ allWords=data; }catch(e){}
+    try{ words=data; }catch(e){}
+    try{ idx=n; }catch(e){}
+    try{ window.allWords=data; window.words=data; window.idx=n; }catch(e){}
+    return {data,n};
+  }
+
+  window.goToWord = function(clickedIndex, sourceList){
+    try{
+      const src = safeArr(sourceList).length ? sourceList : (window.virtualScrollData && Array.isArray(window.virtualScrollData.filteredWords) ? window.virtualScrollData.filteredWords : getAll());
+      let item = src[Number(clickedIndex)] || null;
+      const all = getAll().length ? getAll() : src;
+      let targetIndex = Number(clickedIndex)||0;
+      if(item){
+        const k=itemKey(item);
+        const found=all.findIndex(x=>x===item || (k && itemKey(x)===k));
+        if(found>=0) targetIndex=found;
+      }
+      applyRuntime(all, targetIndex);
+      try{ localStorage.removeItem('listReturnScreen'); }catch(e){}
+      try{ if(typeof showScreen==='function') showScreen('sc-word'); }catch(e){ console.warn('[goToWord showScreen]',e); }
+      setTimeout(function(){
+        try{ if(typeof renderLearn==='function') renderLearn(); }
+        catch(e){ console.error('[goToWord renderLearn]', e); }
+        fixTitle();
+      }, 0);
+      return false;
+    }catch(e){ console.error('[goToWord]', e); return false; }
+  };
+
+  // Some old inline cards call goToWord without window.; expose a lexical/global binding too.
+  try{ if(typeof goToWord === 'undefined') goToWord = window.goToWord; }catch(e){}
+
+  ['renderLearn','renderWordList','showList','showScreen','nextWord','prevWord'].forEach(function(name){
+    try{
+      const fn = (typeof window[name] === 'function') ? window[name] : (typeof eval(name) === 'function' ? eval(name) : null);
+      if(!fn || fn.__wmNavFix30) return;
+      const wrapped = function(){ const r=fn.apply(this, arguments); setTimeout(fixTitle,0); return r; };
+      wrapped.__wmNavFix30 = true;
+      try{ window[name]=wrapped; }catch(e){}
+      try{ eval(name+' = wrapped'); }catch(e){}
+    }catch(e){}
+  });
+
+  setTimeout(fixTitle,50);
 })();
