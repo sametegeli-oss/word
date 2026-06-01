@@ -1825,15 +1825,12 @@ const WMStore = (() => {
   async function saveWord(wordObj) {
     if (_db) {
       try { await _idbPut(STORE_WORDS, null, wordObj); } catch(e) {}
-    } else {
-      // Fallback only: IndexedDB yoksa küçük veri olarak localStorage'a yaz.
-      try {
-        const words = JSON.parse(localStorage.getItem('learnedWords') || '[]');
-        const idx = words.findIndex(w => w.word === wordObj.word);
-        if (idx >= 0) words[idx] = wordObj; else words.push(wordObj);
-        localStorage.setItem('learnedWords', JSON.stringify(words));
-      } catch(e) {}
     }
+    // localStorage mirror
+    const words = JSON.parse(localStorage.getItem('learnedWords') || '[]');
+    const idx = words.findIndex(w => w.word === wordObj.word);
+    if (idx >= 0) words[idx] = wordObj; else words.push(wordObj);
+    try { localStorage.setItem('learnedWords', JSON.stringify(words)); } catch(e) {}
   }
 
   async function saveAllWords(wordsArr) {
@@ -1851,12 +1848,8 @@ const WMStore = (() => {
             r.onsuccess = res; r.onerror = rej;
           });
         }
-      } catch(e) { console.warn('[WMStore] saveAllWords IDB hatası:', e); }
-      // Büyük cümle listeleri localStorage kotasını aşmasın diye learnedWords aynası yazılmaz.
-      try { Storage.prototype.removeItem.call(localStorage, 'learnedWords'); } catch(e) {}
-      return;
+      } catch(e) {}
     }
-    // Fallback only: IDB yoksa sınırlı şekilde localStorage'a yaz.
     try { localStorage.setItem('learnedWords', JSON.stringify(wordsArr)); } catch(e) {}
   }
 
@@ -1933,22 +1926,7 @@ const WMStore = (() => {
 })();
 
 // ── Başlat ve geçiş yap ──
-WMStore.init().then(async () => {
-  await WMStore.migrateFromLocalStorage();
-  // Eski büyük localStorage kayıtlarını temizle/IDB'ye taşı.
-  try {
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
-    for (const k of keys) {
-      if (!k) continue;
-      if (/^(multiList_words_|lastFileData$|learnedWords$)/.test(k) || /_words$/.test(k)) {
-        const v = localStorage.getItem(k);
-        if (v) WMStore.set(k, v).catch(()=>{});
-        try { localStorage.removeItem(k); } catch(e) {}
-      }
-    }
-  } catch(e) {}
-});
+WMStore.init().then(() => WMStore.migrateFromLocalStorage());
 
 // localStorage'ı WMStore üzerinden override et (mevcut kod değişmeden çalışsın)
 // SADECE okuma intercept — yazma zaten WMStore.set ile yapılıyor
@@ -1963,26 +1941,7 @@ if (!localStorage._wmPatched) {
 
   const _origSet = _proto.setItem;
   _proto.setItem = function(key, value) {
-    key = String(key);
-    value = String(value);
-    const isBigWordModeData = /^(multiList_words_|lastFileData$|learnedWords$|wm_big_)/.test(key) || /_words$/.test(key) || value.length > 450000;
-
-    // Büyük listeler ve cümle verileri localStorage'a yazılmaz; yalnızca IndexedDB'ye yönlendirilir.
-    if (isBigWordModeData) {
-      try { _origDel.call(this, key); } catch(e) {}
-      try { if (WMStore && WMStore.isReady() && key !== '_wm_idb_migrated') WMStore._idbSetKV(key, value); } catch(e) {}
-      return;
-    }
-
-    try {
-      _origSet.call(this, key, value);
-    } catch(e) {
-      // Kota dolarsa uygulamayı kırma; veriyi IDB'ye aktar ve devam et.
-      console.warn('[WMStore] localStorage yazılamadı, IndexedDB kullanılacak:', key);
-      try { if (WMStore && WMStore.isReady() && key !== '_wm_idb_migrated') WMStore._idbSetKV(key, value); } catch(e2) {}
-      return;
-    }
-
+    _origSet.call(this, key, value);
     if (WMStore && WMStore.isReady() && key !== '_wm_idb_migrated') {
       WMStore._idbSetKV(key, value);
     }
@@ -4597,8 +4556,7 @@ async function loadFile(file){
           fileKey: fileKey
         };
         localStorage.setItem('lastUploadedFile', JSON.stringify(fileInfo));
-        // Büyük dosya verisi localStorage'a değil IndexedDB'ye kaydedilir.
-        WMStore.set('lastFileData', JSON.stringify(allWords)).catch(()=>{});
+        localStorage.setItem('lastFileData', JSON.stringify(allWords));
         console.log('💾 Dosya bilgileri kaydedildi:', fileInfo.name);
       } catch(e) {
         console.error('❌ Dosya bilgisi kayıt hatası:', e);
@@ -4769,8 +4727,7 @@ function saveProgress(){
   try{
     const _progData = JSON.stringify({learnedWords:[...learnedSet],wordStatus,score,streak,correctCount,idx});
     localStorage.setItem(fileKey, _progData);
-    // Büyük aktif liste localStorage'a değil IDB'ye yazılır.
-    WMStore.set(fileKey + "_words", JSON.stringify(allWords)).catch(()=>{});
+    localStorage.setItem(fileKey+"_words", JSON.stringify(allWords));
     localStorage.setItem("wm_lastKey", fileKey);
     // IDB mirror (async, fire-and-forget)
     WMStore.set(fileKey, _progData).catch(()=>{});
@@ -4976,8 +4933,31 @@ function wmEnsureSentenceMetaCss(){
   document.head.appendChild(st);
 }
 
+
+function normalizeHighlightsForSentence(highlights){
+  if (Array.isArray(highlights)) {
+    return highlights.map(x => String(x || '').trim()).filter(Boolean);
+  }
+  if (!highlights) return [];
+  if (typeof highlights === 'string') {
+    return highlights
+      .split(/[,;|]/)
+      .map(x => x.trim())
+      .filter(Boolean)
+      .filter(x => x !== '[object Object]');
+  }
+  if (typeof highlights === 'object') {
+    // {word:true} veya {word:'#color'} gibi objeleri destekle
+    return Object.keys(highlights)
+      .map(x => String(x || '').trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 function mkSentColored(sentence,highlights,colors){
   if(!sentence) return "";
+  highlights = normalizeHighlightsForSentence(highlights);
   
   // Önce **kelime** formatını işle
   sentence = sentence.replace(/\*\*([^*]+?)\*\*/g, '<b>$1</b>');
@@ -4993,7 +4973,7 @@ function mkSentColored(sentence,highlights,colors){
     }
     
     // Vurgulu kelime (yeşil) - tıklanabilir yap
-    if(highlights&&highlights.some(h=>h&&h.toLowerCase()===c)) {
+    if(highlights.some(h=>String(h||'').toLowerCase()===c)) {
       const cleanWord = p.replace(/[^a-zA-Z]/g,'');
       return `<span class="hl" style="cursor:pointer;transition:all 0.2s" onclick="explainWord('${cleanWord}','wordCard')" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">${p}</span>`;
     }
@@ -8525,7 +8505,7 @@ function renderStats(){
   const totalMins=Object.values(timingData).reduce((a,b)=>a+b,0);
   document.getElementById("statsCards").innerHTML=`
     <div class="stats-card"><div class="sc-val" style="color:var(--green)">${learnedSet.size}</div><div class="sc-key">✅ Öğrenilen Kelime</div></div>
-    <div class="stats-card"><div class="sc-val" style="color:var(--blue)">${allWords.length}</div><div class="sc-key">📚 Toplam Cümle</div></div>
+    <div class="stats-card"><div class="sc-val" style="color:var(--blue)">${allWords.length}</div><div class="sc-key">📚 Toplam Kelime</div></div>
     <div class="stats-card"><div class="sc-val" style="color:var(--orange)">${totalMins}</div><div class="sc-key">⏱ Toplam Dakika</div></div>
     <div class="stats-card"><div class="sc-val" style="color:var(--purple)">${dayStreak}</div><div class="sc-key">🔥 Günlük Seri</div></div>`;
 }
@@ -13142,7 +13122,7 @@ function processMultiFile(file) {
   const listName = nameInput?.value.trim() || file.name.replace(/\.[^.]+$/, '');
 
   const reader = new FileReader();
-  reader.onload = async e => {
+  reader.onload = e => {
     try {
       // İlk yükleme mantığıyla aynı: satır satır oku
       const wb = XLSX.read(e.target.result, { type: 'array', cellStyles: true, cellRichText: true });
@@ -13278,9 +13258,7 @@ function processMultiFile(file) {
       if (nameInput) nameInput.value = '';
       renderMultiListUI();
       renderMultiStats();
-      // Yüklenen listeyi hemen aktif liste yap.
-      await switchToList(newList.id);
-      showToast('✅ Liste Eklendi', `"${listName}" — ${parsed.length} cümle`);
+      showToast('✅ Liste Eklendi', `"${listName}" — ${parsed.length} kelime`);
     } catch(err) {
       console.error('❌ Liste parse hatası:', err);
       showToast('❌ Hata', 'Dosya okunamadı: ' + err.message);
@@ -13290,59 +13268,36 @@ function processMultiFile(file) {
 }
 
 function saveMultiLists() {
-  // Kelimeleri/cümleleri localStorage dışında tut (quota sorunu yaşamamak için).
-  const toSave = multiLists.map(l => ({
-    ...l,
-    words: undefined,
-    wordCount: Number(l.wordCount || l.sentenceCount || (Array.isArray(l.words) ? l.words.length : 0) || 0),
-    sentenceCount: Number(l.wordCount || l.sentenceCount || (Array.isArray(l.words) ? l.words.length : 0) || 0),
-    schema: 'sentence-v2'
-  }));
+  // Kelimeleri dışarıda tut (localStorage limit)
+  const toSave = multiLists.map(l => ({ ...l, words: undefined, wordCount: l.wordCount }));
   try {
     const _mlStr = JSON.stringify(toSave);
     localStorage.setItem('multiLists', _mlStr);
     WMStore.set('multiLists', _mlStr).catch(()=>{});
-    // Her listenin gerçek cümle verisi IndexedDB'de saklanır.
+    // Her liste için kelimelerini ayrı kaydet
     multiLists.forEach(l => {
-      if (Array.isArray(l.words)) {
-        WMStore.set('multiList_words_' + l.id, JSON.stringify(l.words)).catch(()=>{});
-        try { localStorage.removeItem('multiList_words_' + l.id); } catch(e) {}
+      if (l.words) {
+        try { localStorage.setItem('multiList_words_' + l.id, JSON.stringify(l.words)); } catch(e) {}
       }
     });
   } catch(e) {
-    console.warn('Liste metadata kaydı başarısız:', e);
-    showToast('⚠️ Uyarı', 'Liste bilgisi kaydedilemedi');
+    showToast('⚠️ Uyarı', 'Önbellek dolu, bazı listeler kaydedilemeyebilir');
   }
 }
 
-async function loadMultiListWords(id) {
+function loadMultiListWords(id) {
   try {
-    // Önce bellekteki liste
-    const mem = multiLists.find(l => l.id === id);
-    if (mem && Array.isArray(mem.words) && mem.words.length) return mem.words;
-
-    // Sonra IndexedDB
-    const savedIDB = await WMStore.get('multiList_words_' + id).catch(()=>null);
-    if (savedIDB) return JSON.parse(savedIDB);
-
-    // Eski kurulumdan kalan localStorage varsa son kez oku ve IDB'ye taşı
-    const savedLS = localStorage.getItem('multiList_words_' + id);
-    if (savedLS) {
-      const arr = JSON.parse(savedLS);
-      WMStore.set('multiList_words_' + id, savedLS).catch(()=>{});
-      try { localStorage.removeItem('multiList_words_' + id); } catch(e) {}
-      return arr;
-    }
-  } catch(e) { console.warn('Liste verisi okunamadı:', e); }
-  return null;
+    const saved = localStorage.getItem('multiList_words_' + id);
+    return saved ? JSON.parse(saved) : null;
+  } catch(e) { return null; }
 }
 
-async function switchToList(id) {
+function switchToList(id) {
   const list = multiLists.find(l => l.id === id);
   if (!list) return;
 
-  const words_data = await loadMultiListWords(id);
-  if (!Array.isArray(words_data) || !words_data.length) { showToast('❌ Hata', 'Liste verisi bulunamadı'); return; }
+  const words_data = list.words || loadMultiListWords(id);
+  if (!words_data) { showToast('❌ Hata', 'Liste verisi bulunamadı'); return; }
 
   // Mevcut aktif listenin ilerlemesini kaydet
   const currentProgress = { wordStatus, learnedSet: [...learnedSet], spacedRepetition, idx, score, streak, correctCount };
@@ -13403,7 +13358,6 @@ function deleteMultiList(id, e) {
   if (!confirm('Bu listeyi sil?')) return;
   multiLists = multiLists.filter(l => l.id !== id);
   localStorage.removeItem('multiList_words_' + id);
-  WMStore.remove('multiList_words_' + id).catch(()=>{});
   localStorage.removeItem('listProgress_' + id);
   saveMultiLists();
   renderMultiListUI();
@@ -13456,7 +13410,7 @@ function renderMultiStats() {
       </div>
       <div style="flex:1;background:var(--bg2);border-radius:10px;padding:12px;text-align:center">
         <div style="font-size:22px;font-weight:900;color:var(--green)">${total.toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--muted)">Toplam Cümle</div>
+        <div style="font-size:11px;color:var(--muted)">Toplam Kelime</div>
       </div>
       <div style="flex:1;background:var(--bg2);border-radius:10px;padding:12px;text-align:center">
         <div style="font-size:22px;font-weight:900;color:var(--purple)">${learnedSet.size}</div>
@@ -29209,7 +29163,7 @@ function closeRocketPremium(){
     const total=arr().length, l=learned(), pct=total?Math.round(l/total*100):0, due=dueWords().length, ph=pron(), pavg=avg(ph.slice(-10).map(x=>x.score)), weak=riskWords();
     let rec= due?['SRS Tekrar','Bugün tekrar zamanı gelen kelimeler var. Önce bunları bitirmen en verimli çalışma olur.','srs','🔁 SRS Tekrarı Aç'] : weak.length?['Zayıf Kelime Çalış','Risk puanı yüksek kelimeleri tekrar et.','word','📖 Kelime Ekranına Git'] : pavg&&pavg<75?['Telaffuz Çalış','Son telaffuz ortalaman düşük görünüyor.','pronstandalone','🎤 Telaffuz Çalış'] : ['Yeni Kelime + Kısa Tekrar','Bugün durum iyi. Yeni kelime öğrenip kısa tekrar yapabilirsin.','word','📖 Devam Et'];
     el.innerHTML=`<div class="wm-pro-grid">
-      <div class="wm-pro-card"><div class="wm-pro-k">Toplam Cümle</div><div class="wm-pro-v">${total}</div><div class="wm-pro-s">Yüklü listedeki kelime sayısı.</div></div>
+      <div class="wm-pro-card"><div class="wm-pro-k">Toplam Kelime</div><div class="wm-pro-v">${total}</div><div class="wm-pro-s">Yüklü listedeki kelime sayısı.</div></div>
       <div class="wm-pro-card"><div class="wm-pro-k">Öğrenilen</div><div class="wm-pro-v" style="color:var(--green)">${l}</div><div class="wm-pro-progress"><span style="width:${pct}%"></span></div><div class="wm-pro-s">Genel ilerleme: %${pct}</div></div>
       <div class="wm-pro-card"><div class="wm-pro-k">Bugün SRS</div><div class="wm-pro-v" style="color:${due?'var(--orange)':'var(--green)'}">${due}</div><div class="wm-pro-s">Tekrar zamanı gelen kart.</div></div>
       <div class="wm-pro-card"><div class="wm-pro-k">Telaffuz Ort.</div><div class="wm-pro-v" style="color:${pavg>=80?'var(--green)':pavg>=55?'var(--orange)':'var(--red)'}">${pavg||'—'}</div><div class="wm-pro-s">Son 10 kayıt ortalaması.</div></div>
@@ -32656,8 +32610,8 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   function normalizeItem(x,i){
     const word=String(x.word||x.targetWord||x.en||'').trim();
     const sentence=String(x.sentence||x.text||'').trim();
-    const highlights=Array.isArray(x.highlights)?x.highlights:String(x.highlights||word||'').split(/[,;]/).map(v=>v.trim()).filter(Boolean);
-    if(word && !highlights.some(h=>h.toLowerCase()===word.toLowerCase())) highlights.unshift(word);
+    const highlights=normalizeHighlightsForSentence(x.highlights || x.highlight || x.highlightsText || word);
+    if(word && !highlights.some(h=>String(h||'').toLowerCase()===word.toLowerCase())) highlights.unshift(word);
     return Object.assign({}, x, {
       rowNum:x.rowNum||i+1,
       word, en:word, targetWord:word,
