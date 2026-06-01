@@ -493,6 +493,7 @@
 
   /* FAB varsayılan gizli (masaüstü dahil); sadece mobilde body.show-fab açar */
   .fab-new-request { display: none; }
+  .sidebar-overlay { display: none; }
 
   /* Modal süreç seçici (FAB) liste stilleri */
   .picker-list { display: flex; flex-direction: column; gap: 8px; }
@@ -6894,17 +6895,6 @@ function renderSidebarHTML() {
         return '';
       })()}
     </div>
-    <div class="sidebar-section">
-      <div class="section-title">Aktif Süreçler</div>
-      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
-        ${activeDefs.map(d => `
-          <div style="padding:8px;background:var(--panel-2);border-radius:4px;">
-            <div style="font-weight:500;font-size:12px;">${d.icon} ${escapeHtml(d.name)}</div>
-            <div style="font-size:11px;color:var(--text-mute);margin-top:2px;">${d.steps.length} adım, ${d.fields.length} alan</div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
   `;
 }
 
@@ -9350,8 +9340,10 @@ function renderWizardStep1(w) {
         <div style="display:flex;flex-direction:column;gap:8px;">
           ${[
             { id:'single',       icon:'🚀', name:'Tek onaylayıcı', desc:'En hızlı: çalışan formu doldurur, 1 kişi onaylar' },
+            { id:'parallel',      icon:'👥', name:'Paralel onay (aynı anda)', desc:'2 kişi aynı anda onaylar — hepsi veya biri yeter' },
             { id:'sequential',   icon:'📋', name:'İki kademeli sıralı', desc:'Çalışan → 1. onaylayıcı → 2. onaylayıcı → bitti' },
             { id:'conditional',  icon:'🔀', name:'Koşullu dallanma', desc:'Belli bir değere göre farklı yol (örn. tutar küçükse kısa yol)' },
+            { id:'record',       icon:'📝', name:'Bilgi / kayıt (onaysız)', desc:'Onay yok: form doldurulur, kayıt oluşur, biter' },
             { id:'expert',       icon:'🛠️', name:'Bunlar yetmez', desc:'Doğrudan tasarımcıya git, kendim kuracağım' }
           ].map(s => {
             const selected = w.shape === s.id;
@@ -9379,11 +9371,16 @@ function wizardSelectShape(shape) {
   // Onaylayıcı sayısını şekle göre ayarla
   if (shape === 'single') {
     state._wizard.approvers = [{ mode: 'requester_manager' }];
+  } else if (shape === 'parallel') {
+    state._wizard.approvers = [{ mode: 'role', role: 'manager' }, { mode: 'role', role: 'hr' }];
+    state._wizard.parallelMode = state._wizard.parallelMode || 'all'; // all=hepsi, any=biri yeter
   } else if (shape === 'sequential') {
     state._wizard.approvers = [{ mode: 'requester_manager' }, { mode: 'role', role: 'hr' }];
   } else if (shape === 'conditional') {
     state._wizard.condition = state._wizard.condition || { fieldId: '', op: '<=', value: 5000 };
     state._wizard.approvers = [{ mode: 'role', role: 'hr' }, { mode: 'requester_manager' }];
+  } else if (shape === 'record') {
+    state._wizard.approvers = []; // onay yok
   }
   renderWizard();
 }
@@ -9491,6 +9488,59 @@ function wizardRemoveField(fid) {
 function renderWizardStep3(w) {
   if (w.shape === 'conditional') {
     return renderWizardStep3Conditional(w);
+  }
+  if (w.shape === 'record') {
+    return `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <div>
+          <h4 style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Onay yok</h4>
+          <div style="font-size:13px;color:var(--text-dim);line-height:1.6;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:14px;">
+            📝 Bu bir <b>bilgi/kayıt</b> sürecidir. Çalışan formu doldurur, kayıt anında oluşur ve tamamlanır. Onay aşaması yoktur.<br><br>
+            Örnek: arıza bildirimi, ziyaretçi kaydı, vardiya teslim notu.
+          </div>
+        </div>
+        <div>
+          <h4 style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">🔍 Süreç Önizleme</h4>
+          ${renderWizardPreview(w)}
+        </div>
+      </div>
+    `;
+  }
+  if (w.shape === 'parallel') {
+    const mode = w.parallelMode || 'all';
+    return `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <div>
+          <h4 style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Kim onaylayacak? (aynı anda)</h4>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">İki kişiye de görev <b>aynı anda</b> düşer. Sıralı beklemezler.</div>
+
+          <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:8px;">1. Onaylayıcı</div>
+            ${renderApproverPicker(0, w.approvers[0])}
+          </div>
+          <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px;">
+            <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:8px;">2. Onaylayıcı</div>
+            ${renderApproverPicker(1, w.approvers[1])}
+          </div>
+
+          <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:12px;">
+            <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">SONUÇ NASIL BELİRLENSİN?</div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer;">
+              <input type="radio" name="pmode" ${mode==='all'?'checked':''} onclick="state._wizard.parallelMode='all';renderWizard();">
+              <span><b>Hepsi onaylamalı</b> — ikisi de onaylarsa geçer, biri reddederse reddedilir</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="radio" name="pmode" ${mode==='any'?'checked':''} onclick="state._wizard.parallelMode='any';renderWizard();">
+              <span><b>Biri yeter</b> — biri onaylarsa geçer</span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <h4 style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">🔍 Süreç Önizleme</h4>
+          ${renderWizardPreview(w)}
+        </div>
+      </div>
+    `;
   }
   // single veya sequential
   const approvers = w.approvers || [];
@@ -9612,6 +9662,12 @@ function renderWizardPreview(w) {
 
   if (w.shape === 'single') {
     steps.push({ label: describeApprover(w.approvers[0]), color: 'var(--accent)' });
+  } else if (w.shape === 'parallel') {
+    const modeTxt = (w.parallelMode === 'any') ? 'biri yeter' : 'hepsi onaylamalı';
+    steps.push({ label: '👥 ' + describeApprover(w.approvers[0]) + ' + ' + describeApprover(w.approvers[1]), color: 'var(--purple)' });
+    steps.push({ label: '(' + modeTxt + ')', color: 'var(--text-dim)' });
+  } else if (w.shape === 'record') {
+    steps.push({ label: '📝 Kayıt oluşturulur (onaysız)', color: 'var(--accent)' });
   } else if (w.shape === 'sequential') {
     steps.push({ label: describeApprover(w.approvers[0]), color: 'var(--accent)' });
     steps.push({ label: describeApprover(w.approvers[1]), color: 'var(--accent)' });
@@ -9791,6 +9847,41 @@ function wizardCreateAndOpen(opts) {
         { from:'s_slow_hr', when:'approve', to:'s_done' },
         { from:'s_slow_hr', when:'reject',  to:'s_rej' }
       ]
+    };
+  } else if (w.shape === 'parallel') {
+    newDef = {
+      id: newId,
+      name: w.name,
+      icon: w.icon,
+      description: w.description,
+      active: false,
+      fields: JSON.parse(JSON.stringify(w.fields)),
+      startStep: 's_par',
+      steps: [
+        { id:'s_par', title:'Paralel onay', type:'parallel',
+          mode: w.parallelMode || 'all',
+          assignees: JSON.parse(JSON.stringify(w.approvers)) },
+        { id:'s_done', title:'Onaylandı', type:'end-good', message:'Talep onaylandı' },
+        { id:'s_rej',  title:'Reddedildi', type:'end-bad', message:'Talep reddedildi' }
+      ],
+      transitions: [
+        { from:'s_par', when:'approve', to:'s_done' },
+        { from:'s_par', when:'reject',  to:'s_rej' }
+      ]
+    };
+  } else if (w.shape === 'record') {
+    newDef = {
+      id: newId,
+      name: w.name,
+      icon: w.icon,
+      description: w.description,
+      active: false,
+      fields: JSON.parse(JSON.stringify(w.fields)),
+      startStep: 's_done',
+      steps: [
+        { id:'s_done', title:'Kayıt oluşturuldu', type:'end-good', message:'Kayıt alındı' }
+      ],
+      transitions: []
     };
   }
 
