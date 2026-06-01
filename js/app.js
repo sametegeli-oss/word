@@ -4933,31 +4933,8 @@ function wmEnsureSentenceMetaCss(){
   document.head.appendChild(st);
 }
 
-
-function normalizeHighlightsForSentence(highlights){
-  if (Array.isArray(highlights)) {
-    return highlights.map(x => String(x || '').trim()).filter(Boolean);
-  }
-  if (!highlights) return [];
-  if (typeof highlights === 'string') {
-    return highlights
-      .split(/[,;|]/)
-      .map(x => x.trim())
-      .filter(Boolean)
-      .filter(x => x !== '[object Object]');
-  }
-  if (typeof highlights === 'object') {
-    // {word:true} veya {word:'#color'} gibi objeleri destekle
-    return Object.keys(highlights)
-      .map(x => String(x || '').trim())
-      .filter(Boolean);
-  }
-  return [];
-}
-
 function mkSentColored(sentence,highlights,colors){
   if(!sentence) return "";
-  highlights = normalizeHighlightsForSentence(highlights);
   
   // Önce **kelime** formatını işle
   sentence = sentence.replace(/\*\*([^*]+?)\*\*/g, '<b>$1</b>');
@@ -4973,7 +4950,7 @@ function mkSentColored(sentence,highlights,colors){
     }
     
     // Vurgulu kelime (yeşil) - tıklanabilir yap
-    if(highlights.some(h=>String(h||'').toLowerCase()===c)) {
+    if(highlights&&highlights.some(h=>h&&h.toLowerCase()===c)) {
       const cleanWord = p.replace(/[^a-zA-Z]/g,'');
       return `<span class="hl" style="cursor:pointer;transition:all 0.2s" onclick="explainWord('${cleanWord}','wordCard')" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">${p}</span>`;
     }
@@ -32610,8 +32587,8 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   function normalizeItem(x,i){
     const word=String(x.word||x.targetWord||x.en||'').trim();
     const sentence=String(x.sentence||x.text||'').trim();
-    const highlights=normalizeHighlightsForSentence(x.highlights || x.highlight || x.highlightsText || word);
-    if(word && !highlights.some(h=>String(h||'').toLowerCase()===word.toLowerCase())) highlights.unshift(word);
+    const highlights=Array.isArray(x.highlights)?x.highlights:String(x.highlights||word||'').split(/[,;]/).map(v=>v.trim()).filter(Boolean);
+    if(word && !highlights.some(h=>h.toLowerCase()===word.toLowerCase())) highlights.unshift(word);
     return Object.assign({}, x, {
       rowNum:x.rowNum||i+1,
       word, en:word, targetWord:word,
@@ -34312,36 +34289,144 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
     return {label:'🟢 Güvenli', cls:'wm-v21-risk-green', score:10};
   }
 
-  // 1) Cümle ailesi sistemi
-  function familySentences(w){
-    const s=sentenceOf(w); if(!s) return [];
-    const t=targetOf(w);
-    const variants=[];
-    function add(x){ x=clean(x); if(x && low(x)!==low(s) && !variants.some(v=>low(v)===low(x))) variants.push(x); }
+  // 1) Cümle Ailesi v2 — doğal örnek + Türkçe anlam + yapı analizi
+  function familyPattern(w){
+    const s=sentenceOf(w);
+    const gr=grammarOf(w)||'aynı yapı';
+    const target=targetOf(w);
+    const lower=s.toLowerCase();
 
-    let m=s.match(/^(.*?\b(?:haven't|hasn't|have not|has not) had time to )([a-z]+)(.*?yet\.?$)/i);
-    if(m){ ['finish it','call you','read it','practice speaking','prepare dinner'].forEach(v=>add(m[1]+v+m[3])); }
-    m=s.match(/^(.*?\b(?:can|could|should|must|will|would)\s+)([a-z]+)(.*)$/i);
-    if(m){ ['try','practice','finish','explain','check'].forEach(v=>add(m[1]+v+m[3])); }
-    m=s.match(/^(.*?\bI(?:'m| am) going to\s+)([a-z]+)(.*)$/i);
-    if(m){ ['study','call my friend','finish the report','visit the office'].forEach(v=>add(m[1]+v+m[3])); }
-    m=s.match(/^(.*?\b(?:I|You|We|They)\s+)([a-z]+)(\s+.*)$/i);
-    if(m && variants.length<3){ ['need','want','try','plan'].forEach(v=>add(m[1]+v+m[3])); }
-    if(t && variants.length<3){ add(s.replace(new RegExp('\\b'+t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i'), t)); }
-
-    if(variants.length<3){
-      const gr=grammarOf(w)||'same pattern';
-      add('Can you use this sentence in a new situation?');
-      add('Try to make another sentence with the same '+gr+' structure.');
-      add('Change one detail and say the sentence again.');
+    if(/\b(?:must|should|can|could|would|will)\b.+\bto\b/i.test(s)){
+      const modal=(s.match(/\b(must|should|can|could|would|will)\b/i)||[])[1] || 'must';
+      return {
+        key:'modal-purpose',
+        title:'Modal Verb + Infinitive',
+        structure:`You ${modal.toLowerCase()} + fiil/ifade + to + amaç fiili`,
+        meaning:'Bir şeyi yapmak için ne yapılması gerektiğini anlatır.',
+        template:`You ${modal.toLowerCase()} ______ to ______.`,
+        check:['you', modal.toLowerCase(), 'to']
+      };
     }
-    return variants.slice(0,5);
+    if(/\b(haven't|hasn't|have not|has not) had time to\b/i.test(s)){
+      return {
+        key:'present-perfect-time',
+        title:'Present Perfect + yet',
+        structure:"I haven't had time to + fiil + yet",
+        meaning:'Henüz bir şeyi yapmaya vaktim olmadığını anlatır.',
+        template:"I haven't had time to ______ yet.",
+        check:["haven't",'had','time','to','yet']
+      };
+    }
+    if(/\b(am|is|are) going to\b/i.test(s)){
+      return {
+        key:'be-going-to',
+        title:'Be going to',
+        structure:'Özne + am/is/are going to + fiil',
+        meaning:'Planlanan ya da yakın gelecekte yapılacak eylemi anlatır.',
+        template:'I am going to ______.',
+        check:['going','to']
+      };
+    }
+    if(/\bif\b.+\bwould\b|\bwould\b.+\bif\b/i.test(s)){
+      return {
+        key:'conditional',
+        title:'Conditional Sentence',
+        structure:'If + koşul, would/could + sonuç',
+        meaning:'Şart ve sonucu anlatır.',
+        template:'If ______, I would ______.',
+        check:['if','would']
+      };
+    }
+    if(/\bwas|were|is|are|been\b.+\bby\b/i.test(s)){
+      return {
+        key:'passive',
+        title:'Passive Voice',
+        structure:'Nesne + be + V3 + by ...',
+        meaning:'Eylemi yapan kişiden çok yapılan işe odaklanır.',
+        template:'The ______ was ______ by ______.',
+        check:['was']
+      };
+    }
+    return {
+      key:'same-pattern',
+      title:gr,
+      structure: target ? `Cümledeki hedef ifade: ${target}` : 'Cümlenin ana yapısını koruyarak yeni bağlam kur.',
+      meaning:'Aynı yapıyı farklı durumlarda kullanmayı öğretir.',
+      template:'Write a new sentence with the same structure.',
+      check:[]
+    };
   }
+
+  function familyExamples(w){
+    const p=familyPattern(w);
+    const sets={
+      'modal-purpose':[
+        ['You must work hard to succeed.','Başarılı olmak için çok çalışmalısın.'],
+        ['You must practice regularly to improve.','Gelişmek için düzenli pratik yapmalısın.'],
+        ['You must stay focused to achieve your goals.','Hedeflerine ulaşmak için odaklanmış kalmalısın.'],
+        ['You must keep going to overcome difficulties.','Zorlukları aşmak için devam etmelisin.']
+      ],
+      'present-perfect-time':[
+        ["I haven't had time to finish it yet.",'Henüz onu bitirmek için vaktim olmadı.'],
+        ["She hasn't had time to call me yet.",'Henüz beni aramak için vakti olmadı.'],
+        ["We haven't had time to discuss the plan yet.",'Henüz planı konuşmak için vaktimiz olmadı.'],
+        ["They haven't had time to prepare the report yet.",'Henüz raporu hazırlamak için vakitleri olmadı.']
+      ],
+      'be-going-to':[
+        ['I am going to study English tonight.','Bu gece İngilizce çalışacağım.'],
+        ['She is going to visit her family tomorrow.','Yarın ailesini ziyaret edecek.'],
+        ['We are going to finish the project this week.','Bu hafta projeyi bitireceğiz.'],
+        ['They are going to meet after work.','İşten sonra buluşacaklar.']
+      ],
+      'conditional':[
+        ['If I had more time, I would practice every day.','Daha fazla vaktim olsaydı her gün pratik yapardım.'],
+        ['If she studied more, she would pass the exam.','Daha çok çalışsaydı sınavı geçerdi.'],
+        ['If we left earlier, we would arrive on time.','Daha erken çıksaydık zamanında varırdık.'],
+        ['If they asked for help, they could solve the problem.','Yardım isteselerdi sorunu çözebilirlerdi.']
+      ],
+      'passive':[
+        ['The report was prepared by the team.','Rapor ekip tarafından hazırlandı.'],
+        ['The package was delivered yesterday.','Paket dün teslim edildi.'],
+        ['The decision was made after the meeting.','Karar toplantıdan sonra verildi.'],
+        ['The room was cleaned before the guests arrived.','Misafirler gelmeden önce oda temizlendi.']
+      ],
+      'same-pattern':[
+        ['I use this sentence in a different situation.','Bu cümleyi farklı bir durumda kullanırım.'],
+        ['I change one detail and keep the same structure.','Bir ayrıntıyı değiştirip aynı yapıyı korurum.'],
+        ['I make a new example with the same grammar.','Aynı gramerle yeni bir örnek kurarım.'],
+        ['I practice the pattern until it feels natural.','Yapı doğal gelene kadar pratik yaparım.']
+      ]
+    };
+    return sets[p.key] || sets['same-pattern'];
+  }
+
   function familyHTML(w){
-    const fam=familySentences(w);
-    return `<div id="wmV21FamilyCard" class="wm-v21-card"><div class="wm-v21-title">📚 Cümle Ailesi <span class="wm-v21-chip">${esc(grammarOf(w)||'aynı yapı')}</span></div><div class="wm-v21-sub">Bu cümlenin yapısını farklı cümlelere taşı.</div>${fam.map(x=>`<div class="wm-v21-family-item">${esc(x)}</div>`).join('')}<div class="wm-v21-row"><button class="wm-v21-btn ghost" onclick="wmV21SpeakFamily()">🔊 Aileyi Oku</button></div></div>`;
+    const p=familyPattern(w);
+    const ex=familyExamples(w);
+    return `<div id="wmV21FamilyCard" class="wm-v21-card wm-v21-family-v2">
+      <div class="wm-v21-title">📚 Benzer Cümleler <span class="wm-v21-chip">${esc(p.title)}</span></div>
+      <div class="wm-v21-sub"><b>🏗️ Yapı:</b> ${esc(p.structure)}<br><b>🇹🇷 Anlam:</b> ${esc(p.meaning)}</div>
+      ${ex.map((pair,i)=>`<div class="wm-v21-family-item"><div style="font-weight:900;color:var(--text);margin-bottom:4px">${i+1}. ${esc(pair[0])}</div><div style="font-size:12px;color:var(--muted);font-style:italic">${esc(pair[1])}</div></div>`).join('')}
+      <div class="wm-v21-card" style="margin-top:10px;background:rgba(34,197,94,.06)">
+        <div class="wm-v21-title" style="font-size:13px">✍️ Sen Yaz</div>
+        <div class="wm-v21-sub">Şablon: <b>${esc(p.template)}</b></div>
+        <input id="wmV21OwnSentence" placeholder="Kendi cümleni yaz..." style="width:100%;box-sizing:border-box;margin-top:8px;padding:10px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:Nunito,Arial,sans-serif;font-weight:700">
+        <div id="wmV21OwnSentenceFeedback" class="wm-v21-sub" style="display:none;margin-top:8px"></div>
+        <div class="wm-v21-row"><button class="wm-v21-btn" onclick="wmV21CheckOwnSentence()">🔍 Kontrol Et</button><button class="wm-v21-btn ghost" onclick="wmV21SpeakFamily()">🔊 Örnekleri Oku</button></div>
+      </div>
+    </div>`;
   }
-  window.wmV21SpeakFamily=function(){ const w=currentItem(); familySentences(w).forEach((x,i)=>setTimeout(()=>{try{speak(x,'en-US')}catch(e){}},i*1800)); };
+
+  window.wmV21SpeakFamily=function(){ const w=currentItem(); familyExamples(w).forEach((pair,i)=>setTimeout(()=>{try{speak(pair[0],'en-US')}catch(e){}},i*1900)); };
+  window.wmV21CheckOwnSentence=function(){
+    const w=currentItem(); const p=familyPattern(w); const input=document.getElementById('wmV21OwnSentence'); const fb=document.getElementById('wmV21OwnSentenceFeedback');
+    if(!input||!fb) return;
+    const val=clean(input.value); const l=val.toLowerCase();
+    if(!val){ fb.style.display='block'; fb.innerHTML='⚠️ Önce bir cümle yaz.'; return; }
+    const ok=p.check.length ? p.check.every(x=>l.includes(String(x).toLowerCase())) : val.split(/\s+/).length>=5;
+    fb.style.display='block';
+    fb.innerHTML = ok ? '✅ Güzel. Cümle seçilen yapıya uygun görünüyor.' : `⚠️ Yapıya biraz daha yaklaş. Şablon: <b>${esc(p.template)}</b>`;
+  };
 
   // 2-4) Haritalar + raporlar
   function mapHTML(title, icon, groups){
