@@ -35830,3 +35830,159 @@ Eğer ana cümle "Have you ever ridden a camel before?" ise, örnekler aynı den
   setTimeout(wmV33InjectPromptButton,1200);
   console.log('✅ WM v33 Cümle Ailesi prompt editörü aktif');
 })();
+
+
+/* =====================================================================
+   WM v34 — PDF/TXT kitap yükleme → yedek klasöre TXT kaydetme bağlantısı
+   Bu katman, PDF/TXT metni WMStore'a kaydedildiğinde aynı metni seçilmiş
+   yedek klasörüne .txt olarak da yazar. Eski load/save fonksiyonlarını
+   daha toleranslı hale getirir.
+   ===================================================================== */
+(function(){
+  if (window.__WM_BOOK_TXT_BACKUP_V34__) return;
+  window.__WM_BOOK_TXT_BACKUP_V34__ = true;
+
+  function wmBookToast(title, msg){
+    try {
+      if (typeof showToast === 'function') showToast(title, msg || '');
+      else if (window.WM_Toast && typeof WM_Toast.show === 'function') WM_Toast.show('📚', String(title || '') + (msg ? ' - ' + msg : ''));
+      else console.log('[BookBackup]', title, msg || '');
+    } catch(e) { console.log('[BookBackup]', title, msg || ''); }
+  }
+
+  function wmGetBackupHandle(){
+    try {
+      if (typeof backupFolderHandle !== 'undefined' && backupFolderHandle) {
+        window.backupFolderHandle = backupFolderHandle;
+        return backupFolderHandle;
+      }
+    } catch(e) {}
+    return window.backupFolderHandle || null;
+  }
+
+  async function wmEnsureBookPermission(handle){
+    if (!handle) return false;
+    try {
+      if (!handle.queryPermission || !handle.requestPermission) return true;
+      let perm = await handle.queryPermission({mode:'readwrite'});
+      if (perm !== 'granted') perm = await handle.requestPermission({mode:'readwrite'});
+      return perm === 'granted';
+    } catch(e) {
+      console.warn('[BookBackup] izin kontrolü yapılamadı:', e);
+      return false;
+    }
+  }
+
+  function wmSafeBookFileName(bookId, title){
+    const id = String(bookId || ('book_' + Date.now())).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+    const name = String(title || 'kitap').replace(/\.(pdf|txt|epub)$/i,'').replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ_-]+/g, '_').replace(/^_+|_+$/g,'').slice(0, 70) || 'kitap';
+    return `book_${id}_${name}.txt`;
+  }
+
+  async function wmWriteBookTxtToBackup(bookId, title, text){
+    const handle = wmGetBackupHandle();
+    if (!handle) {
+      console.log('[BookBackup] Yedek klasörü seçili değil; TXT klasöre yazılmadı.');
+      return false;
+    }
+    if (!(await wmEnsureBookPermission(handle))) {
+      console.warn('[BookBackup] Yedek klasörü izni yok; TXT klasöre yazılmadı.');
+      return false;
+    }
+    if (!text || !String(text).trim()) {
+      console.warn('[BookBackup] Boş kitap metni; TXT yazılmadı:', bookId);
+      return false;
+    }
+    try {
+      const fileName = wmSafeBookFileName(bookId, title);
+      const fileHandle = await handle.getFileHandle(fileName, {create:true});
+      const writable = await fileHandle.createWritable();
+      await writable.write(String(text));
+      await writable.close();
+      console.log('✅ Kitap TXT yedek klasörüne kaydedildi:', fileName, `(${String(text).length} karakter)`);
+      return true;
+    } catch(e) {
+      console.error('[BookBackup] TXT yedekleme hatası:', e);
+      return false;
+    }
+  }
+
+  async function wmReadBookTxtFromBackup(bookId, title){
+    const handle = wmGetBackupHandle();
+    if (!handle || !(await wmEnsureBookPermission(handle))) return null;
+    const exact = wmSafeBookFileName(bookId, title || 'kitap');
+    const prefix = 'book_' + String(bookId || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    try {
+      try {
+        const fh = await handle.getFileHandle(exact);
+        const f = await fh.getFile();
+        const t = await f.text();
+        if (t && t.length) {
+          console.log('✅ Kitap TXT yedek klasöründen okundu:', exact);
+          return t;
+        }
+      } catch(e) {}
+      for await (const entry of handle.values()) {
+        if (entry.kind === 'file' && entry.name.startsWith(prefix) && entry.name.toLowerCase().endsWith('.txt')) {
+          const f = await entry.getFile();
+          const t = await f.text();
+          if (t && t.length) {
+            console.log('✅ Kitap TXT yedek klasöründen okundu:', entry.name);
+            return t;
+          }
+        }
+      }
+    } catch(e) {
+      console.warn('[BookBackup] TXT okuma hatası:', e);
+    }
+    return null;
+  }
+
+  // Eski global fonksiyonları daha güvenli sürümle değiştir.
+  window.saveBookToBackupFolder = async function(bookId, title, text){
+    const ok = await wmWriteBookTxtToBackup(bookId, title, text);
+    if (ok) wmBookToast('💾 Kitap TXT yedeklendi', String(title || bookId || 'Kitap'));
+    return ok;
+  };
+
+  window.loadBookFromBackupFolder = async function(bookId, title){
+    return await wmReadBookTxtFromBackup(bookId, title || '');
+  };
+
+  // WMStore.setBook çağrısını yakala: PDF/TXT upload metni IDB'ye yazılınca klasöre de yazılsın.
+  function installWMStoreBookHook(){
+    if (!window.WMStore && typeof WMStore === 'undefined') return false;
+    const store = window.WMStore || WMStore;
+    if (!store || !store.setBook || store.__bookBackupHookedV34) return !!(store && store.__bookBackupHookedV34);
+    const originalSetBook = store.setBook.bind(store);
+    store.setBook = async function(bookId, title, text){
+      const result = await originalSetBook(bookId, title, text);
+      try { await wmWriteBookTxtToBackup(bookId, title, text); } catch(e) { console.warn('[BookBackup] setBook sonrası TXT yazılamadı:', e); }
+      return result;
+    };
+    store.__bookBackupHookedV34 = true;
+    console.log('✅ WM v34 kitap TXT yedekleme bağlantısı aktif');
+    return true;
+  }
+
+  if (!installWMStoreBookHook()) {
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries++;
+      if (installWMStoreBookHook() || tries > 40) clearInterval(timer);
+    }, 250);
+  }
+
+  // PDF/TXT yükleme fonksiyonu doğrudan çağrılıyorsa ayrıca son güvenlik ağı.
+  if (typeof processPDFFile === 'function' && !processPDFFile.__bookBackupWrappedV34) {
+    const originalProcessPDFFile = processPDFFile;
+    processPDFFile = async function(file){
+      const before = Date.now();
+      const res = await originalProcessPDFFile.apply(this, arguments);
+      // Asıl kayıt WMStore.setBook hook'u ile yapılır; bu wrapper yalnızca log için tutulur.
+      console.log('[BookBackup] PDF/TXT işleme tamamlandı:', file?.name || '', Date.now() - before + 'ms');
+      return res;
+    };
+    processPDFFile.__bookBackupWrappedV34 = true;
+  }
+})();
