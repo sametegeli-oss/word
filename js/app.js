@@ -35361,3 +35361,189 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
   setTimeout(()=>{ try{ window.updateWordCounter(); wmFixActiveListTitle(); }catch(e){} }, 500);
   console.log('✅ WM v31 navigation/stability patch active');
 })();
+
+/* =====================================================================
+   WM v32 — Cümle Ailesi düğmeye bağlı üretim
+   - Cümle ailesi otomatik üretilmez; kullanıcı isterse üretir.
+   - Örneklerin yanında Türkçe anlam görünür.
+   - Eski V21 kartı render sonrası güvenli placeholder'a çevrilir.
+   ===================================================================== */
+(function(){
+  if(window.__WM_SENTENCE_FAMILY_ON_DEMAND_V32__) return;
+  window.__WM_SENTENCE_FAMILY_ON_DEMAND_V32__ = true;
+
+  function clean(s){ return String(s ?? '').replace(/\s+/g,' ').trim(); }
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function currentList(){
+    try{ if(Array.isArray(words) && words.length) return words; }catch(e){}
+    if(Array.isArray(window.words) && window.words.length) return window.words;
+    try{ if(Array.isArray(allWords) && allWords.length) return allWords; }catch(e){}
+    return Array.isArray(window.allWords) ? window.allWords : [];
+  }
+  function currentItem(){
+    const arr=currentList();
+    let i=0; try{i=Number(idx)||0;}catch(e){ i=Number(window.idx)||0; }
+    return arr[i] || null;
+  }
+  function sentenceOf(w){ return clean(w && (w.sentence || w.text || w.enSentence || w.example || '')); }
+  function grammarOf(w){ return clean(w && (w.grammarStructure || w.grammar || w.grammar_structure || '')); }
+  function levelOf(w){ return clean(w && (w.sentenceLevel || w.level || w.cefr || w.CEFR || '')); }
+
+  function makeCard(en,tr){ return {en:clean(en), tr:clean(tr)}; }
+
+  function buildFamilyExamples(w){
+    const s=sentenceOf(w);
+    const g=grammarOf(w).toLowerCase();
+    const out=[];
+    const add=(en,tr)=>{
+      en=clean(en); tr=clean(tr);
+      if(!en) return;
+      if(out.some(x=>x.en.toLowerCase()===en.toLowerCase())) return;
+      if(s && en.toLowerCase()===s.toLowerCase()) return;
+      out.push(makeCard(en,tr));
+    };
+
+    // Have they finished painting the room yet?
+    let m=s.match(/^(have|has)\s+(.+?)\s+finished\s+([a-z]+ing)\s+(.+?)\s+(yet|before)\??$/i);
+    if(m){
+      const aux=m[1][0].toUpperCase()+m[1].slice(1).toLowerCase();
+      const subj=m[2];
+      const obj=m[4].replace(/\?$/,'');
+      const end=m[5].toLowerCase();
+      add(`${aux} ${subj} finished cleaning ${obj} ${end}?`, `${obj.replace(/^the /i,'').replace(/^a /i,'')} temizlemeyi bitirdiler mi?`);
+      add(`${aux} ${subj} finished repairing ${obj} ${end}?`, `${obj.replace(/^the /i,'').replace(/^a /i,'')} tamir etmeyi bitirdiler mi?`);
+      add(`${aux} ${subj} finished decorating ${obj} ${end}?`, `${obj.replace(/^the /i,'').replace(/^a /i,'')} dekore etmeyi bitirdiler mi?`);
+      add(`${aux} ${subj} finished checking ${obj} ${end}?`, `${obj.replace(/^the /i,'').replace(/^a /i,'')} kontrol etmeyi bitirdiler mi?`);
+      return out.slice(0,4);
+    }
+
+    // Have you tried Chinese dishes before?
+    m=s.match(/^(have|has)\s+(.+?)\s+tried\s+(.+?)\s+(before|yet)\??$/i);
+    if(m){
+      const aux=m[1][0].toUpperCase()+m[1].slice(1).toLowerCase();
+      const subj=m[2];
+      add(`${aux} ${subj} tried Italian food before?`, `Daha önce İtalyan yemeği denedin mi?`);
+      add(`${aux} ${subj} visited this city before?`, `Daha önce bu şehri ziyaret ettin mi?`);
+      add(`${aux} ${subj} watched this movie before?`, `Daha önce bu filmi izledin mi?`);
+      add(`${aux} ${subj} used this app before?`, `Daha önce bu uygulamayı kullandın mı?`);
+      return out.slice(0,4);
+    }
+
+    // Present perfect generic
+    if(g.includes('present perfect')){
+      add('Have you finished your homework yet?', 'Ödevini hâlâ bitirmedin mi?');
+      add('She has visited London before.', 'O daha önce Londra’yı ziyaret etti.');
+      add('They have already completed the project.', 'Onlar projeyi çoktan tamamladılar.');
+      add('I haven’t seen this movie yet.', 'Bu filmi henüz izlemedim.');
+      return out.slice(0,4);
+    }
+
+    // Modal + infinitive
+    if(g.includes('modal')){
+      add('You must work hard to succeed.', 'Başarılı olmak için çok çalışmalısın.');
+      add('You should practice every day to improve.', 'Gelişmek için her gün pratik yapmalısın.');
+      add('They can ask for help to solve the problem.', 'Sorunu çözmek için yardım isteyebilirler.');
+      add('We must stay focused to achieve our goals.', 'Hedeflerimize ulaşmak için odaklanmış kalmalıyız.');
+      return out.slice(0,4);
+    }
+
+    // Passive voice
+    if(g.includes('passive')){
+      add('The report was prepared by the team.', 'Rapor ekip tarafından hazırlandı.');
+      add('The room is cleaned every morning.', 'Oda her sabah temizlenir.');
+      add('The documents were checked carefully.', 'Belgeler dikkatlice kontrol edildi.');
+      add('The problem can be solved quickly.', 'Sorun hızlıca çözülebilir.');
+      return out.slice(0,4);
+    }
+
+    // Present simple
+    if(g.includes('present simple')){
+      add('I need more time to finish this task.', 'Bu görevi bitirmek için daha fazla zamana ihtiyacım var.');
+      add('She wants to improve her English.', 'İngilizcesini geliştirmek istiyor.');
+      add('They work together every day.', 'Onlar her gün birlikte çalışırlar.');
+      add('We usually have lunch at noon.', 'Genellikle öğlen yemek yeriz.');
+      return out.slice(0,4);
+    }
+
+    // Default: doğru ve genel örnekler
+    add('I need more time to finish this task.', 'Bu görevi bitirmek için daha fazla zamana ihtiyacım var.');
+    add('She wants to improve her English.', 'İngilizcesini geliştirmek istiyor.');
+    add('They are trying to solve the problem.', 'Sorunu çözmeye çalışıyorlar.');
+    add('We should practice this sentence again.', 'Bu cümleyi tekrar çalışmalıyız.');
+    return out.slice(0,4);
+  }
+
+  function placeholderHTML(w){
+    const gr=grammarOf(w)||'aynı yapı';
+    return `<div class="wm-v21-title">📚 Benzer Cümleler <span class="wm-v21-chip">${esc(gr)}</span></div>
+      <div class="wm-v21-sub">Bu bölüm otomatik açılmaz. Aynı yapıda İngilizce cümleleri ve Türkçe anlamlarını görmek için düğmeye bas.</div>
+      <div class="wm-v21-row">
+        <button class="wm-v21-btn" onclick="wmV32GenerateSentenceFamily()">✨ Benzer Cümleler Üret</button>
+      </div>`;
+  }
+
+  function generatedHTML(w, examples){
+    const gr=grammarOf(w)||'aynı yapı';
+    const lvl=levelOf(w)||'';
+    return `<div class="wm-v21-title">📚 Benzer Cümleler <span class="wm-v21-chip">${esc(gr)}</span></div>
+      <div class="wm-v21-sub">🏗️ Yapı: ${esc(gr)}${lvl ? ' · 📊 '+esc(lvl) : ''}</div>
+      ${examples.map((x,i)=>`<div class="wm-v21-family-item"><b>${i+1}. ${esc(x.en)}</b>${x.tr?`<div style="margin-top:5px;color:var(--muted);font-style:italic">${esc(x.tr)}</div>`:''}</div>`).join('')}
+      <div class="wm-v21-row"><button class="wm-v21-btn ghost" onclick="wmV32SpeakFamily()">🔊 Aileyi Oku</button><button class="wm-v21-btn ghost" onclick="wmV32ResetSentenceFamily()">↩ Gizle</button></div>`;
+  }
+
+  function ensureOnDemandCard(){
+    const card=document.getElementById('wmV21FamilyCard');
+    if(!card) return;
+    const w=currentItem();
+    if(!w) return;
+    const currentSentence=sentenceOf(w);
+    if(card.dataset.wmV32Sentence===currentSentence && card.dataset.wmV32Mode==='placeholder') return;
+    card.dataset.wmV32Sentence=currentSentence;
+    card.dataset.wmV32Mode='placeholder';
+    card.innerHTML=placeholderHTML(w);
+  }
+
+  window.wmV32GenerateSentenceFamily=function(){
+    const card=document.getElementById('wmV21FamilyCard');
+    const w=currentItem();
+    if(!card || !w) return;
+    const examples=buildFamilyExamples(w);
+    window.__wmV32LastFamilyExamples = examples;
+    card.dataset.wmV32Sentence=sentenceOf(w);
+    card.dataset.wmV32Mode='generated';
+    card.innerHTML=generatedHTML(w, examples);
+  };
+
+  window.wmV32ResetSentenceFamily=function(){
+    const card=document.getElementById('wmV21FamilyCard');
+    const w=currentItem();
+    if(!card || !w) return;
+    window.__wmV32LastFamilyExamples = [];
+    card.dataset.wmV32Sentence=sentenceOf(w);
+    card.dataset.wmV32Mode='placeholder';
+    card.innerHTML=placeholderHTML(w);
+  };
+
+  window.wmV32SpeakFamily=function(){
+    const examples=Array.isArray(window.__wmV32LastFamilyExamples) ? window.__wmV32LastFamilyExamples : [];
+    examples.forEach((x,i)=>setTimeout(()=>{ try{ if(typeof speak==='function') speak(x.en,'en-US'); }catch(e){} }, i*1800));
+  };
+
+  ['renderLearn'].forEach(fn=>{
+    const old=window[fn];
+    if(typeof old!=='function' || old.__wmV32FamilyOnDemand) return;
+    const wrapped=function(){
+      const r=old.apply(this, arguments);
+      setTimeout(ensureOnDemandCard, 0);
+      setTimeout(ensureOnDemandCard, 120);
+      return r;
+    };
+    wrapped.__wmV32FamilyOnDemand=true;
+    window[fn]=wrapped;
+    try{ eval(fn+' = window[fn]'); }catch(e){}
+  });
+
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(ensureOnDemandCard,500));
+  setTimeout(ensureOnDemandCard,1000);
+  console.log('✅ WM v32 Cümle Ailesi düğmeye bağlı üretim aktif');
+})();
