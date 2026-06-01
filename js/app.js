@@ -1825,12 +1825,15 @@ const WMStore = (() => {
   async function saveWord(wordObj) {
     if (_db) {
       try { await _idbPut(STORE_WORDS, null, wordObj); } catch(e) {}
+    } else {
+      // Fallback only: IndexedDB yoksa küçük veri olarak localStorage'a yaz.
+      try {
+        const words = JSON.parse(localStorage.getItem('learnedWords') || '[]');
+        const idx = words.findIndex(w => w.word === wordObj.word);
+        if (idx >= 0) words[idx] = wordObj; else words.push(wordObj);
+        localStorage.setItem('learnedWords', JSON.stringify(words));
+      } catch(e) {}
     }
-    // localStorage mirror
-    const words = JSON.parse(localStorage.getItem('learnedWords') || '[]');
-    const idx = words.findIndex(w => w.word === wordObj.word);
-    if (idx >= 0) words[idx] = wordObj; else words.push(wordObj);
-    try { localStorage.setItem('learnedWords', JSON.stringify(words)); } catch(e) {}
   }
 
   async function saveAllWords(wordsArr) {
@@ -1848,8 +1851,12 @@ const WMStore = (() => {
             r.onsuccess = res; r.onerror = rej;
           });
         }
-      } catch(e) {}
+      } catch(e) { console.warn('[WMStore] saveAllWords IDB hatası:', e); }
+      // Büyük cümle listeleri localStorage kotasını aşmasın diye learnedWords aynası yazılmaz.
+      try { Storage.prototype.removeItem.call(localStorage, 'learnedWords'); } catch(e) {}
+      return;
     }
+    // Fallback only: IDB yoksa sınırlı şekilde localStorage'a yaz.
     try { localStorage.setItem('learnedWords', JSON.stringify(wordsArr)); } catch(e) {}
   }
 
@@ -1926,7 +1933,22 @@ const WMStore = (() => {
 })();
 
 // ── Başlat ve geçiş yap ──
-WMStore.init().then(() => WMStore.migrateFromLocalStorage());
+WMStore.init().then(async () => {
+  await WMStore.migrateFromLocalStorage();
+  // Eski büyük localStorage kayıtlarını temizle/IDB'ye taşı.
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+    for (const k of keys) {
+      if (!k) continue;
+      if (/^(multiList_words_|lastFileData$|learnedWords$)/.test(k) || /_words$/.test(k)) {
+        const v = localStorage.getItem(k);
+        if (v) WMStore.set(k, v).catch(()=>{});
+        try { localStorage.removeItem(k); } catch(e) {}
+      }
+    }
+  } catch(e) {}
+});
 
 // localStorage'ı WMStore üzerinden override et (mevcut kod değişmeden çalışsın)
 // SADECE okuma intercept — yazma zaten WMStore.set ile yapılıyor
@@ -1941,7 +1963,26 @@ if (!localStorage._wmPatched) {
 
   const _origSet = _proto.setItem;
   _proto.setItem = function(key, value) {
-    _origSet.call(this, key, value);
+    key = String(key);
+    value = String(value);
+    const isBigWordModeData = /^(multiList_words_|lastFileData$|learnedWords$|wm_big_)/.test(key) || /_words$/.test(key) || value.length > 450000;
+
+    // Büyük listeler ve cümle verileri localStorage'a yazılmaz; yalnızca IndexedDB'ye yönlendirilir.
+    if (isBigWordModeData) {
+      try { _origDel.call(this, key); } catch(e) {}
+      try { if (WMStore && WMStore.isReady() && key !== '_wm_idb_migrated') WMStore._idbSetKV(key, value); } catch(e) {}
+      return;
+    }
+
+    try {
+      _origSet.call(this, key, value);
+    } catch(e) {
+      // Kota dolarsa uygulamayı kırma; veriyi IDB'ye aktar ve devam et.
+      console.warn('[WMStore] localStorage yazılamadı, IndexedDB kullanılacak:', key);
+      try { if (WMStore && WMStore.isReady() && key !== '_wm_idb_migrated') WMStore._idbSetKV(key, value); } catch(e2) {}
+      return;
+    }
+
     if (WMStore && WMStore.isReady() && key !== '_wm_idb_migrated') {
       WMStore._idbSetKV(key, value);
     }
@@ -4556,7 +4597,8 @@ async function loadFile(file){
           fileKey: fileKey
         };
         localStorage.setItem('lastUploadedFile', JSON.stringify(fileInfo));
-        localStorage.setItem('lastFileData', JSON.stringify(allWords));
+        // Büyük dosya verisi localStorage'a değil IndexedDB'ye kaydedilir.
+        WMStore.set('lastFileData', JSON.stringify(allWords)).catch(()=>{});
         console.log('💾 Dosya bilgileri kaydedildi:', fileInfo.name);
       } catch(e) {
         console.error('❌ Dosya bilgisi kayıt hatası:', e);
@@ -4727,7 +4769,8 @@ function saveProgress(){
   try{
     const _progData = JSON.stringify({learnedWords:[...learnedSet],wordStatus,score,streak,correctCount,idx});
     localStorage.setItem(fileKey, _progData);
-    localStorage.setItem(fileKey+"_words", JSON.stringify(allWords));
+    // Büyük aktif liste localStorage'a değil IDB'ye yazılır.
+    WMStore.set(fileKey + "_words", JSON.stringify(allWords)).catch(()=>{});
     localStorage.setItem("wm_lastKey", fileKey);
     // IDB mirror (async, fire-and-forget)
     WMStore.set(fileKey, _progData).catch(()=>{});
@@ -8482,7 +8525,7 @@ function renderStats(){
   const totalMins=Object.values(timingData).reduce((a,b)=>a+b,0);
   document.getElementById("statsCards").innerHTML=`
     <div class="stats-card"><div class="sc-val" style="color:var(--green)">${learnedSet.size}</div><div class="sc-key">✅ Öğrenilen Kelime</div></div>
-    <div class="stats-card"><div class="sc-val" style="color:var(--blue)">${allWords.length}</div><div class="sc-key">📚 Toplam Kelime</div></div>
+    <div class="stats-card"><div class="sc-val" style="color:var(--blue)">${allWords.length}</div><div class="sc-key">📚 Toplam Cümle</div></div>
     <div class="stats-card"><div class="sc-val" style="color:var(--orange)">${totalMins}</div><div class="sc-key">⏱ Toplam Dakika</div></div>
     <div class="stats-card"><div class="sc-val" style="color:var(--purple)">${dayStreak}</div><div class="sc-key">🔥 Günlük Seri</div></div>`;
 }
@@ -13099,7 +13142,7 @@ function processMultiFile(file) {
   const listName = nameInput?.value.trim() || file.name.replace(/\.[^.]+$/, '');
 
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
       // İlk yükleme mantığıyla aynı: satır satır oku
       const wb = XLSX.read(e.target.result, { type: 'array', cellStyles: true, cellRichText: true });
@@ -13235,7 +13278,9 @@ function processMultiFile(file) {
       if (nameInput) nameInput.value = '';
       renderMultiListUI();
       renderMultiStats();
-      showToast('✅ Liste Eklendi', `"${listName}" — ${parsed.length} kelime`);
+      // Yüklenen listeyi hemen aktif liste yap.
+      await switchToList(newList.id);
+      showToast('✅ Liste Eklendi', `"${listName}" — ${parsed.length} cümle`);
     } catch(err) {
       console.error('❌ Liste parse hatası:', err);
       showToast('❌ Hata', 'Dosya okunamadı: ' + err.message);
@@ -13245,36 +13290,59 @@ function processMultiFile(file) {
 }
 
 function saveMultiLists() {
-  // Kelimeleri dışarıda tut (localStorage limit)
-  const toSave = multiLists.map(l => ({ ...l, words: undefined, wordCount: l.wordCount }));
+  // Kelimeleri/cümleleri localStorage dışında tut (quota sorunu yaşamamak için).
+  const toSave = multiLists.map(l => ({
+    ...l,
+    words: undefined,
+    wordCount: Number(l.wordCount || l.sentenceCount || (Array.isArray(l.words) ? l.words.length : 0) || 0),
+    sentenceCount: Number(l.wordCount || l.sentenceCount || (Array.isArray(l.words) ? l.words.length : 0) || 0),
+    schema: 'sentence-v2'
+  }));
   try {
     const _mlStr = JSON.stringify(toSave);
     localStorage.setItem('multiLists', _mlStr);
     WMStore.set('multiLists', _mlStr).catch(()=>{});
-    // Her liste için kelimelerini ayrı kaydet
+    // Her listenin gerçek cümle verisi IndexedDB'de saklanır.
     multiLists.forEach(l => {
-      if (l.words) {
-        try { localStorage.setItem('multiList_words_' + l.id, JSON.stringify(l.words)); } catch(e) {}
+      if (Array.isArray(l.words)) {
+        WMStore.set('multiList_words_' + l.id, JSON.stringify(l.words)).catch(()=>{});
+        try { localStorage.removeItem('multiList_words_' + l.id); } catch(e) {}
       }
     });
   } catch(e) {
-    showToast('⚠️ Uyarı', 'Önbellek dolu, bazı listeler kaydedilemeyebilir');
+    console.warn('Liste metadata kaydı başarısız:', e);
+    showToast('⚠️ Uyarı', 'Liste bilgisi kaydedilemedi');
   }
 }
 
-function loadMultiListWords(id) {
+async function loadMultiListWords(id) {
   try {
-    const saved = localStorage.getItem('multiList_words_' + id);
-    return saved ? JSON.parse(saved) : null;
-  } catch(e) { return null; }
+    // Önce bellekteki liste
+    const mem = multiLists.find(l => l.id === id);
+    if (mem && Array.isArray(mem.words) && mem.words.length) return mem.words;
+
+    // Sonra IndexedDB
+    const savedIDB = await WMStore.get('multiList_words_' + id).catch(()=>null);
+    if (savedIDB) return JSON.parse(savedIDB);
+
+    // Eski kurulumdan kalan localStorage varsa son kez oku ve IDB'ye taşı
+    const savedLS = localStorage.getItem('multiList_words_' + id);
+    if (savedLS) {
+      const arr = JSON.parse(savedLS);
+      WMStore.set('multiList_words_' + id, savedLS).catch(()=>{});
+      try { localStorage.removeItem('multiList_words_' + id); } catch(e) {}
+      return arr;
+    }
+  } catch(e) { console.warn('Liste verisi okunamadı:', e); }
+  return null;
 }
 
-function switchToList(id) {
+async function switchToList(id) {
   const list = multiLists.find(l => l.id === id);
   if (!list) return;
 
-  const words_data = list.words || loadMultiListWords(id);
-  if (!words_data) { showToast('❌ Hata', 'Liste verisi bulunamadı'); return; }
+  const words_data = await loadMultiListWords(id);
+  if (!Array.isArray(words_data) || !words_data.length) { showToast('❌ Hata', 'Liste verisi bulunamadı'); return; }
 
   // Mevcut aktif listenin ilerlemesini kaydet
   const currentProgress = { wordStatus, learnedSet: [...learnedSet], spacedRepetition, idx, score, streak, correctCount };
@@ -13335,6 +13403,7 @@ function deleteMultiList(id, e) {
   if (!confirm('Bu listeyi sil?')) return;
   multiLists = multiLists.filter(l => l.id !== id);
   localStorage.removeItem('multiList_words_' + id);
+  WMStore.remove('multiList_words_' + id).catch(()=>{});
   localStorage.removeItem('listProgress_' + id);
   saveMultiLists();
   renderMultiListUI();
@@ -13387,7 +13456,7 @@ function renderMultiStats() {
       </div>
       <div style="flex:1;background:var(--bg2);border-radius:10px;padding:12px;text-align:center">
         <div style="font-size:22px;font-weight:900;color:var(--green)">${total.toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--muted)">Toplam Kelime</div>
+        <div style="font-size:11px;color:var(--muted)">Toplam Cümle</div>
       </div>
       <div style="flex:1;background:var(--bg2);border-radius:10px;padding:12px;text-align:center">
         <div style="font-size:22px;font-weight:900;color:var(--purple)">${learnedSet.size}</div>
@@ -29140,7 +29209,7 @@ function closeRocketPremium(){
     const total=arr().length, l=learned(), pct=total?Math.round(l/total*100):0, due=dueWords().length, ph=pron(), pavg=avg(ph.slice(-10).map(x=>x.score)), weak=riskWords();
     let rec= due?['SRS Tekrar','Bugün tekrar zamanı gelen kelimeler var. Önce bunları bitirmen en verimli çalışma olur.','srs','🔁 SRS Tekrarı Aç'] : weak.length?['Zayıf Kelime Çalış','Risk puanı yüksek kelimeleri tekrar et.','word','📖 Kelime Ekranına Git'] : pavg&&pavg<75?['Telaffuz Çalış','Son telaffuz ortalaman düşük görünüyor.','pronstandalone','🎤 Telaffuz Çalış'] : ['Yeni Kelime + Kısa Tekrar','Bugün durum iyi. Yeni kelime öğrenip kısa tekrar yapabilirsin.','word','📖 Devam Et'];
     el.innerHTML=`<div class="wm-pro-grid">
-      <div class="wm-pro-card"><div class="wm-pro-k">Toplam Kelime</div><div class="wm-pro-v">${total}</div><div class="wm-pro-s">Yüklü listedeki kelime sayısı.</div></div>
+      <div class="wm-pro-card"><div class="wm-pro-k">Toplam Cümle</div><div class="wm-pro-v">${total}</div><div class="wm-pro-s">Yüklü listedeki kelime sayısı.</div></div>
       <div class="wm-pro-card"><div class="wm-pro-k">Öğrenilen</div><div class="wm-pro-v" style="color:var(--green)">${l}</div><div class="wm-pro-progress"><span style="width:${pct}%"></span></div><div class="wm-pro-s">Genel ilerleme: %${pct}</div></div>
       <div class="wm-pro-card"><div class="wm-pro-k">Bugün SRS</div><div class="wm-pro-v" style="color:${due?'var(--orange)':'var(--green)'}">${due}</div><div class="wm-pro-s">Tekrar zamanı gelen kart.</div></div>
       <div class="wm-pro-card"><div class="wm-pro-k">Telaffuz Ort.</div><div class="wm-pro-v" style="color:${pavg>=80?'var(--green)':pavg>=55?'var(--orange)':'var(--red)'}">${pavg||'—'}</div><div class="wm-pro-s">Son 10 kayıt ortalaması.</div></div>
@@ -34930,4 +34999,289 @@ window.WM_coreMarkLearned = function WM_coreMarkLearned(){
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
+
+/* =====================================================================
+   WORD MODE FIX v24 — CUMLELER.XLSX KALICI LİSTE YÜKLEME
+   - Büyük listeleri localStorage yerine IndexedDB'ye kaydeder.
+   - Listelerim ekranındaki Excel yüklemeyi doğrudan cümle şemasına bağlar.
+   - localStorage quota hatalarını büyük anahtarlar için susturup IDB'ye yönlendirir.
+   ===================================================================== */
+(function(){
+  if(window.__WM_V24_UPLOAD_FIX__) return;
+  window.__WM_V24_UPLOAD_FIX__ = true;
+
+  const DB_NAME = 'WordModeLargeListsV24';
+  const STORE = 'kv';
+  let dbPromise = null;
+
+  function openDB(){
+    if(dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject)=>{
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+  async function idbSet(key, value){
+    const db = await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction(STORE,'readwrite');
+      tx.objectStore(STORE).put(value, key);
+      tx.oncomplete=()=>resolve(true);
+      tx.onerror=()=>reject(tx.error);
+    });
+  }
+  async function idbGet(key){
+    const db = await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction(STORE,'readonly');
+      const req = tx.objectStore(STORE).get(key);
+      req.onsuccess=()=>resolve(req.result ?? null);
+      req.onerror=()=>reject(req.error);
+    });
+  }
+  async function idbRemove(key){
+    const db = await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction(STORE,'readwrite');
+      tx.objectStore(STORE).delete(key);
+      tx.oncomplete=()=>resolve(true);
+      tx.onerror=()=>reject(tx.error);
+    });
+  }
+
+  function safeParse(raw, fallback){ try{return raw ? JSON.parse(raw) : fallback;}catch(e){return fallback;} }
+  function setSmallLS(key, value){
+    try{ Storage.prototype.setItem.call(localStorage, key, value); return true; }
+    catch(e){ console.warn('[v24] localStorage yazılamadı, IDB kullanılacak:', key); return false; }
+  }
+  function removeLS(key){ try{ Storage.prototype.removeItem.call(localStorage, key); }catch(e){} }
+
+  // Büyük veri anahtarlarını localStorage'a yazma. Konsoldaki quota spam'ini kes.
+  const previousSetItem = localStorage.setItem;
+  localStorage.setItem = function(key, value){
+    const k = String(key||'');
+    const v = String(value ?? '');
+    const isBig = /^(multiList_words_|lastFileData$|learnedWords$)/.test(k) || v.length > 300000;
+    if(isBig){
+      idbSet(k, v).catch(()=>{});
+      try{ Storage.prototype.removeItem.call(localStorage, k); }catch(e){}
+      return;
+    }
+    try{ return Storage.prototype.setItem.call(localStorage, k, v); }
+    catch(e){ idbSet(k, v).catch(()=>{}); return; }
+  };
+
+  function normalizeHeader(h){
+    return String(h||'').trim().toLowerCase()
+      .replace(/ı/g,'i').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ö/g,'o').replace(/ç/g,'c')
+      .replace(/[\s_\-]+/g,'');
+  }
+  function firstCol(headers, names){
+    for(const n of names){ const key = normalizeHeader(n); if(headers[key] != null) return headers[key]; }
+    return null;
+  }
+  function cell(ws, r, c){
+    if(c == null) return '';
+    const x = ws[XLSX.utils.encode_cell({r,c})];
+    return x ? String(x.v ?? '').trim() : '';
+  }
+  function fallbackWord(sentence){
+    const stop = new Set('the a an and or but to of in on at for from with without into is are was were be been being am have has had do does did will would can could should may might must not this that these those my your his her its our their i you he she it we they'.split(' '));
+    const words = String(sentence||'').toLowerCase().replace(/[^a-z\s']/g,' ').split(/\s+/).filter(w=>w.length>2 && !stop.has(w));
+    return words[0] || 'sentence';
+  }
+  function normalizeRow(row){
+    const sentence = row.sentence || row.enSentence || row.englishSentence || row.text || '';
+    const sentenceTr = row.sentenceTr || row.sentencetr || row.trSentence || row.turkishSentence || '';
+    const word = row.word || row.targetWord || row.highlights || fallbackWord(sentence);
+    const tr = row.translation || row.tr || row.meaning || '';
+    const level = row.sentenceLevel || row.level || row.cefr || '';
+    const grammar = row.grammarStructure || row.grammar || row.structure || '';
+    return {
+      word: String(word||'').trim() || fallbackWord(sentence),
+      en: String(word||'').trim() || fallbackWord(sentence),
+      translation: String(tr||'').trim(),
+      tr: String(tr||'').trim(),
+      phonetic: String(row.phonetic||row.pron||'').trim(),
+      sentence: String(sentence||'').trim(),
+      sentenceTr: String(sentenceTr||'').trim(),
+      highlights: row.highlights || word || '',
+      sentenceLevel: String(level||'').trim(),
+      grammarStructure: String(grammar||'').trim(),
+      level: String(level||'').trim(),
+      grammar: String(grammar||'').trim()
+    };
+  }
+  function parseExcel(buffer){
+    const wb = XLSX.read(buffer, {type:'array', cellStyles:true, cellRichText:true});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    const headers = {};
+    for(let c=range.s.c;c<=range.e.c;c++){
+      const h = cell(ws, range.s.r, c);
+      if(h) headers[normalizeHeader(h)] = c;
+    }
+    const cols = {
+      word: firstCol(headers, ['word','targetWord','target word','kelime','hedef kelime']),
+      translation: firstCol(headers, ['translation','tr','meaning','turkish','turkce','anlam']),
+      phonetic: firstCol(headers, ['phonetic','pron','pronunciation','okunus','telaffuz']),
+      sentence: firstCol(headers, ['sentence','cumle','cümle','english sentence','ensentence']),
+      sentenceTr: firstCol(headers, ['sentenceTr','sentence tr','sentence_tr','sentenceturkish','turkish sentence','cumleceviri','cumletr','cümle çeviri']),
+      highlights: firstCol(headers, ['highlights','highlight','vurgular','hedef','target']),
+      sentenceLevel: firstCol(headers, ['sentenceLevel','sentence level','sentence_level','level','cefr','seviye','cumleseviyesi']),
+      grammarStructure: firstCol(headers, ['grammarStructure','grammar structure','grammar_structure','grammar','structure','gramer','gramer yapisi','gramer yapısı'])
+    };
+    const out = [];
+    for(let r=range.s.r+1;r<=range.e.r;r++){
+      const row = normalizeRow({
+        word: cell(ws,r,cols.word), translation: cell(ws,r,cols.translation), phonetic: cell(ws,r,cols.phonetic),
+        sentence: cell(ws,r,cols.sentence), sentenceTr: cell(ws,r,cols.sentenceTr), highlights: cell(ws,r,cols.highlights),
+        sentenceLevel: cell(ws,r,cols.sentenceLevel), grammarStructure: cell(ws,r,cols.grammarStructure)
+      });
+      if(row.sentence) out.push(row);
+    }
+    return out;
+  }
+
+  async function getMetaLists(){
+    let raw = localStorage.getItem('multiLists') || await idbGet('multiLists');
+    const arr = safeParse(raw, []);
+    return Array.isArray(arr) ? arr : [];
+  }
+  async function saveMetaLists(lists){
+    const slim = lists.map(l=>({id:String(l.id), name:l.name, wordCount:Number(l.wordCount||0), addedAt:l.addedAt||'', storage:'idb-v24'}));
+    const raw = JSON.stringify(slim);
+    setSmallLS('multiLists', raw);
+    await idbSet('multiLists', raw);
+    try{ multiLists = slim; }catch(e){ window.multiLists = slim; }
+    return slim;
+  }
+  async function getWordsForList(id){
+    let raw = await idbGet('multiList_words_'+id);
+    if(!raw) raw = localStorage.getItem('multiList_words_'+id);
+    const arr = safeParse(raw, []);
+    return Array.isArray(arr) ? arr : [];
+  }
+
+  async function applyList(id, listName){
+    const data = await getWordsForList(id);
+    if(!data.length){ try{showToast('❌ Liste boş', 'Cümle verisi bulunamadı');}catch(e){} return false; }
+    try{ if(typeof saveCurrentListProgress==='function') saveCurrentListProgress(); }catch(e){}
+    try{ activeListId = String(id); }catch(e){ window.activeListId=String(id); }
+    setSmallLS('activeListId', String(id));
+    setSmallLS('prevActiveListId', String(id));
+    setSmallLS('activeListName', listName || 'Cümleler');
+    setSmallLS('currentListName', listName || 'Cümleler');
+    window.allWords = data; window.words = data;
+    try{ allWords = data; words = data; idx = 0; }catch(e){}
+    try{ smWords=[...data]; lmWords=[...data]; fcWords=[...data]; smIdx=lmIdx=fcIdx=0; }catch(e){}
+    const title=document.getElementById('currentListName'); if(title) title.textContent=listName||'Cümleler';
+    try{ if(typeof setActiveListTitle==='function') setActiveListTitle(listName||'Cümleler'); }catch(e){}
+    try{ if(typeof showScreen==='function') showScreen('sc-word'); }catch(e){}
+    try{ if(typeof renderLearn==='function') renderLearn(); }catch(e){}
+    try{ if(typeof renderWordList==='function') renderWordList(); }catch(e){}
+    try{ if(typeof renderMultiListUI==='function') renderMultiListUI(); }catch(e){}
+    try{ if(typeof renderMultiStats==='function') renderMultiStats(); }catch(e){}
+    try{ showToast('✅ Liste yüklendi', `${listName||'Cümleler'} — ${data.length} cümle`); }catch(e){}
+    return true;
+  }
+
+  window.switchToList = async function(id){
+    const lists = await getMetaLists();
+    const list = lists.find(l=>String(l.id)===String(id));
+    if(!list){ try{showToast('❌ Liste bulunamadı', String(id));}catch(e){} return false; }
+    return applyList(list.id, list.name);
+  };
+  window._pickMultiList = function(id){ window.switchToList(id); return false; };
+  window.loadMultiListWords = function(id){
+    // Eski senkron çağrılar için boş dönmek yerine bellekteki listeyi kontrol et.
+    try{ const l=(multiLists||[]).find(x=>String(x.id)===String(id)); if(Array.isArray(l?.words)) return l.words; }catch(e){}
+    return [];
+  };
+  window.saveMultiLists = async function(){
+    try{ await saveMetaLists((typeof multiLists!=='undefined'?multiLists:window.multiLists)||[]); }
+    catch(e){ console.warn('[v24] saveMultiLists', e); }
+  };
+
+  window.processMultiFile = async function(file){
+    if(!file) return;
+    try{
+      if(typeof XLSX === 'undefined') throw new Error('XLSX kütüphanesi yüklenmemiş');
+      try{ showToast('⏳ Yükleniyor', file.name); }catch(e){}
+      const buf = await file.arrayBuffer();
+      const parsed = parseExcel(buf);
+      if(!parsed.length){ try{showToast('❌ Hata', 'sentence sütunu dolu cümle bulunamadı');}catch(e){} return; }
+      const nameInput=document.getElementById('newListName');
+      const listName=(nameInput?.value||'').trim() || file.name.replace(/\.[^.]+$/,'');
+      const id=String(Date.now());
+      await idbSet('multiList_words_'+id, JSON.stringify(parsed));
+      removeLS('multiList_words_'+id);
+      let lists=await getMetaLists();
+      lists = lists.filter(l=>l.name !== listName);
+      lists.push({id, name:listName, wordCount:parsed.length, addedAt:new Date().toLocaleDateString('tr-TR'), storage:'idb-v24'});
+      await saveMetaLists(lists);
+      if(nameInput) nameInput.value='';
+      await applyList(id, listName);
+      try{ showToast('✅ Liste Eklendi', `${listName} — ${parsed.length} cümle`); }catch(e){}
+    }catch(err){
+      console.error('[v24] Excel yükleme hatası:', err);
+      try{ showToast('❌ Hata', 'Dosya okunamadı: '+(err.message||err)); }catch(e){}
+      alert('Dosya okunamadı: '+(err.message||err));
+    }
+  };
+  window.addNewList = function(input){ const f=input?.files?.[0]; if(f) window.processMultiFile(f); if(input) input.value=''; };
+
+  // Mevcut dosya input/drop eventleri eski fonksiyona bağlıysa, capture aşamasında yakala.
+  function bindUploadControls(){
+    document.querySelectorAll('input[type="file"]').forEach(inp=>{
+      if(inp.__wmV24Bound) return; inp.__wmV24Bound=true;
+      inp.addEventListener('change', e=>{
+        const f=e.target.files && e.target.files[0];
+        if(f && /\.xlsx?$|spreadsheet|excel/i.test(f.name+' '+f.type)){
+          e.stopImmediatePropagation(); e.preventDefault(); window.processMultiFile(f); e.target.value='';
+        }
+      }, true);
+    });
+    const dz=document.getElementById('multiDropZone');
+    if(dz && !dz.__wmV24Drop){
+      dz.__wmV24Drop=true;
+      dz.addEventListener('drop', e=>{ const f=e.dataTransfer?.files?.[0]; if(f){e.preventDefault(); e.stopImmediatePropagation(); window.processMultiFile(f);} }, true);
+    }
+  }
+
+  // Eski localStorage kalıntılarını IDB'ye taşı ve temizle.
+  async function migrateOld(){
+    const lists = safeParse(localStorage.getItem('multiLists'), []);
+    if(Array.isArray(lists) && lists.length){
+      for(const l of lists){
+        const k='multiList_words_'+l.id;
+        const raw=localStorage.getItem(k);
+        if(raw){ await idbSet(k, raw); removeLS(k); }
+      }
+      await saveMetaLists(lists);
+    }
+    removeLS('lastFileData'); removeLS('learnedWords');
+  }
+  async function boot(){
+    try{ await openDB(); await migrateOld(); }catch(e){ console.warn('[v24] boot/migrate', e); }
+    bindUploadControls();
+    setTimeout(bindUploadControls,500);
+    try{
+      const lists=await getMetaLists();
+      try{ multiLists=lists; }catch(e){ window.multiLists=lists; }
+      if(typeof renderMultiListUI==='function') renderMultiListUI();
+      if(typeof renderMultiStats==='function') renderMultiStats();
+    }catch(e){}
+    const aid=localStorage.getItem('activeListId');
+    if(aid){ setTimeout(()=>window.switchToList(aid),250); }
+    console.log('✅ v24 XLSX/IndexedDB liste yükleme düzeltmesi aktif');
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
