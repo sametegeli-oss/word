@@ -733,3 +733,70 @@ body.light-mode .vc-sub{ color:var(--muted); }
     min-height:38px !important;
   }
 }
+/* REAL LIFE SCREEN STYLE FIX */
+#sc-real-life,
+#realLifeScreen,
+.screen:has(#rlScenarioSelect),
+.screen:has(#realLifeMessages) {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 18px 16px 96px !important;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', system-ui, sans-serif;
+}
+
+#sc-real-life h1,
+#sc-real-life h2,
+#realLifeScreen h1,
+#realLifeScreen h2 {
+  font-size: 24px !important;
+  font-weight: 900 !important;
+  margin: 0 0 16px !important;
+  color: var(--text);
+}
+
+#sc-real-life p,
+#sc-real-life div,
+#realLifeScreen p,
+#realLifeScreen div {
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+#sc-real-life textarea,
+#realLifeScreen textarea {
+  width: 100% !important;
+  min-height: 150px !important;
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 18px !important;
+  padding: 14px !important;
+  font-size: 14px !important;
+}
+
+#sc-real-life button,
+#realLifeScreen button {
+  border-radius: 999px !important;
+  padding: 10px 16px !important;
+  font-weight: 900 !important;
+  border: none !important;
+}
+
+#sc-real-life select,
+#realLifeScreen select {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  padding: 14px !important;
+}
+
+#sc-real-life .card,
+#realLifeScreen .card {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 22px !important;
+  padding: 16px !important;
+}
