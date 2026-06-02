@@ -306,3 +306,67 @@ textarea.ff-input{min-height:120px;resize:vertical;}
   background:linear-gradient(135deg,#6366f1,#3b82f6);white-space:nowrap;
 }
 .ff-mini{font-size:11px;padding:7px 11px;}
+
+/* ============================================================
+   Premium Koç / Akıllı Öğrenme Merkezi (wmng-*) ve gerçek-hayat
+   sohbet butonları (Çevir / Sen Öner). Bu class'lar style.css'te
+   yoktu; olmayınca panel stilsiz görünüyor, butonlar dökülüyordu.
+   ============================================================ */
+
+/* --- Premium Koç paneli --- */
+.wmng-card{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  padding:18px;margin:12px 0;box-shadow:var(--shadow);color:var(--text);
+}
+.wmng-panel{
+  background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+  padding:12px;margin:10px 0;
+}
+.wmng-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+@media (min-width:600px){.wmng-grid{grid-template-columns:1fr 1fr;}}
+.wmng-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.wmng-word{font-size:20px;font-weight:900;color:var(--green);}
+.wmng-mini{font-size:12px;color:var(--muted);line-height:1.5;}
+.wmng-level{
+  display:inline-block;background:var(--bg3);color:var(--sub);
+  border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800;
+}
+.wmng-pill{
+  display:inline-flex;align-items:center;gap:4px;background:var(--bg3);
+  color:var(--sub);border-radius:999px;padding:5px 10px;font-size:11px;
+  font-weight:800;margin:2px;
+}
+.wmng-scorebar{
+  height:8px;background:var(--bg3);border-radius:999px;overflow:hidden;flex:1;
+}
+.wmng-scorebar>div{height:100%;background:linear-gradient(90deg,#3b82f6,#22c55e);}
+.wmng-list{display:flex;flex-direction:column;gap:8px;}
+.wmng-result,.wmng-msg{
+  font-size:13px;color:var(--sub);line-height:1.6;
+  background:var(--bg2);border-radius:12px;padding:10px 12px;margin:6px 0;
+}
+.wmng-input,.wmng-textarea{
+  width:100%;background:var(--bg2);color:var(--text);
+  border:1px solid var(--border);border-radius:12px;padding:12px;
+  font-family:inherit;outline:none;
+}
+.wmng-textarea{min-height:90px;resize:vertical;}
+.wmng-chat{display:flex;flex-direction:column;gap:8px;}
+.wmng-clickword{cursor:pointer;border-bottom:1px dashed var(--muted);}
+.wmng-wave,.wmng-pmap{width:100%;height:auto;background:var(--bg2);border-radius:12px;}
+.wmng-speak,.wmng-audio{
+  border:0;border-radius:10px;padding:6px 10px;font-weight:800;cursor:pointer;
+  background:var(--bg3);color:var(--sub);font-family:inherit;font-size:12px;
+}
+.wmng-sticky{position:sticky;top:54px;z-index:10;}
+
+/* --- Çevir / Sen Öner buton satırı --- */
+.real-life-action-row{
+  display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;
+}
+.wm-translate-btn,.wm-suggest-btn{
+  border:0;border-radius:999px;padding:7px 12px;font-weight:800;
+  font-size:12px;cursor:pointer;color:#fff;font-family:inherit;
+}
+.wm-translate-btn{background:linear-gradient(135deg,#3b82f6,#2563eb);}
+.wm-suggest-btn{background:linear-gradient(135deg,#f59e0b,#ea580c);}
