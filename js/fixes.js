@@ -823,3 +823,62 @@
   document.addEventListener('DOMContentLoaded', build);
   setTimeout(build, 500);
 })();
+/* ÖZELLİKLER İÇİNDEKİ TÜM BUTONLARI ARAÇLARA AKTAR */
+(function(){
+  function moveFeatureButtons(){
+    const drawer = document.getElementById('wmToolsDrawer');
+    if(!drawer) return;
+
+    const featureButtons = [...document.querySelectorAll('button')]
+      .filter(b => {
+        const txt = (b.textContent || '').trim();
+        if(!txt) return false;
+        if(b.closest('#wmToolsDrawer')) return false;
+        if(b.id === 'wmToolsBtn') return false;
+        return [
+          'Kelime Açıklama',
+          'Kelime İlişkileri',
+          'Ses & Telaffuz',
+          'Konuşma & Yazma',
+          'Alıştırmalar',
+          'AI İçerik',
+          'Araçlar',
+          'Flashcard',
+          'Akıllı Tekrar',
+          'Yapay Zekaya Sor',
+          'Canlı Skor Koçu',
+          'Telaffuz Haritası',
+          'PDF',
+          'Mining',
+          'Shadow',
+          'Panel'
+        ].some(x => txt.includes(x));
+      });
+
+    featureButtons.forEach(oldBtn => {
+      const txt = oldBtn.textContent.trim();
+
+      if([...drawer.querySelectorAll('.wm-tool-btn')].some(b => b.textContent.trim() === txt)) {
+        oldBtn.style.display = 'none';
+        return;
+      }
+
+      const newBtn = document.createElement('button');
+      newBtn.className = 'wm-tool-btn';
+      newBtn.textContent = txt;
+
+      newBtn.onclick = function(){
+        drawer.classList.remove('open');
+        oldBtn.click();
+      };
+
+      drawer.appendChild(newBtn);
+      oldBtn.style.display = 'none';
+    });
+  }
+
+  window.WM_MOVE_FEATURE_BUTTONS = moveFeatureButtons;
+
+  setInterval(moveFeatureButtons, 1000);
+  setTimeout(moveFeatureButtons, 1200);
+})();
