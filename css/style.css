@@ -461,3 +461,23 @@ textarea.ff-input{min-height:120px;resize:vertical;}
 .ff-fabs{bottom:250px;}
 #smngLauncherFixed{bottom:200px;}
 #voiceCompareLauncher{bottom:150px;}
+
+/* ============================================================
+   LIGHT MODE FIX — body.light-mode (toggleDarkMode bunu ekler)
+   Tüm tema değişkenleri açık renklerle ezilir, böylece tüm
+   uygulama tek seferde light moda geçer.
+   ============================================================ */
+body.light-mode{
+  --bg:#f5f7fb; --bg2:#ffffff; --bg3:#eef2f7; --card:#ffffff; --card2:#f3f5f9;
+  --text:#0f172a; --sub:#334155; --muted:#64748b; --border:#d8dee9;
+  --shadow:0 12px 30px rgba(15,23,42,.10);
+}
+body.light-mode #app{ background:var(--bg); }
+body.light-mode .top-bar{
+  background:linear-gradient(180deg,var(--bg) 82%,rgba(245,247,251,0));
+}
+body.light-mode .back-btn{ color:#2563eb; }
+/* Koyu zemine göre yazılmış yarı saydam beyaz metinleri okunur tut */
+body.light-mode .smng-sub,
+body.light-mode .ff-sub,
+body.light-mode .vc-sub{ color:var(--muted); }
