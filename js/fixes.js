@@ -407,3 +407,201 @@
   }
   setTimeout(loadProjectDictionaryIfNeeded, 800);
 })();
+/* NAV/LIST CLICK FIX — 2026-06-02 */
+(function () {
+  'use strict';
+  if (window.__WM_NAV_LIST_CLICK_FIX_V3__) return;
+  window.__WM_NAV_LIST_CLICK_FIX_V3__ = true;
+
+  function $(id) { return document.getElementById(id); }
+
+  function getArr(name) {
+    try { if (Array.isArray(window[name]) && window[name].length) return window[name]; } catch (e) {}
+    try { if (Array.isArray(eval(name)) && eval(name).length) return eval(name); } catch (e) {}
+    return [];
+  }
+
+  function getData() {
+    return getArr('words').length ? getArr('words') : getArr('allWords');
+  }
+
+  function getIndex() {
+    try { if (typeof idx === 'number') return idx; } catch (e) {}
+    return Number(window.idx || window.currentIndex || window.wordIndex || 0) || 0;
+  }
+
+  function setIndex(n) {
+    var data = getData();
+    var max = Math.max(0, data.length - 1);
+    var i = Math.max(0, Math.min(max, Number(n) || 0));
+    try { idx = i; } catch (e) {}
+    window.idx = i;
+    window.currentIndex = i;
+    window.wordIndex = i;
+    return i;
+  }
+
+  function sameItem(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (a.id && b.id && String(a.id) === String(b.id)) return true;
+    if (a.rowNum && b.rowNum && String(a.rowNum) === String(b.rowNum)) return true;
+    var as = String(a.sentence || a.en || '').trim();
+    var bs = String(b.sentence || b.en || '').trim();
+    return !!(as && bs && as === bs);
+  }
+
+  function findRealIndex(item) {
+    var data = getData();
+    for (var i = 0; i < data.length; i++) {
+      if (sameItem(data[i], item)) return i;
+    }
+    var all = getArr('allWords');
+    for (var j = 0; j < all.length; j++) {
+      if (sameItem(all[j], item)) return j;
+    }
+    return -1;
+  }
+
+  function refreshWordScreen() {
+    try { phase = 'learn'; } catch (e) {}
+    try { if (typeof showScreen === 'function') showScreen('sc-word'); } catch (e) {}
+    try { if (typeof renderLearn === 'function') renderLearn(); } catch (e) {}
+    try { if (typeof updateWordCounter === 'function') updateWordCounter(); } catch (e) {}
+    try { if (window.SM_renderSentenceMeta) window.SM_renderSentenceMeta(); } catch (e) {}
+    try { if (window.SM_fixActiveListTitle) window.SM_fixActiveListTitle(); } catch (e) {}
+  }
+
+  function moveWord(delta) {
+    var data = getData();
+    if (!data.length) return false;
+    setIndex(getIndex() + delta);
+    refreshWordScreen();
+    return false;
+  }
+
+  window.WM_forcePrevWord = function () { return moveWord(-1); };
+  window.WM_forceNextWord = function () { return moveWord(1); };
+
+  window.navNextWord = window.WM_forceNextWord;
+  window.nextWord = window.WM_forceNextWord;
+  window.prevWord = window.WM_forcePrevWord;
+  window.navPrevWord = window.WM_forcePrevWord;
+
+  window.goToWord = function (pos, source) {
+    var data = getData();
+    var src = Array.isArray(source) ? source : null;
+
+    try {
+      if (!src && window.virtualScrollData && Array.isArray(window.virtualScrollData.filteredWords)) {
+        src = window.virtualScrollData.filteredWords;
+      }
+    } catch (e) {}
+
+    var item = null;
+    var p = Number(pos) || 0;
+
+    if (src && src[p]) item = src[p];
+    else if (data[p]) item = data[p];
+
+    var real = item ? findRealIndex(item) : p;
+    if (real < 0) real = p;
+
+    setIndex(real);
+    refreshWordScreen();
+    return false;
+  };
+
+  function parseGoToIndex(el) {
+    var on = '';
+    try { on = el && el.getAttribute && (el.getAttribute('onclick') || ''); } catch (e) {}
+    var m = on.match(/goToWord\s*\(\s*(\d+)/);
+    if (m) return Number(m[1]);
+
+    var wi = el && el.closest ? el.closest('.wi') : null;
+    if (wi && wi.style && wi.style.top) {
+      var top = parseInt(wi.style.top, 10);
+      if (!isNaN(top)) return Math.round(top / 112);
+    }
+    return null;
+  }
+
+  function hardStopEvent(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+  }
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
+
+    var listHit = t.closest('#wordListEl .wi-body, #wordListEl .wi, #wordListEl [onclick*="goToWord"]');
+    if (listHit) {
+      var clickable = t.closest('#wordListEl [onclick*="goToWord"]') || listHit;
+      var idxFromList = parseGoToIndex(clickable);
+
+      if (idxFromList !== null) {
+        hardStopEvent(ev);
+        window.goToWord(
+          idxFromList,
+          (window.virtualScrollData && window.virtualScrollData.filteredWords) || window.allWords || []
+        );
+      }
+      return;
+    }
+
+    var btn = t.closest('button,[role="button"],[onclick]');
+    if (!btn) return;
+
+    var on = btn.getAttribute('onclick') || '';
+    var id = btn.id || '';
+    var label = (btn.textContent || '').trim();
+
+    if (/navNextWord\s*\(|nextWord\s*\(/.test(on) || id === 'btnNext' || label === '▶' || /Sonraki\s*[→▶]/i.test(label)) {
+      if ($('sc-word') && $('sc-word').classList.contains('active')) {
+        hardStopEvent(ev);
+        window.WM_forceNextWord();
+      }
+      return;
+    }
+
+    if (/prevWord\s*\(|navPrevWord\s*\(/.test(on) || label === '◀' || /[◀←]\s*Önceki/i.test(label)) {
+      if ($('sc-word') && $('sc-word').classList.contains('active')) {
+        hardStopEvent(ev);
+        window.WM_forcePrevWord();
+      }
+      return;
+    }
+  }, true);
+
+  function patchButtons() {
+    document.querySelectorAll('button[onclick*="navNextWord"],button[onclick*="nextWord"]').forEach(function (b) {
+      if (b.__wmNavFixed) return;
+      b.__wmNavFixed = true;
+      b.onclick = function (ev) {
+        if (ev) hardStopEvent(ev);
+        return window.WM_forceNextWord();
+      };
+    });
+
+    document.querySelectorAll('button[onclick*="prevWord"],button[onclick*="navPrevWord"]').forEach(function (b) {
+      if (b.__wmNavFixed) return;
+      b.__wmNavFixed = true;
+      b.onclick = function (ev) {
+        if (ev) hardStopEvent(ev);
+        return window.WM_forcePrevWord();
+      };
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', patchButtons);
+  } else {
+    patchButtons();
+  }
+
+  setInterval(patchButtons, 800);
+
+  console.log('✅ NAV/LIST FIX aktif');
+})();
