@@ -302,8 +302,14 @@
 
   setInterval(addSentenceButton, 1000);
 
-  /* TEMİZ ARAÇLAR PANELİ */
+/* TEMİZ ARAÇLAR PANELİ — DÜZELTİLMİŞ */
+(function(){
+  if (window.__WM_CLEAN_TOOLS_PANEL_V2__) return;
+  window.__WM_CLEAN_TOOLS_PANEL_V2__ = true;
+
   const TOOL_ITEMS = [
+    ['📘 Kelime Ekranı', () => window.showScreen && showScreen('sc-word')],
+    ['📋 Liste', () => window.showScreen && showScreen('sc-list')],
     ['📊 Panel', () => window.ffOpen && ffOpen('dash')],
     ['⛏️ PDF / Transcript Mining', () => window.ffOpen && ffOpen('mine')],
     ['🧠 Akıllı Tekrar', () => window.ffOpen && ffOpen('rev')],
@@ -315,52 +321,29 @@
     ['🗺️ Dil Haritası', () => window.showScreen && showScreen('sc-map')],
     ['📊 İstatistik', () => window.showScreen && showScreen('sc-stats')],
     ['📷 Kamera', () => window.showScreen && showScreen('sc-camera')],
-    ['⚙️ Ayarlar', () => window.showScreen && showScreen('sc-settings')]
+    ['⚙️ Ayarlar', () => window.showScreen && showScreen('sc-settings')],
+    ['⚡ Canlı Skor Koçu', () => window.showScreen && showScreen('sc-standalone-pron')]
   ];
 
-  function hideOldButtons() {
-    document.querySelectorAll('#ffFabs,.ff-fabs,.ff-fab').forEach(e => e.style.display = 'none');
-
-    document.querySelectorAll('button').forEach(b => {
-      const txt = (b.textContent || '').trim();
-      if (!txt) return;
-      if (b.closest('#wmToolsDrawer')) return;
-      if (b.id === 'wmToolsBtn') return;
-
-      const names = [
-        'Panel','Mining','Tekrar','Shadow','Ses',
-        'Kelime','Cümle','Türkçe','Koç','Telaffuz','Aksan',
-        'Flashcard','Akıllı Tekrar','Yapay Zekaya Sor',
-        'Hikaye','Podcast','Sentence Mining','Canlı Skor Koçu'
-      ];
-
-      if (names.some(x => txt.includes(x))) {
-        b.style.display = 'none';
-      }
+  function hideOnlyFloatingButtons(){
+    document.querySelectorAll('#ffFabs,.ff-fabs,.ff-fab').forEach(e=>{
+      e.style.display='none';
     });
   }
 
-  function rebuildTools() {
-    document.querySelectorAll('#wmToolsBtn,#wmToolsDrawer').forEach(e => e.remove());
+  function rebuildTools(){
+    document.querySelectorAll('#wmToolsBtn,#wmToolsDrawer').forEach(e=>e.remove());
 
-    const btn = document.createElement('button');
-    btn.id = 'wmToolsBtn';
-    btn.textContent = '🧰 Araçlar';
-    btn.style.cssText = `
-      position:fixed;right:14px;top:130px;z-index:999999;
-      background:#2563eb;color:#fff;border:0;border-radius:999px;
-      padding:12px 16px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.35)
-    `;
+    const btn=document.createElement('button');
+    btn.id='wmToolsBtn';
+    btn.textContent='🧰 Araçlar';
+    btn.style.cssText='position:fixed;right:14px;top:130px;z-index:999999;background:#2563eb;color:#fff;border:0;border-radius:999px;padding:12px 16px;font-weight:900';
 
-    const drawer = document.createElement('div');
-    drawer.id = 'wmToolsDrawer';
-    drawer.style.cssText = `
-      position:fixed;top:0;right:-340px;width:330px;max-width:88vw;
-      height:100vh;background:#111827;z-index:1000000;padding:18px;
-      transition:right .25s;overflow-y:auto;border-left:1px solid #334155
-    `;
+    const drawer=document.createElement('div');
+    drawer.id='wmToolsDrawer';
+    drawer.style.cssText='position:fixed;top:0;right:-340px;width:330px;max-width:88vw;height:100vh;background:#111827;z-index:1000000;padding:18px;transition:right .25s;overflow-y:auto;border-left:1px solid #334155';
 
-    drawer.innerHTML = `
+    drawer.innerHTML=`
       <button id="wmToolsClose" style="float:right;background:transparent;color:white;border:0;font-size:28px">×</button>
       <h3 style="margin:0 0 16px;font-size:22px">🧰 Araçlar</h3>
       <div id="wmToolsList"></div>
@@ -369,24 +352,38 @@
     document.body.appendChild(btn);
     document.body.appendChild(drawer);
 
-    const list = drawer.querySelector('#wmToolsList');
+    const list=drawer.querySelector('#wmToolsList');
 
-    TOOL_ITEMS.forEach(([title, fn]) => {
-      const b = document.createElement('button');
-      b.className = 'wm-tool-btn';
-      b.textContent = title;
-      b.style.cssText = `
-        display:block;width:100%;margin:8px 0;padding:14px;border-radius:16px;
-        background:#1f2937;color:white;border:1px solid #334155;
-        text-align:left;font-weight:900
-      `;
-      b.onclick = () => {
-        drawer.classList.remove('open');
-        drawer.style.right = '-340px';
-        try { fn(); } catch (e) { console.warn('Araç açılamadı:', title, e); }
+    TOOL_ITEMS.forEach(([title,fn])=>{
+      const b=document.createElement('button');
+      b.className='wm-tool-btn';
+      b.textContent=title;
+      b.style.cssText='display:block;width:100%;margin:8px 0;padding:14px;border-radius:16px;background:#1f2937;color:white;border:1px solid #334155;text-align:left;font-weight:900';
+      b.onclick=()=>{
+        drawer.style.right='-340px';
+        try{ fn(); }catch(e){ console.warn(title,e); }
       };
       list.appendChild(b);
     });
+
+    btn.onclick=()=>drawer.style.right='0';
+    drawer.querySelector('#wmToolsClose').onclick=()=>drawer.style.right='-340px';
+
+    hideOnlyFloatingButtons();
+  }
+
+  window.WM_REBUILD_TOOLS=rebuildTools;
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',rebuildTools);
+  }else{
+    rebuildTools();
+  }
+
+  setInterval(hideOnlyFloatingButtons,1000);
+})();
+   
+
 
     btn.onclick = () => {
       drawer.classList.add('open');
