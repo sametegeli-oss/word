@@ -592,3 +592,144 @@ body.light-mode .vc-sub{ color:var(--muted); }
 }
 .lc-live-warning{border-color:rgba(245,158,11,.4);color:#fbbf24}
 .lc-history{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+
+
+/* ============================================================
+   CANLI SKOR KOÇU — Ses açıklamaları görsel küçültme düzeltmesi
+   "Bu kelime için gerekli ses açıklamaları" bölümündeki ağız/dil
+   çizimleri global svg/img kurallarından etkilenip devleşiyordu.
+   Bu bölüm artık kompakt kart görünümünde kalır.
+   ============================================================ */
+#lcPfcProblemCards.pfc-sound-grid,
+#pfcProblemCards.pfc-sound-grid{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:8px !important;
+}
+
+#lcPfcProblemCards .pfc-sound-card,
+#pfcProblemCards .pfc-sound-card{
+  padding:9px 10px !important;
+  border-radius:12px !important;
+  overflow:hidden !important;
+}
+
+#lcPfcProblemCards .pfc-card-head,
+#pfcProblemCards .pfc-card-head{
+  display:flex !important;
+  align-items:flex-start !important;
+  justify-content:space-between !important;
+  gap:8px !important;
+  margin-bottom:6px !important;
+}
+
+#lcPfcProblemCards .pfc-card-num,
+#pfcProblemCards .pfc-card-num{
+  font-size:13px !important;
+  font-weight:900 !important;
+  color:var(--text) !important;
+  line-height:1.2 !important;
+}
+
+#lcPfcProblemCards .pfc-card-name,
+#pfcProblemCards .pfc-card-name{
+  font-size:11px !important;
+  color:var(--muted) !important;
+  line-height:1.25 !important;
+}
+
+#lcPfcProblemCards .pfc-mini-tag,
+#pfcProblemCards .pfc-mini-tag,
+#lcPfcProblemCards .pfc-tag,
+#pfcProblemCards .pfc-tag{
+  flex:0 0 auto !important;
+  display:inline-block !important;
+  font-size:10px !important;
+  padding:3px 7px !important;
+  border-radius:999px !important;
+  line-height:1.2 !important;
+}
+
+#lcPfcProblemCards .pfc-art-row,
+#pfcProblemCards .pfc-art-row{
+  display:grid !important;
+  grid-template-columns:56px 56px 1fr !important;
+  align-items:center !important;
+  gap:8px !important;
+}
+
+#lcPfcProblemCards .pfc-art,
+#pfcProblemCards .pfc-art{
+  width:56px !important;
+  height:44px !important;
+  max-width:56px !important;
+  max-height:44px !important;
+  min-width:56px !important;
+  min-height:44px !important;
+  overflow:hidden !important;
+  border-radius:10px !important;
+  background:var(--bg2) !important;
+  border:1px solid var(--border) !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
+
+#lcPfcProblemCards .pfc-art svg,
+#pfcProblemCards .pfc-art svg,
+#lcPfcProblemCards .pfc-art img,
+#pfcProblemCards .pfc-art img{
+  width:56px !important;
+  height:44px !important;
+  max-width:56px !important;
+  max-height:44px !important;
+  object-fit:contain !important;
+  display:block !important;
+  flex:0 0 auto !important;
+}
+
+#lcPfcProblemCards .pfc-card-text,
+#pfcProblemCards .pfc-card-text,
+#lcPfcProblemCards .pfc-sound-card > div:not(.pfc-card-head):not(.pfc-art-row):not(.pfc-card-actions),
+#pfcProblemCards .pfc-sound-card > div:not(.pfc-card-head):not(.pfc-art-row):not(.pfc-card-actions){
+  font-size:12px !important;
+  line-height:1.35 !important;
+  color:var(--sub) !important;
+}
+
+#lcPfcProblemCards .pfc-card-actions,
+#pfcProblemCards .pfc-card-actions{
+  display:grid !important;
+  grid-template-columns:repeat(3,1fr) !important;
+  gap:6px !important;
+  margin-top:8px !important;
+}
+
+#lcPfcProblemCards .pfc-mini-action,
+#pfcProblemCards .pfc-mini-action{
+  padding:7px 6px !important;
+  border-radius:10px !important;
+  font-size:11px !important;
+  line-height:1.1 !important;
+}
+
+@media (max-width:420px){
+  #lcPfcProblemCards .pfc-art-row,
+  #pfcProblemCards .pfc-art-row{
+    grid-template-columns:48px 48px 1fr !important;
+    gap:6px !important;
+  }
+  #lcPfcProblemCards .pfc-art,
+  #pfcProblemCards .pfc-art,
+  #lcPfcProblemCards .pfc-art svg,
+  #pfcProblemCards .pfc-art svg,
+  #lcPfcProblemCards .pfc-art img,
+  #pfcProblemCards .pfc-art img{
+    width:48px !important;
+    height:38px !important;
+    max-width:48px !important;
+    max-height:38px !important;
+    min-width:48px !important;
+    min-height:38px !important;
+  }
+}
