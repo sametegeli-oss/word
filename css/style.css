@@ -884,3 +884,85 @@ body.light-mode .vc-sub{ color:var(--muted); }
   font-size: 24px;
   border: 0;
 }
+/* TÜM YÜZEN BUTONLARI VE ÖZELLİK BUTONLARINI ARAÇLARA TAŞIMA */
+#ffFabs,
+.ff-fabs,
+#wmToolsBtn ~ .ff-fabs {
+  display: none !important;
+}
+
+/* Özellikler içindeki büyük butonları gizle */
+#featuresPanel .btn,
+#featuresPanel button,
+.features-panel .btn,
+.features-panel button {
+  display: none !important;
+}
+
+/* Alt yüzen/ekstra butonları gizle ama ana bottom nav kalsın */
+body > button:not(#wmToolsBtn):not(.bottom-nav button):not(#bottomNav button),
+body > .ff-fab,
+body > .floating-btn,
+body > .quick-btn {
+  display: none !important;
+}
+
+#wmToolsBtn {
+  position: fixed;
+  right: 14px;
+  top: 110px;
+  z-index: 99999;
+  background: linear-gradient(135deg,#3b82f6,#2563eb);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-weight: 900;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+#wmToolsDrawer {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 310px;
+  max-width: 88vw;
+  height: 100vh;
+  background: #111827;
+  border-left: 1px solid var(--border);
+  z-index: 100000;
+  padding: 18px;
+  transition: right .25s ease;
+  overflow-y: auto;
+  box-shadow: -20px 0 40px rgba(0,0,0,.45);
+}
+
+#wmToolsDrawer.open {
+  right: 0;
+}
+
+#wmToolsDrawer h3 {
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+#wmToolsClose {
+  float: right;
+  background: transparent;
+  color: white;
+  font-size: 26px;
+  border: 0;
+}
+
+.wm-tool-btn {
+  width: 100%;
+  margin: 7px 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-weight: 900;
+  text-align: left;
+}
