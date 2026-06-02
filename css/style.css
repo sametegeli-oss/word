@@ -481,3 +481,114 @@ body.light-mode .back-btn{ color:#2563eb; }
 body.light-mode .smng-sub,
 body.light-mode .ff-sub,
 body.light-mode .vc-sub{ color:var(--muted); }
+
+/* ============================================================
+   PRONUNCIATION FACE COACH (pfc-*) + CANLI SKOR KOÇU (lc-*)
+   Bu sınıflar HTML'de kullanılıyordu ama hiç CSS'i yoktu;
+   bu yüzden ağız SVG'si dev gibi taşıyor ve panel dağılıyordu.
+   ============================================================ */
+
+/* --- Panel --- */
+.pfc-panel{
+  background:var(--bg2);border:1px solid var(--border);border-radius:18px;
+  padding:14px;margin:12px 0;
+}
+.pfc-title{font-size:14px;font-weight:900;color:var(--text);margin-bottom:10px}
+.pfc-mode-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.pfc-mode{
+  padding:7px 14px;border-radius:999px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--sub);font-size:13px;font-weight:800;cursor:pointer;
+}
+.pfc-mode.active{
+  background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;border-color:transparent;
+}
+
+/* --- Yüz / ağız çizimi (taşmayı engelleyen KRİTİK kısım) --- */
+.pfc-face-wrap{
+  display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap;
+}
+.pfc-face{
+  flex:0 0 auto;width:128px;height:128px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg3);border:1px solid var(--border);border-radius:50%;
+  overflow:hidden;
+}
+/* SVG'yi kabına sabitle — global canvas/svg kurallarının dev yapmasını engeller */
+.pfc-face svg{
+  width:128px !important;height:128px !important;
+  max-width:128px;max-height:128px;display:block;
+}
+.pfc-face-wrap > div:last-child{flex:1 1 160px;min-width:160px}
+.pfc-current-sound{font-size:30px;font-weight:900;color:var(--purple);line-height:1.1}
+.pfc-current-label{font-size:12px;color:var(--muted);font-weight:800;margin-bottom:4px}
+.pfc-tip{font-size:12px;color:var(--sub);line-height:1.5}
+
+/* --- Isı haritası / fonem kutucukları --- */
+.pfc-heatmap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.pfc-heatmap > *{
+  padding:4px 9px;border-radius:8px;background:var(--bg3);
+  border:1px solid var(--border);font-size:13px;font-weight:800;color:var(--text);
+}
+.pfc-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.pfc-stat{
+  background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+  padding:10px;text-align:center;
+}
+.pfc-stat .num{font-size:22px;font-weight:900;color:var(--text)}
+.pfc-stat .txt{font-size:11px;color:var(--muted);font-weight:800;margin-top:2px}
+.pfc-sound-grid{display:flex;flex-direction:column;gap:8px}
+.pfc-sound-grid > *{
+  background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px;
+  font-size:13px;color:var(--sub);line-height:1.5;
+}
+
+/* --- Canlı Skor Koçu yerleşimi --- */
+.live-coach-wrap{display:block}
+.lc-word-entry{margin-bottom:12px}
+.lc-word-entry label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px}
+.lc-word-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.lc-current-target{font-size:13px;color:var(--sub)}
+.lc-current-target b{color:var(--green)}
+
+.lc-hero{margin:12px 0}
+.lc-target{display:flex;gap:8px;align-items:stretch}
+.lc-target input{flex:1}
+.lc-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+
+/* Video kutusu — global canvas{width:100%} taşmasını sınırla */
+.lc-video-box{
+  position:relative;width:100%;max-width:420px;margin:12px auto;
+  aspect-ratio:4/3;background:#000;border-radius:16px;overflow:hidden;
+  border:1px solid var(--border);
+}
+.lc-video-box video,
+.lc-video-box canvas{
+  position:absolute;inset:0;width:100% !important;height:100% !important;
+  object-fit:cover;border-radius:0;background:transparent;
+}
+.lc-badge{
+  position:absolute;top:10px;left:10px;z-index:2;
+  background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:800;
+  padding:5px 10px;border-radius:999px;
+}
+
+.lc-score-big{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.lc-score-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:16px;
+  padding:14px;text-align:center;
+}
+.lc-score-val{font-size:34px;font-weight:900;color:var(--text);line-height:1}
+.lc-score-lbl{font-size:12px;color:var(--muted);font-weight:800;margin:4px 0 8px}
+.lc-meter{height:8px;background:var(--bg3);border-radius:999px;overflow:hidden}
+.lc-fill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .25s}
+
+.lc-mini-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin:10px 0}
+.lc-mini{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center}
+.lc-mini-val{font-size:18px;font-weight:900;color:var(--text)}
+.lc-mini-lbl{font-size:11px;color:var(--muted);font-weight:800;margin-top:2px}
+.lc-tip,.lc-live-warning{
+  font-size:12px;color:var(--sub);line-height:1.5;
+  background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px;margin:8px 0;
+}
+.lc-live-warning{border-color:rgba(245,158,11,.4);color:#fbbf24}
+.lc-history{display:flex;flex-direction:column;gap:6px;margin-top:8px}
