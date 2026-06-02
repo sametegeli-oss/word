@@ -245,3 +245,165 @@
   setTimeout(boot, 1200);
   setTimeout(function () { wrapFfOpen(); wrapFfClose(); ensureMineButtonAndOverlay(); }, 2000);
 })();
+
+/* ============================================================
+   FIXES v2 — 2026-06-02
+   POPUP / SÖZLÜK BAĞLANTI DÜZELTMESİ
+   Sorun: sozluk.json dizi formatında geliyor:
+     [{ Kelime, türkçe_okunuş, anlam1, anlam2, anlam3, seviye, zipf }, ...]
+   Eski popup ise window.WM_Dictionary[word] şeklinde nesne-map bekliyordu.
+   Bu blok sözlüğü hem map'e çevirir hem de WM_lookupDict'i güvenli override eder.
+   ============================================================ */
+(function () {
+  'use strict';
+  if (window.__WM_DICT_POPUP_FIX_V2__) return;
+  window.__WM_DICT_POPUP_FIX_V2__ = true;
+
+  function cleanWord(v) {
+    return String(v == null ? '' : v)
+      .toLowerCase()
+      .replace(/[’']/g, '')
+      .replace(/^[^a-z]+|[^a-z]+$/g, '')
+      .trim();
+  }
+
+  function lemmaCandidates(word) {
+    var w = cleanWord(word);
+    var out = [];
+    function add(x) { x = cleanWord(x); if (x && out.indexOf(x) === -1) out.push(x); }
+    add(w);
+    if (w.endsWith('ies') && w.length > 4) add(w.slice(0, -3) + 'y');
+    if (w.endsWith('es') && w.length > 4) add(w.slice(0, -2));
+    if (w.endsWith('s') && w.length > 3) add(w.slice(0, -1));
+    if (w.endsWith('ing') && w.length > 5) { add(w.slice(0, -3)); add(w.slice(0, -3) + 'e'); }
+    if (w.endsWith('ed') && w.length > 4) { add(w.slice(0, -2)); add(w.slice(0, -1)); }
+    return out;
+  }
+
+  function pickWord(row) {
+    if (!row || typeof row !== 'object') return '';
+    return row.Kelime || row.kelime || row.word || row.Word || row.en || row.english || row.term || '';
+  }
+
+  function pushMeaning(arr, v) {
+    if (v == null) return;
+    if (Array.isArray(v)) { v.forEach(function (x) { pushMeaning(arr, x); }); return; }
+    if (typeof v === 'object') {
+      pushMeaning(arr, v.tr || v.meaning || v.anlam || v.text || v.value || v.label || '');
+      return;
+    }
+    var s = String(v).trim();
+    if (s && s !== '[object Object]' && arr.indexOf(s) === -1) arr.push(s);
+  }
+
+  function normalizeRow(row, fallbackWord) {
+    if (!row || typeof row !== 'object') return null;
+    var word = cleanWord(pickWord(row) || fallbackWord);
+    if (!word) return null;
+    var meanings = [];
+    pushMeaning(meanings, row.meanings);
+    pushMeaning(meanings, row.tr);
+    pushMeaning(meanings, row.translation);
+    pushMeaning(meanings, row.meaning);
+    pushMeaning(meanings, row.anlam);
+    pushMeaning(meanings, row.anlam1);
+    pushMeaning(meanings, row.anlam2);
+    pushMeaning(meanings, row.anlam3);
+    pushMeaning(meanings, row.turkish);
+
+    var pron = row.tr_pron || row.pron || row.türkçe_okunuş || row.turkce_okunus || row.turkishPronunciation || row.phonetic || '';
+    var cefr = row.cefr || row.CEFR || row.seviye || row.level || row.sentenceLevel || '';
+    var zipf = row.zipf;
+    if (zipf != null && zipf !== '') zipf = Number(zipf);
+
+    return Object.assign({}, row, {
+      word: word,
+      Kelime: row.Kelime || word,
+      meanings: meanings,
+      tr_pron: pron,
+      pron: pron,
+      cefr: String(cefr || '').toUpperCase(),
+      level: String(cefr || '').toUpperCase(),
+      zipf: Number.isFinite(zipf) ? zipf : row.zipf
+    });
+  }
+
+  function buildMap(data) {
+    var map = {};
+    if (Array.isArray(data)) {
+      data.forEach(function (row) {
+        var n = normalizeRow(row);
+        if (n) map[n.word] = n;
+      });
+    } else if (data && typeof data === 'object') {
+      Object.keys(data).forEach(function (key) {
+        var val = data[key];
+        var n = (val && typeof val === 'object') ? normalizeRow(val, key) : normalizeRow({ Kelime: key, anlam1: val }, key);
+        if (n) map[n.word] = n;
+      });
+    }
+    return map;
+  }
+
+  function installDictionaryMap(data, source) {
+    var map = buildMap(data);
+    var count = Object.keys(map).length;
+    if (!count) return false;
+    window.WM_DictionaryRaw = data;
+    window.WM_Dictionary = map;
+    window.WM_SOZLUK_MEANING_MAP = Object.assign({}, window.WM_SOZLUK_MEANING_MAP || {}, map);
+    window.WM_DictionarySource = source || window.WM_DictionarySource || 'normalized';
+    console.log('✅ Popup sözlük map hazır:', count, 'kelime / kaynak:', window.WM_DictionarySource);
+    return true;
+  }
+
+  window.WM_lookupDict = function (word) {
+    var candidates = lemmaCandidates(word);
+    var maps = [window.WM_SOZLUK_MEANING_MAP, window.WM_Dictionary];
+    for (var m = 0; m < maps.length; m++) {
+      var map = maps[m];
+      if (!map) continue;
+      for (var i = 0; i < candidates.length; i++) {
+        var hit = map[candidates[i]];
+        if (hit) return normalizeRow(hit, candidates[i]) || hit;
+      }
+    }
+    return null;
+  };
+
+  async function loadProjectDictionaryIfNeeded() {
+    if (window.WM_lookupDict('organization')) return;
+
+    if (window.WM_Dictionary && installDictionaryMap(window.WM_Dictionary, window.WM_DictionarySource || 'existing')) {
+      if (window.WM_lookupDict('organization')) return;
+    }
+
+    var paths = ['data/sozluk.json', 'sozluk.json'];
+    for (var i = 0; i < paths.length; i++) {
+      try {
+        var res = await fetch(paths[i], { cache: 'no-store' });
+        if (!res.ok) continue;
+        var json = await res.json();
+        if (installDictionaryMap(json, paths[i])) return;
+      } catch (err) {
+        console.warn('Sözlük yolu okunamadı:', paths[i], err && err.message ? err.message : err);
+      }
+    }
+  }
+
+  try {
+    if (window.WM_DictionaryReady && typeof window.WM_DictionaryReady.then === 'function') {
+      window.WM_DictionaryReady.then(function (data) {
+        installDictionaryMap(data || window.WM_Dictionary, window.WM_DictionarySource || 'WM_DictionaryReady');
+        loadProjectDictionaryIfNeeded();
+      }).catch(function () { loadProjectDictionaryIfNeeded(); });
+    }
+  } catch (e) {}
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadProjectDictionaryIfNeeded);
+  } else {
+    setTimeout(loadProjectDictionaryIfNeeded, 0);
+  }
+  setTimeout(loadProjectDictionaryIfNeeded, 800);
+})();
