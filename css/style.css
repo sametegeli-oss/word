@@ -370,3 +370,94 @@ textarea.ff-input{min-height:120px;resize:vertical;}
 }
 .wm-translate-btn{background:linear-gradient(135deg,#3b82f6,#2563eb);}
 .wm-suggest-btn{background:linear-gradient(135deg,#f59e0b,#ea580c);}
+
+/* ============================================================
+   Kelime telaffuz/açıklama popup'ı (pronunciation-popup, sp-*) ve
+   yüzen butonların çakışma düzeltmesi. Popup class'ları style.css'te
+   yoktu; o yüzden transparan/okunaksız görünüyordu.
+   ============================================================ */
+
+/* --- Popup konteyner ve kart --- */
+#wm-pronunciation-popup-container{z-index:5000;}
+.pronunciation-popup{
+  background:var(--card);border:1px solid var(--border);border-radius:22px;
+  box-shadow:var(--shadow);color:var(--text);
+  max-width:460px;width:92vw;margin:0 auto;padding:20px;
+  max-height:88vh;overflow-y:auto;
+}
+.loading-popup{text-align:center;}
+.loading-spinner,.sp-spinner{
+  width:34px;height:34px;border:3px solid var(--border);
+  border-top-color:var(--blue);border-radius:50%;
+  animation:sp-spin .8s linear infinite;margin:0 auto;
+}
+@keyframes sp-spin{to{transform:rotate(360deg);}}
+
+/* --- Başlık / IPA / hece --- */
+.sp-word-display{font-size:30px;font-weight:900;color:var(--green);text-align:center;margin:6px 0;}
+.ipa,.sp-ipa-box{
+  text-align:center;color:var(--sub);font-size:16px;margin:8px 0;
+  background:var(--bg2);border-radius:12px;padding:8px 12px;
+}
+.sp-ipa-text{font-family:'Times New Roman',serif;}
+.syllables-section,.sp-section{margin:12px 0;}
+.sp-section-label,.sp-legend{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:800;}
+.sp-syllables,.syllables-container{
+  display:flex;gap:6px;flex-wrap:wrap;justify-content:center;font-size:20px;font-weight:800;color:var(--text);
+}
+.sp-syl-sep{color:var(--muted);}
+
+/* --- Kontroller / hız --- */
+.sp-controls,.sp-speed-row,.speed-control{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin:10px 0;}
+.sp-ctrl-btn{
+  background:var(--bg2);color:var(--text);border:1px solid var(--border);
+  border-radius:999px;padding:8px 14px;font-weight:800;cursor:pointer;font-family:inherit;
+}
+.sp-speed-val{color:var(--orange);font-weight:900;}
+.speed-slider{width:100%;}
+
+/* --- Skor / sonuç kartları --- */
+.sp-result-card,.sp-rec-card,.sp-count-card,.sp-compare-block{
+  background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+  padding:12px;margin:10px 0;color:var(--text);
+}
+.sp-score-hero{text-align:center;}
+.sp-score-emoji{font-size:40px;}
+.sp-score-pct{font-size:32px;font-weight:900;color:var(--green);}
+.sp-score-label{font-size:12px;color:var(--muted);}
+.sp-counts{display:flex;gap:8px;justify-content:center;}
+.sp-count-num{font-size:20px;font-weight:900;color:var(--text);}
+.sp-count-lbl{font-size:11px;color:var(--muted);}
+.sp-rec-btn,.sp-play-rec{
+  border:0;border-radius:14px;padding:12px 16px;font-weight:800;color:#fff;
+  cursor:pointer;font-family:inherit;background:linear-gradient(135deg,#ef4444,#dc2626);width:100%;
+}
+.sp-tr-text,.tr-pron-word{color:var(--text);font-weight:800;}
+.tr-pron-label{color:var(--muted);font-size:12px;}
+.tr-pron-missing,.sp-error{color:#fca5a5;font-size:13px;}
+.sp-compare-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0;}
+.sp-compare-tag{color:var(--muted);}
+
+/* --- Sağ-tık bağlam menüsü --- */
+#wm-context-menu{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);z-index:5001;overflow:hidden;
+}
+.context-menu-item{
+  padding:10px 14px;color:var(--text);cursor:pointer;font-size:13px;font-weight:700;
+}
+.context-menu-item:hover{background:var(--bg2);}
+
+/* --- Tıklanabilir kelimeler --- */
+.clickable-word,.word-clickable,.pronounceable-word{
+  cursor:pointer;border-bottom:1px dotted var(--muted);transition:color .15s;
+}
+.clickable-word:hover,.word-clickable:hover,.pronounceable-word:hover{color:var(--blue);}
+
+/* ============================================================
+   Yüzen buton çakışması düzeltmesi: ff-fabs grubunu yukarı al,
+   bağımsız launcher'ları onun ALTINA sırala (üst üste binmesin).
+   ============================================================ */
+.ff-fabs{bottom:250px;}
+#smngLauncherFixed{bottom:200px;}
+#voiceCompareLauncher{bottom:150px;}
