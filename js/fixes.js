@@ -316,15 +316,27 @@
   function scr(id){ return run(function(){ if(window.showScreen) showScreen(id); }); }
   // switchTab, alt menü sekmelerini doğru başlatır (ekran + init birlikte)
   function tab(name){ return run(function(){ if(window.switchTab) switchTab(name); else if(window.showScreen) showScreen('sc-'+name); }); }
+  // ffOpen çağrısı + overlay'in gerçekten açıldığını garanti et
+  function ff(w){
+    return run(function(){
+      if(!window.ffOpen){ console.warn('ffOpen tanımlı değil (free_features.js yüklendi mi?)'); return; }
+      ffOpen(w);
+      // overlay açılmadıysa zorla aç (z-index/active güvencesi)
+      var id={dash:'ffDash',mine:'ffMine',rev:'ffRev',shad:'ffShad'}[w];
+      var el=document.getElementById(id);
+      if(el){ el.classList.add('active'); el.style.display='block'; el.style.zIndex='1000001'; el.scrollTop=0; }
+      else { console.warn('Overlay bulunamadı:', id); }
+    });
+  }
 
   // "Araçlar" sekmesi (önceki sabit liste)
   const TOOL_ITEMS = [
     ['📘 Kelime Ekranı', scr('sc-word')],
     ['📋 Liste',         scr('sc-list')],
-    ['📊 Panel',         run(function(){ if(window.ffOpen) ffOpen('dash'); })],
-    ['⛏️ PDF / Transcript Mining', run(function(){ if(window.ffOpen) ffOpen('mine'); })],
-    ['🧠 Akıllı Tekrar', run(function(){ if(window.ffOpen) ffOpen('rev'); })],
-    ['🎧 Shadow',        run(function(){ if(window.ffOpen) ffOpen('shad'); })],
+    ['📊 Panel',         ff('dash')],
+    ['⛏️ PDF / Transcript Mining', ff('mine')],
+    ['🧠 Akıllı Tekrar', ff('rev')],
+    ['🎧 Shadow',        ff('shad')],
     ['🗺️ Dil Haritası',  run(function(){ window.open('dil_haritasi_v1.html','_blank'); })],
     ['📊 İstatistik',    tab('stats')],
     ['📷 Kamera',        tab('cameraCoach')],
@@ -475,6 +487,9 @@
       + '.partner-card,.persona-card{text-align:center !important;}'
       + '#scenarioGrid{display:flex !important;flex-wrap:wrap !important;gap:7px !important;}'
       + '.pfc-sound-grid{display:grid !important;grid-template-columns:1fr 1fr !important;gap:8px !important;}'
+      + '.pfc-sound-card{font-size:12px !important;padding:8px !important;}'
+      + '.pfc-card-actions{display:flex !important;gap:4px !important;flex-wrap:wrap !important;margin-top:6px !important;}'
+      + '.pfc-card-actions .pfc-mini-action{flex:1 !important;min-width:0 !important;font-size:11px !important;padding:6px 4px !important;}'
       + '.pfc-face-wrap{display:grid !important;grid-template-columns:128px 1fr !important;gap:12px !important;align-items:center !important;}'
       + '@media(max-width:430px){.pfc-sound-grid{grid-template-columns:1fr !important;}.pfc-face-wrap{grid-template-columns:1fr !important;}}';
     var s = document.createElement('style');
