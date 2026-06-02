@@ -216,3 +216,93 @@ img{max-width:100%;height:auto}.hero-img,.word-image{width:100%;max-height:240px
 .level-badge.active{
   background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border-color:transparent;
 }
+
+/* ============================================================
+   free_features.js panelleri (Full Dashboard, PDF/Transcript
+   Mining, Smart Review, Shadowing Studio) ve yüzen FAB butonları.
+   free_features.js bu 'ff-*' class'larına güveniyor ama stilleri
+   style.css'te yoktu; olmayınca paneller gizlenemeyip her ekranda
+   sayfa altına dökülüyordu. Varsayılan gizli + modal düzeni.
+   ============================================================ */
+
+/* --- Overlay: varsayılan gizli, .active ile aç --- */
+.ff-ov{
+  position:fixed;inset:0;z-index:3000;display:none;
+  background:rgba(8,12,20,.92);overflow-y:auto;padding:16px;
+}
+.ff-ov.active{display:block;}
+.ff-wrap{max-width:520px;margin:0 auto;}
+
+/* --- Üst başlık --- */
+.ff-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.ff-top h2,.ff-top h3,.ff-title{
+  margin:0;font-weight:900;color:var(--text);
+}
+.ff-top h2{font-size:20px;flex:1;}
+.ff-title{font-size:15px;margin-bottom:6px;}
+.ff-close{
+  background:var(--bg2);color:var(--sub);border:1px solid var(--border);
+  border-radius:12px;padding:8px 12px;font-weight:800;cursor:pointer;font-family:inherit;
+}
+
+/* --- Kartlar / metin --- */
+.ff-card{
+  background:var(--card);border:1px solid var(--border);border-radius:18px;
+  padding:16px;margin:12px 0;box-shadow:var(--shadow);
+}
+.ff-sub,.ff-m{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 10px;}
+.ff-text{color:var(--text);}
+.ff-w{font-weight:900;color:var(--text);}
+.ff-body{font-size:13px;color:var(--sub);line-height:1.5;}
+
+/* --- Giriş alanları --- */
+.ff-input{
+  width:100%;background:var(--bg2);color:var(--text);
+  border:1px solid var(--border);border-radius:12px;padding:12px;
+  font-family:inherit;outline:none;min-height:48px;
+}
+textarea.ff-input{min-height:120px;resize:vertical;}
+.ff-canvas{width:100%;height:auto;background:var(--bg2);border-radius:12px;}
+
+/* --- İstatistik ızgarası --- */
+.ff-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
+.ff-stat{text-align:center;background:var(--bg2);border-radius:10px;padding:10px 6px;}
+
+/* --- Liste --- */
+.ff-list{display:flex;flex-direction:column;gap:8px;}
+.ff-item{
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:10px 12px;font-size:13px;color:var(--text);
+}
+
+/* --- Buton satırı --- */
+.ff-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.ff-btn{
+  border:0;border-radius:12px;padding:10px 14px;font-weight:800;
+  cursor:pointer;color:#fff;font-family:inherit;font-size:13px;
+}
+.ff-blue{background:linear-gradient(135deg,#3b82f6,#2563eb);}
+.ff-green{background:linear-gradient(135deg,#22c55e,#16a34a);}
+.ff-purple{background:linear-gradient(135deg,#8b5cf6,#7c3aed);}
+.ff-orange{background:linear-gradient(135deg,#f59e0b,#ea580c);}
+.ff-ghost{background:var(--bg2)!important;color:var(--sub)!important;border:1px solid var(--border)!important;}
+
+/* --- Rozetler / chip --- */
+.ff-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
+.ff-chip,.ff-pill{
+  display:inline-block;background:var(--bg3);color:var(--sub);
+  border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;
+}
+
+/* --- Yüzen FAB butonları --- */
+.ff-fabs{
+  position:fixed;right:12px;bottom:96px;z-index:1500;
+  display:flex;flex-direction:column;gap:8px;align-items:flex-end;
+}
+.ff-fab{
+  border:0;border-radius:999px;padding:9px 14px;font-weight:800;
+  color:#fff;cursor:pointer;font-family:inherit;font-size:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+  background:linear-gradient(135deg,#6366f1,#3b82f6);white-space:nowrap;
+}
+.ff-mini{font-size:11px;padding:7px 11px;}
