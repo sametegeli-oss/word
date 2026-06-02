@@ -151,3 +151,68 @@ img{max-width:100%;height:auto}.hero-img,.word-image{width:100%;max-height:240px
 }
 #smngLauncherFixed{bottom:150px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);}
 #voiceCompareLauncher{bottom:200px;background:linear-gradient(135deg,#0ea5e9,#2563eb);}
+
+/* ============================================================
+   Özellikler menüsü (akordeon) + act-btn butonları + Kütüphane
+   class'ları. Bunlar style.css'te yoktu; olmayınca akordeon
+   kapanmıyor ve içerik stilsiz dökülüyordu.
+   ============================================================ */
+
+/* --- Özellikler satırı --- */
+.act-row{display:flex;flex-direction:column;gap:10px;}
+
+/* --- Akordeon kategori --- */
+.feature-category{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+}
+.feature-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;cursor:pointer;color:var(--text);font-weight:800;
+  user-select:none;
+}
+.feature-arrow{
+  transition:transform .25s ease;color:var(--muted);font-size:12px;
+}
+.feature-arrow.open{transform:rotate(180deg);}
+.feature-content{
+  max-height:0;overflow:hidden;transition:max-height .3s ease;
+  padding:0 12px;
+}
+.feature-content.open{padding-bottom:12px;}
+
+/* --- Özellik butonları --- */
+.act-btn{
+  padding:10px 8px;border:1px solid var(--border);border-radius:12px;
+  background:var(--bg2);color:var(--text);font-weight:800;font-size:12px;
+  cursor:pointer;font-family:inherit;text-align:center;line-height:1.2;
+}
+.act-btn:hover{background:var(--bg3);}
+.ab-en{background:#0f2a1a;color:#86efac;}
+.ab-sent{background:#0f1f3a;color:#93c5fd;}
+.ab-tr{background:#2a1530;color:#f0abfc;}
+.ab-gt{background:#1a2540;color:#93c5fd;}
+.ab-ok{background:#0f2a1a;color:#86efac;}
+
+/* --- Kütüphane ekranı --- */
+.scr-con{padding:0 2px;}
+.top-title{
+  margin:0;flex:1;font-size:22px;font-weight:900;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.category-btn{
+  background:var(--bg2);color:var(--sub);border:1px solid var(--border);
+  border-radius:12px;padding:8px 14px;font-weight:800;font-size:13px;
+  cursor:pointer;font-family:inherit;margin:3px;
+}
+.category-btn.active{
+  background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border-color:transparent;
+}
+.level-badge{
+  display:inline-flex;align-items:center;background:var(--bg3);color:var(--sub);
+  border:1px solid var(--border);border-radius:999px;padding:5px 12px;
+  font-weight:800;font-size:12px;cursor:pointer;margin:3px;
+}
+.level-badge.active{
+  background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border-color:transparent;
+}
