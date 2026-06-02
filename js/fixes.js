@@ -757,3 +757,69 @@
   document.addEventListener('DOMContentLoaded', buildDrawer);
   setTimeout(buildDrawer, 500);
 })();
+/* TÜM ÖZELLİKLERİ ARAÇLAR PANELİNE TOPLA */
+(function () {
+  if (window.__WM_ALL_TOOLS_DRAWER__) return;
+  window.__WM_ALL_TOOLS_DRAWER__ = true;
+
+  function go(name) {
+    document.getElementById('wmToolsDrawer')?.classList.remove('open');
+
+    if (name === 'dash' && window.ffOpen) ffOpen('dash');
+    if (name === 'mine' && window.ffOpen) ffOpen('mine');
+    if (name === 'rev' && window.ffOpen) ffOpen('rev');
+    if (name === 'shad' && window.ffOpen) ffOpen('shad');
+
+    if (name === 'flash' && window.showScreen) showScreen('sc-flashcard');
+    if (name === 'ai' && window.showScreen) showScreen('sc-ai');
+    if (name === 'pron' && window.showScreen) showScreen('sc-pronunciation');
+    if (name === 'real' && window.showScreen) showScreen('sc-realnew');
+    if (name === 'map' && window.showScreen) showScreen('sc-map');
+    if (name === 'stats' && window.showScreen) showScreen('sc-stats');
+    if (name === 'camera' && window.showScreen) showScreen('sc-camera');
+    if (name === 'settings' && window.showScreen) showScreen('sc-settings');
+  }
+
+  function build() {
+    if (document.getElementById('wmToolsBtn')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'wmToolsBtn';
+    btn.textContent = '🧰 Araçlar';
+
+    const drawer = document.createElement('div');
+    drawer.id = 'wmToolsDrawer';
+    drawer.innerHTML = `
+      <button id="wmToolsClose">×</button>
+      <h3>🧰 Araçlar</h3>
+
+      <button class="wm-tool-btn" data-go="dash">📊 Panel</button>
+      <button class="wm-tool-btn" data-go="mine">⛏️ PDF / Transcript Mining</button>
+      <button class="wm-tool-btn" data-go="rev">🧠 Akıllı Tekrar</button>
+      <button class="wm-tool-btn" data-go="shad">🎧 Shadow</button>
+
+      <button class="wm-tool-btn" data-go="pron">🔊 Ses & Telaffuz</button>
+      <button class="wm-tool-btn" data-go="real">💬 Konuşma & Yazma</button>
+      <button class="wm-tool-btn" data-go="flash">🎴 Flashcard</button>
+      <button class="wm-tool-btn" data-go="ai">❓ Yapay Zekaya Sor</button>
+
+      <button class="wm-tool-btn" data-go="map">🗺️ Dil Haritası</button>
+      <button class="wm-tool-btn" data-go="stats">📊 İstatistik</button>
+      <button class="wm-tool-btn" data-go="camera">📷 Kamera</button>
+      <button class="wm-tool-btn" data-go="settings">⚙️ Ayarlar</button>
+    `;
+
+    document.body.appendChild(btn);
+    document.body.appendChild(drawer);
+
+    btn.onclick = () => drawer.classList.add('open');
+    drawer.querySelector('#wmToolsClose').onclick = () => drawer.classList.remove('open');
+
+    drawer.querySelectorAll('[data-go]').forEach(b => {
+      b.onclick = () => go(b.dataset.go);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', build);
+  setTimeout(build, 500);
+})();
