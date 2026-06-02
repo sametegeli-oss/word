@@ -702,3 +702,58 @@
 
   console.log('✅ Cümleleri Çıkar butonu aktif');
 })();
+/* ARAÇLAR YAN PANELİ */
+(function () {
+  if (window.__WM_TOOLS_DRAWER__) return;
+  window.__WM_TOOLS_DRAWER__ = true;
+
+  function openTool(name) {
+    document.getElementById('wmToolsDrawer')?.classList.remove('open');
+
+    if (name === 'dash' && window.ffOpen) ffOpen('dash');
+    if (name === 'mine' && window.ffOpen) ffOpen('mine');
+    if (name === 'rev' && window.ffOpen) ffOpen('rev');
+    if (name === 'shad' && window.ffOpen) ffOpen('shad');
+    if (name === 'ai' && window.showScreen) showScreen('sc-ai');
+    if (name === 'flash' && window.showScreen) showScreen('sc-flashcard');
+  }
+
+  function buildDrawer() {
+    if (document.getElementById('wmToolsBtn')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'wmToolsBtn';
+    btn.textContent = '🧰 Araçlar';
+    btn.onclick = () => {
+      document.getElementById('wmToolsDrawer')?.classList.add('open');
+    };
+
+    const drawer = document.createElement('div');
+    drawer.id = 'wmToolsDrawer';
+    drawer.innerHTML = `
+      <button id="wmToolsClose">×</button>
+      <h3>🧰 Araçlar</h3>
+
+      <button class="wm-tool-btn" data-tool="dash">📊 Panel</button>
+      <button class="wm-tool-btn" data-tool="mine">⛏️ PDF / Mining</button>
+      <button class="wm-tool-btn" data-tool="rev">🧠 Akıllı Tekrar</button>
+      <button class="wm-tool-btn" data-tool="shad">🎧 Shadow</button>
+      <button class="wm-tool-btn" data-tool="flash">🎴 Flashcard</button>
+      <button class="wm-tool-btn" data-tool="ai">❓ Yapay Zekaya Sor</button>
+    `;
+
+    document.body.appendChild(btn);
+    document.body.appendChild(drawer);
+
+    drawer.querySelector('#wmToolsClose').onclick = () => {
+      drawer.classList.remove('open');
+    };
+
+    drawer.querySelectorAll('[data-tool]').forEach(b => {
+      b.onclick = () => openTool(b.dataset.tool);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', buildDrawer);
+  setTimeout(buildDrawer, 500);
+})();
