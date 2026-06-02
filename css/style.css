@@ -1,0 +1,153 @@
+/* Sentence Mode base style rescue v2 */
+:root{
+  --bg:#0b0f18;--bg2:#111827;--bg3:#1f2937;--card:#151c2c;--card2:#111827;
+  --text:#f8fafc;--sub:#cbd5e1;--muted:#94a3b8;--border:#263249;
+  --blue:#3b82f6;--green:#22c55e;--red:#ef4444;--orange:#f59e0b;--purple:#8b5cf6;--pink:#ec4899;
+  --shadow:0 18px 45px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:'Nunito',system-ui,-apple-system,Segoe UI,sans-serif;}
+body{overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+#app{width:100%;max-width:520px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;padding-bottom:86px;}
+.screen{display:none!important;min-height:100vh;padding:14px 16px 92px;}
+.screen.active{display:block!important;}
+.card,.panel,.wm-card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:16px;margin:12px 0;box-shadow:var(--shadow);}
+.top-bar{display:flex;align-items:center;gap:10px;min-height:54px;padding:4px 0 12px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 82%,rgba(11,15,24,0));z-index:50;}
+.top-bar h2{margin:0;flex:1;font-size:22px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.back-btn,.btn,.quiz-option,button{font-family:inherit;font-weight:800;border:0;border-radius:14px;cursor:pointer;}
+.back-btn{background:transparent;color:#9db7ff;font-size:24px;padding:8px 10px;}
+.btn{padding:12px 16px;color:#fff;background:var(--bg3);}
+.btn-blue{background:linear-gradient(135deg,#3b82f6,#2563eb)!important;color:#fff!important;}
+.btn-green{background:linear-gradient(135deg,#22c55e,#16a34a)!important;color:#fff!important;}
+.btn-purple{background:linear-gradient(135deg,#8b5cf6,#7c3aed)!important;color:#fff!important;}
+.btn-orange{background:linear-gradient(135deg,#f59e0b,#ea580c)!important;color:#fff!important;}
+.btn-ghost{background:var(--bg2)!important;color:var(--sub)!important;border:1px solid var(--border)!important;}
+input,select,textarea{font-family:inherit;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:12px;width:100%;outline:none;}
+textarea{min-height:120px;resize:vertical;}
+.drop-zone{border:2px dashed #2563eb;border-radius:22px;padding:34px 18px;text-align:center;background:rgba(59,130,246,.08);cursor:pointer;margin:12px 0;}
+.dz-ico{font-size:42px;margin-bottom:10px}.drop-zone p{margin:0 0 6px;font-weight:900}.drop-zone small{color:var(--muted)}
+.err-box{display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.45);color:#fecaca;border-radius:12px;padding:10px;margin:10px 0;}
+.fmt-guide{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:12px;color:var(--sub);font-size:13px;}
+.fmt-guide table{width:100%;border-collapse:collapse;font-size:11px}.fmt-guide th,.fmt-guide td{border:1px solid var(--border);padding:6px;}
+.bottom-nav,.nav-bottom,#bottomNav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:520px;background:#0f1524;border-top:1px solid var(--border);z-index:1000;display:flex;justify-content:space-around;gap:2px;padding:8px 6px calc(8px + env(safe-area-inset-bottom));}
+.bottom-nav button,.nav-bottom button,#bottomNav button{background:transparent;color:var(--muted);font-size:11px;padding:6px 5px;border-radius:12px;min-width:48px;}
+.bottom-nav button.active,.nav-bottom button.active,#bottomNav button.active{color:#60a5fa;background:rgba(59,130,246,.12);}
+.word-card,.sentence-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:18px;margin:12px 0;box-shadow:var(--shadow);}
+.word-title,#wordText{font-size:42px;font-weight:900;color:var(--green);line-height:1.05;margin:8px 0;}
+.sentence,.sentence-text{font-size:18px;font-weight:800;line-height:1.45;color:var(--text);}
+.sentence-tr,.translation{font-style:italic;color:var(--muted);font-size:16px;line-height:1.45;}
+.chip,.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 10px;background:var(--bg3);color:var(--sub);font-size:12px;font-weight:900;margin:3px;}
+.progress{height:7px;background:var(--bg3);border-radius:999px;overflow:hidden}.progress>div{height:100%;background:linear-gradient(90deg,#3b82f6,#22c55e)}
+img{max-width:100%;height:auto}.hero-img,.word-image{width:100%;max-height:240px;object-fit:cover;border-radius:20px;display:block;margin:10px 0;}
+.list-item{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;margin:10px 0;color:var(--text);}
+.list-item.learned,.list-item.started{border-color:#22c55e;background:rgba(34,197,94,.10)}
+.list-item.due{border-color:#ef4444;background:rgba(239,68,68,.10)}
+.wm-tool-panel[aria-hidden="true"]{display:none!important;}
+.wm-tool-panel{position:fixed;right:0;top:0;bottom:0;width:min(360px,92vw);z-index:2000;background:var(--card);border-left:1px solid var(--border);box-shadow:var(--shadow);overflow:auto;}
+@media (min-width:800px){#app{max-width:560px}.screen{padding-left:22px;padding-right:22px}.hero-img,.word-image{max-height:280px}}
+
+/* ============================================================
+   Eksik panel/overlay stilleri (Sentence Mining, Ses Karşılaştırma,
+   AI Speaking World) ve yüzen launcher butonları.
+   Bu bloklar style.css'te yoktu; olmayınca overlay'ler gizlenemeyip
+   sayfa altına stilsiz dökülüyordu. Varsayılan gizli + modal düzeni.
+   ============================================================ */
+
+/* --- Ortak overlay davranışı: varsayılan gizli, .active ile aç --- */
+#smngOverlay,#voiceCompareOverlay,#wmSpeakingWorldOverlay{
+  position:fixed;inset:0;z-index:3000;display:none;
+  background:rgba(8,12,20,.92);overflow-y:auto;padding:16px;
+}
+#smngOverlay.active,#voiceCompareOverlay.active{display:block;}
+#wmSpeakingWorldOverlay{display:none;}
+#wmSpeakingWorldOverlay.active,
+#wmSpeakingWorldOverlay[aria-hidden="false"]{display:block;}
+#wmSpeakingWorldOverlay[aria-hidden="true"]{display:none;}
+
+/* --- İçerik sarmalayıcıları --- */
+.smng-fixed-wrap,.vc-wrap,.wmsw-wrap{
+  max-width:520px;margin:0 auto;
+}
+
+/* --- Üst başlık satırları --- */
+.smng-fixed-top,.vc-top,.wmsw-top{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.smng-fixed-top h2,.vc-top h2,.wmsw-title{
+  margin:0;font-size:20px;font-weight:900;color:var(--text);flex:1;
+}
+.smng-close,.vc-close,.wmsw-back{
+  background:var(--bg2);color:var(--sub);border:1px solid var(--border);
+  border-radius:12px;padding:8px 12px;font-weight:800;cursor:pointer;
+}
+
+/* --- Kartlar --- */
+.smng-card,.vc-card,.wmsw-card{
+  background:var(--card);border:1px solid var(--border);border-radius:18px;
+  padding:16px;margin:12px 0;box-shadow:var(--shadow);
+}
+.smng-title,.vc-title,.wmsw-card h3{
+  font-size:15px;font-weight:900;color:var(--text);margin:0 0 6px;
+}
+.smng-sub,.vc-sub,.wmsw-card p{
+  font-size:13px;color:var(--muted);margin:0 0 10px;line-height:1.5;
+}
+.smng-empty{color:var(--muted);font-size:13px;}
+.smng-stats{margin:12px 0;}
+
+/* --- Giriş alanları --- */
+.smng-textarea,.vc-input{
+  width:100%;background:var(--bg2);color:var(--text);
+  border:1px solid var(--border);border-radius:12px;padding:12px;
+  font-family:inherit;outline:none;
+}
+.smng-textarea{min-height:120px;resize:vertical;}
+
+/* --- Buton satırları --- */
+.smng-row,.vc-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.smng-btn,.vc-btn,.wmsw-btn{
+  border:0;border-radius:12px;padding:10px 14px;font-weight:800;
+  cursor:pointer;color:#fff;font-family:inherit;
+}
+.smng-primary,.vc-blue{background:linear-gradient(135deg,#3b82f6,#2563eb);}
+.smng-blue{background:linear-gradient(135deg,#3b82f6,#2563eb);}
+.smng-purple,.vc-purple,.wmsw-btn{background:linear-gradient(135deg,#8b5cf6,#7c3aed);}
+.vc-red{background:linear-gradient(135deg,#ef4444,#dc2626);}
+.smng-ghost,.vc-ghost{
+  background:var(--bg2)!important;color:var(--sub)!important;
+  border:1px solid var(--border)!important;
+}
+
+/* --- AI Speaking World ızgara ve rozetler --- */
+.wmsw-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+@media (min-width:600px){.wmsw-grid{grid-template-columns:1fr 1fr;}}
+.wmsw-pill{
+  display:inline-block;background:var(--bg3);color:var(--sub);
+  border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;margin:2px 3px;
+}
+.wmsw-btn{width:100%;margin-top:10px;}
+.wmsw-output{
+  margin-top:10px;font-size:12px;color:var(--muted);
+  background:var(--bg2);border-radius:10px;padding:10px;line-height:1.5;
+}
+
+/* --- Ses karşılaştırma görselleri --- */
+.vc-canvas{width:100%;height:auto;background:var(--bg2);border-radius:12px;}
+.vc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
+.vc-stat{text-align:center;background:var(--bg2);border-radius:10px;padding:8px;}
+.vc-stat b{display:block;font-size:18px;color:var(--text);}
+.vc-stat span{font-size:10px;color:var(--muted);}
+.vc-bars{display:flex;flex-direction:column;gap:8px;}
+.vc-bar-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub);}
+.vc-bar-track{flex:1;height:8px;background:var(--bg3);border-radius:999px;overflow:hidden;}
+.vc-bar-fill{height:100%;width:0;background:linear-gradient(90deg,#3b82f6,#22c55e);}
+.vc-feedback{margin-top:10px;font-size:13px;color:var(--muted);}
+
+/* --- Yüzen launcher butonları --- */
+#smngLauncherFixed,#voiceCompareLauncher{
+  position:fixed;right:12px;z-index:1500;border:0;border-radius:999px;
+  padding:10px 14px;font-weight:800;color:#fff;cursor:pointer;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);font-family:inherit;
+}
+#smngLauncherFixed{bottom:150px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);}
+#voiceCompareLauncher{bottom:200px;background:linear-gradient(135deg,#0ea5e9,#2563eb);}
