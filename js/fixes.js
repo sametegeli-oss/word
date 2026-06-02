@@ -882,3 +882,6 @@
   setInterval(moveFeatureButtons, 1000);
   setTimeout(moveFeatureButtons, 1200);
 })();
+window.WM_REBUILD_TOOLS = function(){
+  console.log('Araçlar paneli yeniden oluşturuluyor...');
+};
