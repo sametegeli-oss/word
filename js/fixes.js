@@ -605,3 +605,100 @@
 
   console.log('✅ NAV/LIST FIX aktif');
 })();
+/* CÜMLELERİ ÇIKAR BUTONU — PDF / Transcript Mining */
+(function () {
+  'use strict';
+  if (window.__FF_SENTENCE_EXTRACT_FIX__) return;
+  window.__FF_SENTENCE_EXTRACT_FIX__ = true;
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){
+    return String(s ?? '').replace(/[&<>'"]/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+    }[c]));
+  }
+
+  function extractSentences(text) {
+    text = String(text || '')
+      .replace(/\s+/g, ' ')
+      .replace(/([.!?])\s+(?=[A-Z"“‘])/g, '$1|')
+      .trim();
+
+    return text
+      .split('|')
+      .map(s => s.trim())
+      .filter(s => s.length > 8)
+      .filter(s => /[a-zA-Z]/.test(s));
+  }
+
+  window.ffExtractSentences = function () {
+    var text = $('ffText') ? $('ffText').value : '';
+    var out = $('ffMineOut');
+    var stats = $('ffMineStats');
+
+    var sentences = extractSentences(text);
+
+    window.FF_LAST_SENTENCES = sentences;
+
+    if (stats) {
+      stats.style.display = 'grid';
+      stats.innerHTML = `
+        <div class="ff-stat"><b>${sentences.length}</b><span>CÜMLE</span></div>
+        <div class="ff-stat"><b>${text.length}</b><span>KARAKTER</span></div>
+      `;
+    }
+
+    if (!out) return;
+
+    if (!sentences.length) {
+      out.innerHTML = '<div class="ff-sub">Çıkarılacak cümle bulunamadı.</div>';
+      return;
+    }
+
+    out.innerHTML = `
+      <div class="ff-list">
+        ${sentences.map((s, i) => `
+          <div class="ff-item">
+            <div class="ff-w">${i + 1}</div>
+            <div class="ff-body">
+              <div class="ff-m">${esc(s)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="ff-row" style="margin-top:12px">
+        <button class="ff-btn ff-blue" onclick="ffCopySentences()">Cümleleri Kopyala</button>
+      </div>
+    `;
+  };
+
+  window.ffCopySentences = function () {
+    var arr = window.FF_LAST_SENTENCES || [];
+    if (!arr.length) return alert('Önce cümleleri çıkar.');
+    navigator.clipboard.writeText(arr.join('\n')).then(function(){
+      alert(arr.length + ' cümle kopyalandı.');
+    });
+  };
+
+  function addButton() {
+    var buttons = document.querySelectorAll('button');
+    buttons.forEach(function (btn) {
+      if ((btn.textContent || '').trim() === 'Kelimeleri Çıkar') {
+        var row = btn.parentElement;
+        if (!row || row.querySelector('.ff-sentence-extract-btn')) return;
+
+        var b = document.createElement('button');
+        b.className = 'ff-btn ff-orange ff-sentence-extract-btn';
+        b.textContent = 'Cümleleri Çıkar';
+        b.onclick = window.ffExtractSentences;
+
+        btn.insertAdjacentElement('afterend', b);
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', addButton);
+  setInterval(addButton, 800);
+
+  console.log('✅ Cümleleri Çıkar butonu aktif');
+})();
