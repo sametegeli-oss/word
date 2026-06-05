@@ -1104,3 +1104,38 @@ body > .quick-btn {
 /* <q> tarayıcı otomatik tırnak ekler; tek tip eğri tırnak kullan */
 #app q::before{ content:"\201C"; }
 #app q::after { content:"\201D"; }
+
+/* ════════════════════════════════════════════════════════════════════
+   v41 — CHIP/SEÇİM BUTONLARI KOMPAKT (Konuşma ekranı düzen düzeltmesi)
+   v38 tek-standart katmanı tüm butonlara min-height:46px + geniş padding
+   verince, yan yana çok sayıda dizilen küçük seçim butonları (kategori,
+   senaryo filtresi, seviye, quiz tipi/sayısı) şişip ekranı dağıttı.
+   Bunlar "chip" tipi → kompakt olmalı. Tek-standart görünüm (renk, radius,
+   font ailesi) korunur, yalnız boyut küçültülür.
+   ──────────────────────────────────────────────────────────────────── */
+.filter-btn, .category-btn, .type-btn, .quiz-type-btn, .quiz-count-btn,
+.count-btn, .sc-cat, [id^="sc-cat-"]{
+  min-height:34px !important;
+  height:auto !important;
+  padding:6px 12px !important;
+  font-size:var(--fs-sub) !important;
+  font-weight:700 !important;
+  border-radius:var(--r-pill) !important;
+  flex:0 0 auto !important;       /* yan yana, esnemeden */
+  width:auto !important;
+  line-height:1.1 !important;
+}
+/* Konuşma ekranı senaryo/kategori satırları: yatay sarmal, derli toplu */
+#scenarioCatRow, #scenarioGrid{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  gap:7px !important;
+  align-items:center !important;
+}
+#scenarioGrid > button, #scenarioGrid > .filter-btn{
+  min-height:34px !important; height:auto !important;
+  padding:6px 12px !important; font-size:var(--fs-sub) !important;
+  border-radius:var(--r-pill) !important; flex:0 0 auto !important; width:auto !important;
+}
+/* Seçili (active) chip vurgusu korunur */
+.filter-btn.active, .category-btn.active{ background:var(--blue) !important; color:#fff !important; }
