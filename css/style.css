@@ -1086,3 +1086,21 @@ body > .quick-btn {
 /* ═══════════ 4) KART / CHIP — tutarlılık ═══════════ */
 .card, .panel, .wm-card, .list-item, .word-card, .sentence-card{ border-radius:var(--r-card) !important; }
 .chip, .badge, .pill, .tag{ font-size:var(--fs-tiny) !important; font-weight:800 !important; border-radius:var(--r-pill) !important; }
+
+/* ════════════════════════════════════════════════════════════════════
+   v40 — TIRNAK İÇİ İFADELER: BOLD + YEŞİL (tüm ekranlar)
+   AI çıktıları highlightEnglishWords() içinde tırnak içi ifadeleri
+   <q>…</q> elemanına çeviriyor (18 ekranda). <q> için stil yoktu →
+   düz görünüyordu. Burada tek noktadan yeşil+bold yapıyoruz.
+   ──────────────────────────────────────────────────────────────────── */
+#app q,
+.partner-msg q,
+.screen q,
+.wm-quote{
+  color:var(--green,#22c55e) !important;
+  font-weight:800 !important;
+  font-style:normal !important;
+}
+/* <q> tarayıcı otomatik tırnak ekler; tek tip eğri tırnak kullan */
+#app q::before{ content:"\201C"; }
+#app q::after { content:"\201D"; }
