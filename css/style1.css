@@ -968,3 +968,119 @@ body > .quick-btn {
   font-weight: 900;
   text-align: left;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   v37 — EKRAN STANDARDİZASYON KATMANI
+   Amaç: 59 ekranı tek görsel standarda getirmek. Mevcut token'lar
+   (--text/--muted/--card/--border/--blue…) korunur. 25 dağınık buton
+   ailesi tek .btn diline hizalanır, tipografi/kart/boşluk standartlaşır.
+   HTML'e dokunulmaz; 1375 inline stilin tutarsız olanları bu katmanla
+   görsel olarak nötralize edilir. Yalnızca CSS değişti.
+   ──────────────────────────────────────────────────────────────────── */
+
+:root{
+  /* Tipografi ölçeği (tek kaynak) */
+  --fs-display:32px;  /* büyük kelime/sayı */
+  --fs-h2:22px;       /* ekran başlığı */
+  --fs-h3:16px;       /* kart başlığı */
+  --fs-body:15px;     /* normal metin */
+  --fs-sub:13px;      /* ikincil metin */
+  --fs-tiny:12px;     /* etiket/chip */
+  /* Boşluk ölçeği */
+  --sp-1:6px; --sp-2:10px; --sp-3:14px; --sp-4:18px;
+  /* Standart yarıçaplar */
+  --r-btn:14px; --r-card:20px; --r-pill:999px;
+  --btn-h:44px; /* min dokunma hedefi */
+}
+
+/* ---------- 1) BAŞLIKLAR ---------- */
+.screen h2{ font-size:var(--fs-h2); font-weight:900; color:var(--text); line-height:1.2; }
+.screen h3{ font-size:var(--fs-h3); font-weight:900; color:var(--text); line-height:1.25; margin:0 0 var(--sp-1); }
+.top-bar h2{ font-size:var(--fs-h2); font-weight:900; }
+
+/* ---------- 2) GÖVDE METNİ ----------
+   Inline font-size'ı OLMAYAN metinler tutarlı tabana oturur.
+   (Inline boyut verenler korunur; sadece kaos yaratan stilsizler hizalanır.) */
+.screen p, .screen li, .screen label, .screen span:not([style*="font-size"]){
+  line-height:1.5;
+}
+.screen p:not([style*="font-size"]){ font-size:var(--fs-body); color:var(--sub); }
+.screen small, .muted, .sub, .hint, .note{ font-size:var(--fs-sub); color:var(--muted); }
+
+/* ---------- 3) BUTONLAR — TEK STANDART ----------
+   Tüm buton aileleri ortak taban: aynı yükseklik, padding, radius,
+   ağırlık, geçiş. Renk semantiği .btn-blue/green/purple/ghost'tan gelir. */
+.btn, .act-btn, .bnav-btn, .rlnew-btn, .smng-btn, .shadow-btn, .song-btn,
+.sleep-btn, .reader-btn, .fc-btn, .vc-btn, .category-btn, .filter-btn,
+.type-btn, .nav-btn, .play-btn, .analyze-btn, .compact-btn, .wmsw-btn,
+.quiz-type-btn, .quiz-count-btn{
+  font-family:inherit;
+  font-size:var(--fs-body);
+  font-weight:800;
+  border:0;
+  border-radius:var(--r-btn);
+  min-height:var(--btn-h);
+  padding:0 16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  cursor:pointer;
+  line-height:1;
+  transition:transform .12s ease, filter .12s ease, background .12s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn:active, .act-btn:active, .bnav-btn:active, .rlnew-btn:active,
+.smng-btn:active, .shadow-btn:active, .song-btn:active, .sleep-btn:active,
+.reader-btn:active, .fc-btn:active, .nav-btn:active, .filter-btn:active{
+  transform:scale(.97);
+}
+.btn:hover, .act-btn:hover, .rlnew-btn:hover, .smng-btn:hover{ filter:brightness(1.06); }
+
+/* Küçük buton tek tanım */
+.btn-sm, .compact-btn{ min-height:36px; padding:0 12px; font-size:var(--fs-sub); }
+
+/* Geri butonu standardı (ikon) */
+.back-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:var(--btn-h); height:var(--btn-h); min-height:var(--btn-h);
+  padding:0; font-size:24px; border-radius:var(--r-btn);
+  background:transparent; color:#9db7ff;
+}
+
+/* CSS'siz/inline-renkli butonların nötr tabanı: inline arka plan yoksa ghost görünüme düşsün */
+.shadow-btn:not([style*="background"]), .song-btn:not([style*="background"]),
+.sleep-btn:not([style*="background"]), .reader-btn:not([style*="background"]),
+.rlnew-btn:not([style*="background"]):not(.rlnew-primary),
+.fc-btn:not([style*="background"]), .analyze-btn:not([style*="background"]){
+  background:var(--bg2); color:var(--text); border:1px solid var(--border);
+}
+
+/* Tam genişlik buton grubu boşluğu */
+.btn-row, .btn-group{ display:flex; gap:var(--sp-2); flex-wrap:wrap; }
+.btn-row > *, .btn-group > *{ flex:1 1 auto; }
+
+/* ---------- 4) KARTLAR ---------- */
+.card, .panel, .wm-card, .list-item, .word-card, .sentence-card{
+  border-radius:var(--r-card);
+}
+.card, .panel, .wm-card{ padding:var(--sp-4); margin:var(--sp-3) 0; }
+
+/* ---------- 5) FORM ÖGELERİ ---------- */
+.screen input, .screen select, .screen textarea{
+  font-size:var(--fs-body); border-radius:var(--r-btn);
+}
+
+/* ---------- 6) CHIP / BADGE / ROZET ---------- */
+.chip, .badge, .pill, .tag{ font-size:var(--fs-tiny); font-weight:800; border-radius:var(--r-pill); }
+
+/* ---------- 7) ÇOK KÜÇÜK YAZILARI OKUNUR TABANA ÇEK ----------
+   9-10px gibi okunması zor inline boyutları erişilebilir alt sınıra çeker. */
+.screen [style*="font-size:9px"], .screen [style*="font-size:10px"]{ font-size:var(--fs-tiny)!important; }
+
+/* ---------- 8) İKON BUTONLARI KARE/ERİŞİLEBİLİR ---------- */
+.mic-btn, .play-btn, .rlnew-iconbtn{
+  min-width:var(--btn-h); min-height:var(--btn-h);
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:var(--r-btn);
+}
