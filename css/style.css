@@ -1139,3 +1139,63 @@ body > .quick-btn {
 }
 /* Seçili (active) chip vurgusu korunur */
 .filter-btn.active, .category-btn.active{ background:var(--blue) !important; color:#fff !important; }
+
+/* ════════════════════════════════════════════════════════════════════
+   v42 — SENARYO EKRANI (sc-realnew) DÜĞMELERİ: KATEGORİYE GÖRE
+   BOYUT + RENK. İstek: düğme büyüklükleri ve renkleri kategorilerine
+   göre düzenlensin. Semantik renk: ana eylem=yeşil, ikincil=nötr,
+   tehlike=kırmızı, seviye=küçük chip, kişilik=seçim kartı.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Ortak eylem düğmesi tabanı */
+#sc-realnew .rlnew-btn{
+  font-family:inherit !important; font-weight:800 !important;
+  border:0 !important; border-radius:var(--r-btn) !important;
+  min-height:46px !important; padding:0 18px !important;
+  display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  gap:8px !important; cursor:pointer !important; font-size:var(--fs-body) !important;
+  transition:transform .12s ease, filter .12s ease !important;
+}
+#sc-realnew .rlnew-btn:active{ transform:scale(.97); }
+#sc-realnew .rlnew-btn:hover{ filter:brightness(1.07); }
+
+/* ANA EYLEM (Başlat / Üret) → yeşil */
+#sc-realnew .rlnew-primary{ background:var(--green) !important; color:#fff !important; }
+/* İKİNCİL (Kullan / İpucu) → nötr ghost */
+#sc-realnew .rlnew-secondary{ background:var(--bg2) !important; color:var(--sub) !important; border:1px solid var(--border) !important; }
+/* TEHLİKE (Sohbeti Temizle) → kırmızı */
+#sc-realnew .rlnew-danger{ background:var(--red) !important; color:#fff !important; }
+
+/* İKON DÜĞMELERİ (mic / gönder) → kare, mavi */
+#sc-realnew .rlnew-iconbtn{
+  min-width:46px !important; min-height:46px !important; width:46px; height:46px;
+  border-radius:var(--r-btn) !important; background:var(--blue) !important; color:#fff !important;
+  border:0 !important; display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  font-size:18px !important; cursor:pointer !important;
+}
+
+/* SEVİYE CHIP'LERİ (A1–C1) → küçük pill, seçili=mavi */
+#sc-realnew .rlnew-levels{ display:flex !important; flex-wrap:wrap !important; gap:7px !important; }
+#sc-realnew .rlnew-level{
+  min-height:34px !important; padding:6px 14px !important; font-size:var(--fs-sub) !important;
+  font-weight:700 !important; border-radius:var(--r-pill) !important;
+  background:var(--bg2) !important; color:var(--sub) !important; border:1px solid var(--border) !important;
+  cursor:pointer !important; flex:0 0 auto !important;
+}
+#sc-realnew .rlnew-level.active{ background:var(--blue) !important; color:#fff !important; border-color:var(--blue) !important; }
+
+/* KİŞİLİK KARTLARI (Emma/Mike/Sophie/Jack) → eşit boyut grid, seçili=yeşil çerçeve */
+#sc-realnew .rlnew-personas{ display:grid !important; grid-template-columns:1fr 1fr !important; gap:10px !important; }
+#sc-realnew .rlnew-persona{
+  background:var(--card) !important; border:1.5px solid var(--border) !important;
+  border-radius:var(--r-card) !important; padding:12px !important; cursor:pointer !important;
+  display:flex !important; flex-direction:column !important; align-items:center !important; gap:4px !important;
+  min-height:74px !important; text-align:center !important; transition:border-color .15s ease, background .15s ease !important;
+}
+#sc-realnew .rlnew-persona.active{ border-color:var(--green) !important; background:rgba(34,197,94,.12) !important; }
+#sc-realnew .rlnew-p-name{ font-weight:800 !important; font-size:var(--fs-sub) !important; color:var(--text) !important; }
+#sc-realnew .rlnew-p-style{ font-size:11px !important; color:var(--muted) !important; }
+
+/* Aksiyon satırları derli toplu */
+#sc-realnew .rlnew-actions, #sc-realnew .rlnew-footer-actions{ display:flex !important; gap:10px !important; flex-wrap:wrap !important; }
+#sc-realnew .rlnew-actions > .rlnew-btn, #sc-realnew .rlnew-footer-actions > .rlnew-btn{ flex:1 1 auto !important; }
