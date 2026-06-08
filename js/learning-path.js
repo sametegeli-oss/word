@@ -1,4 +1,37 @@
-console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v13');
+console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v14');
+
+/* ═══════════════════════════════════════════════════════════════════
+   IndexedDB DEPOLAMA — büyük veri için (localStorage 5MB'ı aşıyor, 11.6MB veri).
+   wmPathData artık IDB'ye yazılır; localStorage sadece küçük veriye fallback.
+   window.WMStore.set/get/has ile erişilir (Promise döndürür).
+   ═══════════════════════════════════════════════════════════════════ */
+(function(){
+  var DB='wmStore', STORE='kv', VER=1, _db=null;
+  function open(){
+    return new Promise(function(res,rej){
+      if(_db) return res(_db);
+      try{
+        var rq=indexedDB.open(DB,VER);
+        rq.onupgradeneeded=function(){ var d=rq.result; if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE); };
+        rq.onsuccess=function(){ _db=rq.result; res(_db); };
+        rq.onerror=function(){ rej(rq.error); };
+      }catch(e){ rej(e); }
+    });
+  }
+  function set(key,val){
+    return open().then(function(d){ return new Promise(function(res,rej){
+      var tx=d.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(val,key);
+      tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ rej(tx.error); };
+    });});
+  }
+  function get(key){
+    return open().then(function(d){ return new Promise(function(res,rej){
+      var tx=d.transaction(STORE,'readonly'); var rq=tx.objectStore(STORE).get(key);
+      rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ rej(rq.error); };
+    });});
+  }
+  window.WMStore = { set:set, get:get };
+})();
 /* EKRANDA GÖRÜNÜR YÜKLEME BİLDİRİMİ — Console'a gerek yok.
    Dosya çalışıyorsa açılışta yeşil bir banner 4 sn görünür. */
 (function(){
@@ -7,7 +40,7 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v13');
       if(document.getElementById('wmLoadBanner')) return;
       var b=document.createElement('div');
       b.id='wmLoadBanner';
-      b.textContent='🗺️ Modül Yolu güncel sürüm yüklendi ✓ (v9)';
+      b.textContent='🗺️ Modül Yolu güncel sürüm yüklendi ✓ (v13)';
       b.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);'
         +'background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16;font-weight:800;'
         +'font-family:sans-serif;font-size:13px;padding:12px 18px;border-radius:14px;z-index:999999;'
@@ -798,15 +831,23 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v13');
     window.__WM_BOOT_AUTOLOAD__ = true;
     var runIdle = window.requestIdleCallback || function(fn){ return setTimeout(fn, 1500); };
     runIdle(function(){
-      try{
-        I.buildTree();  // localStorage'da veri varsa fetch'siz tree kurar (hızlı yol)
-        if((!I.PATH.tree || !I.PATH.tree.length)){
-          // tree boş → ilk kez; GitHub'dan bir defa çek (sonra localStorage'a yazılır)
-          if(typeof P.autoLoadGitHub==='function'){
-            P.autoLoadGitHub(function(ok){ if(ok){ try{ I.buildTree(); }catch(e){} } });
+      // 1) Önce IndexedDB'den dene (büyük veri orada kalıcı saklanır → tekrar indirme YOK)
+      var pre = (window.WMStore && !(Array.isArray(window.__WM_PATH_DATA__)&&window.__WM_PATH_DATA__.length))
+        ? window.WMStore.get('wmPathData').then(function(rows){
+            if(Array.isArray(rows) && rows.length){ window.__WM_PATH_DATA__=rows; }
+          }).catch(function(){})
+        : Promise.resolve();
+      pre.then(function(){
+        try{
+          I.buildTree();  // veri (IDB/localStorage/global) varsa fetch'siz tree kurar
+          if((!I.PATH.tree || !I.PATH.tree.length)){
+            // tree boş → ilk kez; GitHub'dan bir defa çek (sonra IDB'ye yazılır)
+            if(typeof P.autoLoadGitHub==='function'){
+              P.autoLoadGitHub(function(ok){ if(ok){ try{ I.buildTree(true); }catch(e){} } });
+            }
           }
-        }
-      }catch(e){}
+        }catch(e){}
+      });
     });
   }
   if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
@@ -1385,11 +1426,12 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v13');
           var rows=parseSheet(wb);
           if(!rows.length) throw new Error('boş');
           window.__WM_PATH_DATA__=rows;
+          // BÜYÜK VERİ → IndexedDB (localStorage 5MB'ı aşar). Küçükse localStorage'a da yaz.
+          if(window.WMStore){ window.WMStore.set('wmPathData', rows).catch(function(){}); }
           try{ localStorage.setItem('wmPathData', JSON.stringify(rows)); }catch(e){
-            try{ var slim=rows.map(function(r){return {id:r.id,module:r.module,part:r.part,stage:r.stage,order:r.order,sentence:r.sentence,sentenceTr:r.sentenceTr,grammarStructure:r.grammarStructure,level:r.level,word:r.word,img:r.img};});
-              localStorage.setItem('wmPathData', JSON.stringify(slim)); }catch(e2){}
+            try{ localStorage.removeItem('wmPathData'); }catch(_){}  // bayat küçük kopya kalmasın
           }
-          try{ I.buildTree(); }catch(e){}
+          try{ I.buildTree(true); }catch(e){}
           if(window.showToast) window.showToast('✅ Otomatik veri', I.PATH.tree.length+' modül yüklendi');
           if(cb) cb(true);
         })
@@ -1419,13 +1461,12 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v13');
           var rows = parseSheet(wb);
           if (!rows.length){ if(window.showToast)window.showToast('Excel','Cümle bulunamadı'); return; }
           window.__WM_PATH_DATA__ = rows;
+          if(window.WMStore){ window.WMStore.set('wmPathData', rows).catch(function(){}); }
           try { localStorage.setItem('wmPathData', JSON.stringify(rows)); } catch(err){
-            // çok büyükse module/part/cümle dışını at, tekrar dene
-            try { var slim=rows.map(function(r){return {id:r.id,module:r.module,part:r.part,stage:r.stage,order:r.order,sentence:r.sentence,sentenceTr:r.sentenceTr,grammarStructure:r.grammarStructure,level:r.level,word:r.word};});
-              localStorage.setItem('wmPathData', JSON.stringify(slim)); } catch(e2){}
+            try{ localStorage.removeItem('wmPathData'); }catch(_){}
           }
           // ağacı yeniden kur + modüller ekranını yenile
-          I.buildTree();
+          I.buildTree(true);
           var mods = I.PATH.tree.length;
           if (window.showToast) window.showToast('✅ Yüklendi', mods+' modül · '+rows.length+' cümle');
           P.go({ level:'modules' });
@@ -2112,7 +2153,10 @@ console.log('🗺️ learning-path.js TAMAMLANDI — WMPath:', typeof window.WMP
       }
       var merged = existing.concat(state.rows);
       window.__WM_PATH_DATA__ = merged;
-      try{ localStorage.setItem('wmPathData', JSON.stringify(merged)); }catch(_){}
+      if(window.WMStore){ window.WMStore.set('wmPathData', merged).catch(function(){}); }
+      try{ localStorage.setItem('wmPathData', JSON.stringify(merged)); }catch(_){
+        try{ localStorage.removeItem('wmPathData'); }catch(__){}
+      }
       // ağacı yeniden kur
       if(window.WMPath && typeof window.WMPath.build==='function'){ try{ window.WMPath.build(true); }catch(_){} }
       setStatus('🎉 Modül eklendi! Öğrenme yoluna gidiliyor…');
