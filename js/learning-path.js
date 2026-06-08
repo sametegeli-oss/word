@@ -1,4 +1,4 @@
-console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v11');
+console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v12');
 /* EKRANDA GÖRÜNÜR YÜKLEME BİLDİRİMİ — Console'a gerek yok.
    Dosya çalışıyorsa açılışta yeşil bir banner 4 sn görünür. */
 (function(){
@@ -362,15 +362,26 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v11');
     #sc-menu p{ color:#94a3b8 !important; font-size:13px !important; }
     #sc-menu > div[style*="text-align:center"]{ padding:20px 20px 14px !important; }
 
-    /* ════ TÜM EKRANLARDA MAVİ BUTONLARI %50 KÜÇÜLT ════ */
-    .btn, .btn-blue, .btn-green, .btn-ghost{
+    /* ════ TÜM EKRANLARDA BUTONLARI %50 KÜÇÜLT ════ */
+    .btn, .btn-blue, .btn-green, .btn-ghost, .btn-red, .act-btn, .nav-btn,
+    .reader-btn, .streak-badge, .pill, .chip{
       padding:7px 12px !important;
       font-size:13px !important;
       border-radius:10px !important;
       min-height:0 !important;
       line-height:1.2 !important;
     }
-    .btn-sm{ padding:5px 9px !important; font-size:12px !important; }
+    .btn-sm, .act-btn.sm{ padding:5px 9px !important; font-size:12px !important; }
+    /* top-bar / başlık butonları (geri, ay, dropdown) küçült */
+    .top-bar .back-btn, .top-bar button, .back-btn{
+      padding:6px 10px !important; font-size:14px !important; min-height:0 !important;
+      width:auto !important; height:auto !important; border-radius:10px !important;
+    }
+    /* büyük yuvarlak ikon butonları (ses/ok) küçült */
+    button[onclick*="speak"], button[onclick*="prev"], button[onclick*="next"],
+    button[onclick*="Audio"]{ padding:7px 11px !important; font-size:14px !important; min-height:0 !important; }
+    /* dropdown (liste seçici) küçült */
+    select, .list-select, #listDropdown{ padding:6px 10px !important; font-size:13px !important; min-height:0 !important; }
     `;
     document.head.appendChild(st);
   }
@@ -839,11 +850,22 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v11');
   (function blockScrollAutoExplain(){
     var pointerDown=false, lastScrollTs=0;
     // Kaydırma & dokunma takibi
+    var touchStartX=0, touchStartY=0, touchMoved=false;
     window.addEventListener('scroll', function(){ lastScrollTs=Date.now(); }, true);
-    window.addEventListener('touchmove', function(){ lastScrollTs=Date.now(); }, {passive:true,capture:true});
+    window.addEventListener('touchmove', function(e){
+      lastScrollTs=Date.now();
+      try{
+        var t=e.touches&&e.touches[0]; if(t){
+          if(Math.abs(t.screenX-touchStartX)>10 || Math.abs(t.screenY-touchStartY)>10) touchMoved=true;
+        }
+      }catch(_){}
+    }, {passive:true,capture:true});
     document.addEventListener('pointerdown', function(){ pointerDown=true; }, true);
     document.addEventListener('pointerup',   function(){ setTimeout(function(){ pointerDown=false; },350); }, true);
-    document.addEventListener('touchstart',  function(){ pointerDown=true; }, true);
+    document.addEventListener('touchstart',  function(e){
+      pointerDown=true; touchMoved=false;
+      try{ var t=e.touches&&e.touches[0]; if(t){ touchStartX=t.screenX; touchStartY=t.screenY; } }catch(_){}
+    }, true);
     document.addEventListener('touchend',    function(){ setTimeout(function(){ pointerDown=false; },350); }, true);
 
     function recentlyScrolled(){ return (Date.now()-lastScrollTs) < 500; }
@@ -852,16 +874,15 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v11');
       return a && (a.tagName==='INPUT' || a.tagName==='TEXTAREA' || a.isContentEditable);
     }
 
-    // _explainWordImpl: seçim kaynaklı otomatik açıklamanın asıl giriş noktası.
-    // Sadece kaydırma/pointer-down anında gelenleri sustur (manuel tık etkilenmez).
+    // Açıklamayı yalnızca KAYDIRMA/HAREKET kaynaklıysa engelle (gerçek tap/tık etkilenmez).
+    function shouldBlock(){ return touchMoved || recentlyScrolled(); }
+
     function guard(name){
       var orig = window[name];
       if(typeof orig!=='function' || orig.__wmGuarded) return;
       var wrapped = function(){
-        // input/textarea'da yazarken ASLA karışma (cursor/seçim bozulmasın)
         if(inEditable()) return orig.apply(this, arguments);
-        if(pointerDown || recentlyScrolled()){
-          // Kaydırma sırasında istemsiz seçim → açma
+        if(shouldBlock()){
           try{ var s=window.getSelection&&window.getSelection(); if(s&&s.removeAllRanges) s.removeAllRanges(); }catch(e){}
           return;
         }
@@ -870,7 +891,12 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v11');
       wrapped.__wmGuarded = true;
       try{ window[name]=wrapped; }catch(e){}
     }
-    function apply(){ guard('handleWordSelection'); guard('_explainWordImpl'); }
+    function apply(){
+      guard('handleWordSelection');
+      guard('_explainWordImpl');
+      guard('handleMobileTouchEnd');   // mobilde dokunma bitince açıklama açan ASIL fonksiyon
+      guard('handleWordDoubleClick');
+    }
     apply();
     // legacy fonksiyonlar sonradan tanımlanırsa yeniden sar
     window.addEventListener('load', function(){ setTimeout(apply, 800); setTimeout(apply, 2500); });
@@ -2037,4 +2063,114 @@ console.log('🗺️ learning-path.js TAMAMLANDI — WMPath:', typeof window.WMP
   setTimeout(addMenuButton,1300);
   try{ var mo=new MutationObserver(function(){ if(document.getElementById('sc-menu')) addMenuButton(); });
     mo.observe(document.body,{childList:true,subtree:true}); }catch(e){}
+})();
+
+/* ═══════════════════════════════════════════════════════════════════
+   LEGACY EKRAN DÜZENLEMELERİ
+   3) Canlı Skor Koçu: ayarlardan giriş gizle + kapanınca menüye dön
+   4) Kelime ekranı: ilgisiz alt butonları gizle
+   5) Aktif liste seçildiğinde görsel geri bildirim
+   ═══════════════════════════════════════════════════════════════════ */
+(function legacyScreenTweaks(){
+  'use strict';
+
+  /* ---- 4) Kelime ekranı (sc-word) alt ilgisiz butonları gizle ---- */
+  function hideWordExtras(){
+    try{
+      // ID'li olanlar
+      ['btnNext','btnReview'].forEach(function(id){
+        var el=document.getElementById(id); if(el) el.style.setProperty('display','none','important');
+      });
+      // onclick / metin bazlı
+      document.querySelectorAll('#sc-word button, #sc-word [onclick]').forEach(function(b){
+        var oc=(b.getAttribute&&b.getAttribute('onclick'))||'';
+        var t=(b.textContent||'').replace(/\s+/g,' ').trim();
+        if(/openAskAIScreen|askAI/i.test(oc) || /Yapay Zekaya Sor/i.test(t)
+           || /nextWord/i.test(oc) || /^Sonraki/i.test(t)
+           || /startReviewMode/i.test(oc) || /Kelime Tekrar Bekliyor/i.test(t)){
+          b.style.setProperty('display','none','important');
+        }
+      });
+    }catch(e){}
+  }
+
+  /* ---- 3) Canlı Skor Koçu ---- */
+  function tweakLiveCoach(){
+    try{
+      // a) Ayarlardaki "Canlı Skor Koçu"na giriş butonunu gizle
+      document.querySelectorAll('#sc-settings button, #sc-settings [onclick], #sc-settings a').forEach(function(b){
+        var oc=(b.getAttribute&&b.getAttribute('onclick'))||'';
+        var t=(b.textContent||'').replace(/\s+/g,' ').trim();
+        if(/live[-_]?coach/i.test(oc) || /openLiveCoach|startLiveCoach/i.test(oc)
+           || /Canlı Skor Koçu/i.test(t)){
+          b.style.setProperty('display','none','important');
+        }
+      });
+      // b) Canlı Skor Koçu ekranındaki "geri" → MENÜYE git (ayarlara değil)
+      document.querySelectorAll('#sc-live-coach .back-btn, #sc-live-coach [onclick*="backToSettingsFromLiveCoach"]').forEach(function(b){
+        if(b.__wmMenuFix) return; b.__wmMenuFix=true;
+        b.onclick=function(e){
+          if(e&&e.preventDefault)e.preventDefault();
+          try{ if(typeof window.stopLiveCoach==='function') window.stopLiveCoach(); }catch(_){}
+          window.__WM_USER_NAV__=true;
+          if(typeof window.showScreen==='function'){ try{ window.showScreen('sc-menu'); }catch(_){} }
+        };
+      });
+      // c) backToSettingsFromLiveCoach fonksiyonunu da menüye yönlendir (her ihtimale karşı)
+      if(typeof window.backToSettingsFromLiveCoach==='function' && !window.backToSettingsFromLiveCoach.__wmMenuFix){
+        var orig=window.backToSettingsFromLiveCoach;
+        var w=function(){ try{ if(typeof window.stopLiveCoach==='function') window.stopLiveCoach(); }catch(_){}
+          window.__WM_USER_NAV__=true;
+          if(typeof window.showScreen==='function'){ try{ window.showScreen('sc-menu'); return; }catch(_){} }
+          return orig.apply(this,arguments); };
+        w.__wmMenuFix=true;
+        try{ window.backToSettingsFromLiveCoach=w; }catch(_){}
+      }
+    }catch(e){}
+  }
+
+  /* ---- 5) Aktif liste seçimi görsel geri bildirim ---- */
+  function listFeedback(){
+    try{
+      // legacy switchToList'i sar — seçim sonrası toast + başlıkta liste adı göster
+      if(typeof window.switchToList==='function' && !window.switchToList.__wmFb){
+        var orig=window.switchToList;
+        var w=function(){
+          var r=orig.apply(this,arguments);
+          try{
+            var name='';
+            // aktif liste adını bulmaya çalış (global state / dropdown)
+            var dd=document.querySelector('#listDropdown, .list-select, select');
+            if(dd && dd.selectedOptions && dd.selectedOptions[0]) name=dd.selectedOptions[0].textContent;
+            if(!name && window.activeListName) name=window.activeListName;
+            if(window.showToast) window.showToast('✅ Liste seçildi', name||'Aktif liste güncellendi');
+            markActiveList(name);
+          }catch(_){}
+          return r;
+        };
+        w.__wmFb=true;
+        try{ window.switchToList=w; }catch(_){}
+      }
+    }catch(e){}
+  }
+  function markActiveList(name){
+    try{
+      // dropdown başlığına ✓ ekle (varsa)
+      var btn=document.querySelector('[onclick*="toggleListMenu"], #listDropdownBtn, .list-dropdown-btn');
+      if(btn && name){ btn.setAttribute('title','Aktif: '+name); }
+      // liste menüsündeki seçili öğeyi vurgula
+      document.querySelectorAll('.list-item, [data-list-id]').forEach(function(li){
+        var t=(li.textContent||'').trim();
+        if(name && t.indexOf(name)>=0){ li.style.background='rgba(34,197,94,.18)'; li.style.borderRadius='8px'; }
+      });
+    }catch(_){}
+  }
+
+  function runAll(){ hideWordExtras(); tweakLiveCoach(); listFeedback(); }
+  if(document.readyState==='complete') runAll();
+  else window.addEventListener('load', runAll);
+  [600,1500,3000].forEach(function(ms){ setTimeout(runAll, ms); });
+  // ekran değişimlerinde tekrar uygula
+  try{ var mo=new MutationObserver(function(){ runAll(); });
+    mo.observe(document.getElementById('app')||document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']}); }catch(e){}
 })();
