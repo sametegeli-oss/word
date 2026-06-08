@@ -1,4 +1,4 @@
-console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v12');
+console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v13');
 /* EKRANDA GÖRÜNÜR YÜKLEME BİLDİRİMİ — Console'a gerek yok.
    Dosya çalışıyorsa açılışta yeşil bir banner 4 sn görünür. */
 (function(){
@@ -444,6 +444,88 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v12');
     } catch(e){}
   };
 
+  /* ───────── İLERLEME YEDEKLE / GERİ YÜKLE ─────────
+     Öğrenme yolu ilerlemesini (wmPathProgress) dosyaya indir / dosyadan geri yükle.
+     Cihaz/tarayıcı değiştirirken veya yanlışlıkla silinmeye karşı güvence. */
+  window.WMPath.backupProgress = function(){
+    try{
+      var prog = I.PROG || {};
+      var payload = {
+        type: 'wordmode-learning-path-progress',
+        version: 1,
+        savedAt: new Date().toISOString(),
+        progress: prog,
+        stats: {
+          known: Object.keys(prog.known||{}).length,
+          lessonsDone: Object.keys(prog.lessonDone||{}).length,
+          xp: prog.xp||0
+        }
+      };
+      var blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      var d = new Date();
+      var stamp = d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2)
+        +'-'+('0'+d.getHours()).slice(-2)+('0'+d.getMinutes()).slice(-2);
+      a.href = url; a.download = 'wordmode-ilerleme-'+stamp+'.json';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+      if(window.showToast) window.showToast('💾 İlerleme yedeklendi',
+        payload.stats.known+' kelime · '+payload.stats.lessonsDone+' ders · '+payload.stats.xp+' XP');
+    }catch(e){
+      if(window.showToast) window.showToast('⚠️ Yedekleme hatası', String(e&&e.message||e));
+    }
+  };
+
+  window.WMPath.restoreProgress = function(){
+    var inp = document.getElementById('wpRestoreInput');
+    if(!inp){
+      inp = document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+      inp.id='wpRestoreInput'; inp.style.display='none'; document.body.appendChild(inp);
+    }
+    inp.value='';
+    inp.onchange = function(){
+      var f = inp.files && inp.files[0]; if(!f) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        try{
+          var data = JSON.parse(reader.result);
+          var incoming = (data && data.progress) ? data.progress : data;  // ham PROG de kabul
+          if(!incoming || typeof incoming!=='object' || (!incoming.known && !incoming.lessonDone)){
+            if(window.showToast) window.showToast('⚠️ Geçersiz dosya','Bu bir ilerleme yedeği değil');
+            return;
+          }
+          var cur = I.PROG || {known:{},lessonDone:{},xp:0};
+          var curCount = Object.keys(cur.known||{}).length;
+          var newCount = Object.keys(incoming.known||{}).length;
+          var msg = 'Yedek: '+newCount+' kelime. Mevcut: '+curCount+' kelime.\n\n'
+            +'BİRLEŞTİR = ikisini de tut (önerilen)\nİPTAL = hiçbir şey yapma\n\n'
+            +'Üzerine yazmak (yedekle değiştir) için önce İptal edip tekrar onayla.';
+          if(!window.confirm('İlerlemeyi geri yükle?\n\n'+msg)) return;
+          // BİRLEŞTİR: mevcut + yedek (yedekteki known/lessonDone eklenir, XP en büyüğü)
+          var merged = {
+            known: Object.assign({}, cur.known||{}, incoming.known||{}),
+            lessonDone: Object.assign({}, cur.lessonDone||{}, incoming.lessonDone||{}),
+            lastLesson: incoming.lastLesson || cur.lastLesson || null,
+            xp: Math.max(cur.xp||0, incoming.xp||0)
+          };
+          // PROG'u güncelle + kaydet
+          try{ Object.keys(I.PROG).forEach(function(k){ delete I.PROG[k]; }); }catch(_){}
+          Object.assign(I.PROG, merged);
+          I.saveProg();
+          if(window.showToast) window.showToast('📥 İlerleme geri yüklendi',
+            Object.keys(merged.known).length+' kelime birleştirildi');
+          // ekranı tazele
+          try{ if(typeof render==='function') render(); }catch(_){}
+        }catch(e){
+          if(window.showToast) window.showToast('⚠️ Geri yükleme hatası', String(e&&e.message||e));
+        }
+      };
+      reader.readAsText(f);
+    };
+    inp.click();
+  };
+
   /* ---------- 4) RENDER ---------- */
   function ringSVG(pct){
     var r=18, c=2*Math.PI*r, off=c*(1-pct/100);
@@ -502,7 +584,10 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v12');
         +'<div class="wp-stat"><b>'+doneCount+'</b><span>BİTEN</span></div>'
       +'</div>'
       +'<button class="wp-hero-excel" onclick="WMPath.pickExcel()" title="Excel değiştir">📄</button>'
+      +'<button class="wp-hero-excel wp-hero-backup" onclick="WMPath.backupProgress()" title="İlerlemeyi yedekle (indir)">💾</button>'
+      +'<button class="wp-hero-excel wp-hero-restore" onclick="WMPath.restoreProgress()" title="Yedekten geri yükle">📥</button>'
       +'<input type="file" id="wpExcelInput" accept=".xlsx,.xls,.xlsm" style="display:none">'
+      +'<input type="file" id="wpRestoreInput" accept=".json,application/json" style="display:none">'
       +'</div>';
 
     var nodes = tree.map(function(m,i){
@@ -1361,11 +1446,16 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v12');
     st.textContent = `
     #sc-path .wp-hero{ }
     #sc-path .wp-hero-excel{ position:absolute; top:16px; right:16px; z-index:3;
-      width:40px; height:40px; border-radius:12px; border:1px solid rgba(255,255,255,.15);
-      background:rgba(255,255,255,.08); color:#e2e8f0; font-size:17px; cursor:pointer;
+      width:38px; height:38px; border-radius:11px; border:1px solid rgba(255,255,255,.15);
+      background:rgba(255,255,255,.08); color:#e2e8f0; font-size:16px; cursor:pointer;
       backdrop-filter:blur(8px); transition:transform .15s, background .2s; }
     #sc-path .wp-hero-excel:hover{ background:rgba(255,255,255,.16); }
     #sc-path .wp-hero-excel:active{ transform:scale(.92); }
+    /* üç buton yan yana: Excel(en sağ) · Yedekle · Geri yükle */
+    #sc-path .wp-hero-backup{ right:60px; }
+    #sc-path .wp-hero-restore{ right:104px; }
+    #sc-path .wp-hero-backup:hover{ background:rgba(34,197,94,.22); border-color:rgba(34,197,94,.4); }
+    #sc-path .wp-hero-restore:hover{ background:rgba(59,130,246,.22); border-color:rgba(59,130,246,.4); }
     #sc-path .wp-menu-btn{ display:inline-flex; align-items:center; gap:6px; margin-bottom:14px;
       padding:9px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
       background:rgba(255,255,255,.06); color:#e2e8f0; font-family:'Nunito',sans-serif;
