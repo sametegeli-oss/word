@@ -120,8 +120,36 @@ function dbPut(name,obj){return new Promise((res,rej)=>{const r=store(name,'read
 function dbGetAll(name){return new Promise((res,rej)=>{const r=store(name).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);});}
 function dbGet(name,id){return new Promise((res,rej)=>{const r=store(name).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 function dbClear(name){return new Promise((res,rej)=>{const r=store(name,'readwrite').clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
-async function loadProgress(){db=await openDB();state.progress=new Map((await dbGetAll('progress')).map(x=>[x.id,x]));const st=(await dbGetAll('stats'))[0];if(st)state.stats=st;const set=await dbGet('settings','ai');if(set)state.settings={...state.settings,...set};}
-async function saveProgress(id,patch){const old=state.progress.get(id)||{id};const item={...old,...patch,updatedAt:Date.now()};state.progress.set(id,item);await dbPut('progress',item);await updateStats();}
+async function loadProgress(){db=await openDB();state.progress=new Map((await dbGetAll('progress')).map(x=>[x.id,x]));const st=(await dbGetAll('stats'))[0];if(st)state.stats=st;const set=await dbGet('settings','ai');if(set)state.settings={...state.settings,...set};
+  /* ORTAK İLERLEME KÖPRÜSÜ: index.html'in Modül Yolu'yla aynı ilerlemeyi paylaş.
+     wmPathProgress.known[id] (localStorage) ← → yol.html progress store.
+     İki taraf da aynı ID (Excel ID sütunu) kullandığı için eşleşir. */
+  try{
+    var shared = JSON.parse(localStorage.getItem('wmPathProgress')||'{}');
+    var sk = (shared && shared.known) || {};
+    Object.keys(sk).forEach(function(id){
+      if(sk[id] && !(state.progress.get(id)||{}).known){
+        var old = state.progress.get(id)||{id:id};
+        state.progress.set(id, Object.assign({}, old, {known:true, updatedAt:Date.now()}));
+      }
+    });
+    if(shared && typeof shared.xp==='number'){ state.stats.xp = Math.max(state.stats.xp||0, shared.xp); }
+  }catch(e){}
+}
+/* Bir ID'yi ortak depoya (wmPathProgress) yaz — index.html tarafı da görsün */
+function __wmSyncToShared(id, known){
+  try{
+    var s = JSON.parse(localStorage.getItem('wmPathProgress')||'{}');
+    if(!s.known) s.known={};
+    if(known){ if(!s.known[id]){ s.known[id]=true; s.xp=(s.xp||0)+5; } }
+    else { delete s.known[id]; }
+    localStorage.setItem('wmPathProgress', JSON.stringify(s));
+  }catch(e){}
+}
+async function saveProgress(id,patch){const old=state.progress.get(id)||{id};const item={...old,...patch,updatedAt:Date.now()};state.progress.set(id,item);await dbPut('progress',item);
+  /* ortak depoya da yaz (index.html Modül Yolu görsün) */
+  try{ if('known' in patch) __wmSyncToShared(id, !!patch.known); }catch(e){}
+  await updateStats();}
 async function updateStats(addXp=0){const today=new Date().toISOString().slice(0,10);if(addXp)state.stats.xp=(state.stats.xp||0)+addXp;if(state.stats.lastDay!==today && addXp){state.stats.streak=(state.stats.streak||0)+1;state.stats.lastDay=today;}await dbPut('stats',{id:'main',...state.stats});renderHeader();}
 function isKnown(id){const p=state.progress.get(id);return !!(p&&p.known);}
 function nextReviewDate(weight=3,level=1){
@@ -149,7 +177,14 @@ const EXCEL_PATHS=[
 const DICTIONARY_PATHS=['./data/sozluk.json','./data/firatkaya_simple.json','./sozluk.json','./firatkaya_simple.json'];
 document.getElementById('fileInput').addEventListener('change',async e=>{const f=e.target.files[0]; if(f) await readWorkbook(await f.arrayBuffer(),f.name);});
 async function tryAutoLoad(){for(const p of EXCEL_PATHS){try{const r=await fetch(p,{cache:'no-store'});if(r.ok){await readWorkbook(await r.arrayBuffer(),p);return true;}}catch(e){}}return false;}
-async function readWorkbook(buf,name){try{const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});if(!matrix.length)throw new Error('Boş dosya');parseMatrix(matrix);await loadDictionaries();buildModules();selectFirstAvailable();renderAll();toast('Excel veri bankası yüklendi: '+name);}catch(err){console.error(err);toast('Excel okunamadı: '+err.message);}}
+async function readWorkbook(buf,name){try{const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});if(!matrix.length)throw new Error('Boş dosya');parseMatrix(matrix);await loadDictionaries();buildModules();selectFirstAvailable();renderAll();
+  /* ORTAK VERİYE yaz: index.html Modül Yolu da aynı veriyi görsün (wmStore IDB) */
+  try{
+    var shared = state.rows.map(function(r){ return { id:r._id, module:r.Module, part:r.Part, stage:r.LearningStage, order:r.OrderIndex, level:r.Level, sentence:r.SentenceEN, sentenceTr:r.SentenceTR, grammar:r.GrammarStructure, pattern:r.Pattern, word:r.Word }; });
+    var sdb = await new Promise(function(res,rej){ var rq=indexedDB.open('wmStore',1); rq.onupgradeneeded=function(){ try{rq.result.createObjectStore('kv');}catch(e){} }; rq.onsuccess=function(){res(rq.result);}; rq.onerror=function(){rej(rq.error);}; });
+    await new Promise(function(res){ var tx=sdb.transaction('kv','readwrite'); tx.objectStore('kv').put(shared,'wmPathData'); tx.oncomplete=function(){res();}; tx.onerror=function(){res();}; });
+  }catch(e){}
+  toast('Excel veri bankası yüklendi: '+name);}catch(err){console.error(err);toast('Excel okunamadı: '+err.message);}}
 function parseMatrix(matrix){const headers=matrix[0].map(h=>cleanText(h));Object.keys(H).forEach(k=>delete H[k]);headers.forEach((h,i)=>H[normKey(h)]=i);state.rows=[];for(let r=1;r<matrix.length;r++){const arr=matrix[r];if(!arr||arr.every(x=>!cleanText(x)))continue;let obj={_raw:arr,_row:r+1};headers.forEach((h,i)=>obj[h]=cleanText(arr[i]));obj=routeFields(obj,arr);obj._id=idOfRow(obj,state.rows.length+1);if(obj.SentenceEN || obj.Word)state.rows.push(obj);}document.getElementById('dataPill').textContent=state.rows.length+' cümle';}
 function cell(arr,h){const i=H[normKey(h)];return i==null?'':cleanText(arr[i]);}
 function routeFields(obj,arr){
@@ -280,7 +315,43 @@ async function explainWordAI(word){const k=baseWord(word);const d=state.dict.get
 function exportProgress(){const data={stats:state.stats,progress:[...state.progress.values()]};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='dil-haritasi-progress-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 async function resetProgress(){if(!confirm('Tüm IndexedDB ilerlemesi silinsin mi?'))return;await dbClear('progress');state.progress.clear();state.stats={xp:0,streak:0,lastDay:null};await dbPut('stats',{id:'main',...state.stats});buildLessonQueue();renderAll();toast('İlerleme sıfırlandı.');}
 
-(async function init(){await loadProgress();if(!(await tryAutoLoad())){renderAll();toast('data/TumData_Temiz.xlsx bulunamadı. Manuel Excel seçebilirsin.');}})();
+(async function init(){await loadProgress();
+  /* ORTAK VERİ: index.html'in indirdiği TumData'yı (wmStore IDB) paylaş.
+     Varsa tekrar indirme YOK — yol.html ↔ index.html aynı veriyi kullanır. */
+  var usedShared=false;
+  try{
+    var sdb = await new Promise(function(res,rej){
+      var rq=indexedDB.open('wmStore',1);
+      rq.onupgradeneeded=function(){ try{ rq.result.createObjectStore('kv'); }catch(e){} };
+      rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ rej(rq.error); };
+    });
+    var rows = await new Promise(function(res){
+      try{ var tx=sdb.transaction('kv','readonly'); var g=tx.objectStore('kv').get('wmPathData');
+        g.onsuccess=function(){ res(g.result); }; g.onerror=function(){ res(null); }; }
+      catch(e){ res(null); }
+    });
+    if(Array.isArray(rows) && rows.length){
+      // bizim satır formatını yol.html formatına çevir (alan adları farklı)
+      state.rows = rows.map(function(r,i){
+        return { _id:(r.id||r.ID||('S'+i)), _row:i+2,
+          ID:r.id||r.ID, Module:r.module||r.Module, Part:r.part||r.Part,
+          LearningStage:r.stage||r.LearningStage, OrderIndex:r.order||r.OrderIndex||i,
+          Level:r.level||r.Level, SentenceEN:r.sentence||r.SentenceEN,
+          SentenceTR:r.sentenceTr||r.SentenceTR, GrammarStructure:r.grammar||r.GrammarStructure||'',
+          Pattern:r.pattern||r.Pattern||'', Word:r.word||r.Word||'' };
+      }).filter(function(r){ return r.SentenceEN; });
+      if(state.rows.length){
+        document.getElementById('dataPill').textContent=state.rows.length+' cümle';
+        await loadDictionaries(); buildModules(); selectFirstAvailable(); renderAll();
+        toast('Ortak veri yüklendi (index.html ile paylaşımlı)');
+        usedShared=true;
+      }
+    }
+  }catch(e){}
+  if(!usedShared){
+    if(!(await tryAutoLoad())){renderAll();toast('data/TumData_Temiz.xlsx bulunamadı. Manuel Excel seçebilirsin.');}
+  }
+})();
 </script>
 
 <script>
