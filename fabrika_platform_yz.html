@@ -8827,10 +8827,22 @@ const AI_PROVIDERS = {
 };
 
 function getAISettings() {
-  const defaults = { provider:'local', keys:{}, models:{ openai:'gpt-4o-mini', groq:'llama-3.3-70b-versatile', gemini:'gemini-1.5-flash', anthropic:'claude-3-5-haiku-latest', custom:'' }, customUrl:'' };
+  const defaults = {
+    provider:'local',
+    keys:{},
+    models:{ openai:'gpt-4o-mini', groq:'llama-3.3-70b-versatile', gemini:'gemini-1.5-flash', anthropic:'claude-3-5-haiku-latest', custom:'' },
+    customUrl:'',
+    prompts:{ form:'', command:'', analysis:'' }
+  };
   try {
     const saved = JSON.parse(localStorage.getItem(AI_SETTINGS_KEY) || '{}');
-    return { ...defaults, ...saved, keys:{...defaults.keys, ...(saved.keys||{})}, models:{...defaults.models, ...(saved.models||{})} };
+    return {
+      ...defaults,
+      ...saved,
+      keys:{...defaults.keys, ...(saved.keys||{})},
+      models:{...defaults.models, ...(saved.models||{})},
+      prompts:{...defaults.prompts, ...(saved.prompts||{})}
+    };
   } catch (_) { return defaults; }
 }
 function saveAISettings(settings) { localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(settings)); }
@@ -8881,6 +8893,37 @@ function renderAIFormBuilder(c) {
           <div style="font-size:12px;color:var(--text-dim);line-height:1.55;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:12px;">
             <strong>Gizlilik notu:</strong> API key bu tarayıcıda localStorage içinde saklanır. Program tekrar açıldığında hatırlanır. Ortak bilgisayarda kullanıyorsanız işiniz bitince anahtarı silin.
           </div>
+        </div>
+
+        <div class="rep-block">
+          <div class="rep-block-title">Prompt ayarları</div>
+          <details id="ai-prompt-settings">
+            <summary style="cursor:pointer;color:var(--accent);font-weight:600;margin-bottom:10px;">Kullanılan sistem promptlarını göster / düzenle</summary>
+            <div style="font-size:12px;color:var(--text-dim);line-height:1.55;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:12px;">
+              Boş kaydedersen program kendi güncel/dinamik promptunu kullanır. Bir metni kaydedersen ilgili AI çağrısı bu özel promptla çalışır.
+            </div>
+            <div class="form-field">
+              <label>Form / süreç oluşturucu sistem promptu</label>
+              <textarea id="ai-form-system-prompt" style="min-height:180px;font-family:var(--mono);font-size:11px;"></textarea>
+              <div class="field-hint">Form alanları, onay adımları, geçişler ve JSON şemasını yöneten prompt.</div>
+            </div>
+            <div class="form-field">
+              <label>AI komut konsolu sistem promptu</label>
+              <textarea id="ai-command-system-prompt" style="min-height:160px;font-family:var(--mono);font-size:11px;"></textarea>
+              <div class="field-hint">Komutları araçlara çeviren prompt. Rol/kullanıcı/süreç komutlarında kullanılır.</div>
+            </div>
+            <div class="form-field">
+              <label>Analiz / yorum promptu</label>
+              <textarea id="ai-analysis-system-prompt" style="min-height:120px;font-family:var(--mono);font-size:11px;"></textarea>
+              <div class="field-hint">Tıkanıklık ve performans analizlerinde düz metin yorum üreten prompt.</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="primary-btn" onclick="saveAIPromptsFromUI()">💾 Promptları Kaydet</button>
+              <button class="ghost-btn" onclick="loadDefaultAIPromptsToUI()">Varsayılanları Göster</button>
+              <button class="ghost-btn" onclick="resetAIPrompts()">Özel Promptları Sıfırla</button>
+            </div>
+            <div id="ai-prompt-status" class="field-hint" style="margin-top:8px;">Promptlar hazır.</div>
+          </details>
         </div>
 
         <div class="rep-block">
@@ -8946,6 +8989,7 @@ function renderAIFormBuilder(c) {
     </div>
   `;
   onAIProviderChange();
+  refreshAIPromptEditors();
 }
 
 function onAIProviderChange() {
@@ -8982,6 +9026,68 @@ function clearAIKey() {
   saveAISettings(cfg);
   onAIProviderChange();
   notify('API anahtarı silindi', 'success');
+}
+
+function defaultAIAnalysisPrompt() {
+  return `Sen bir fabrika yönetim sisteminin veri analistisin. Sana JSON formatında süreç ve görev verileri verilecek. Kullanıcının sorusunu bu veriye dayanarak, Türkçe, kısa ve somut biçimde yanıtla. Hangi sürecin/adımın tıkandığını, olası nedenini ve tek bir pratik öneriyi belirt. JSON değil, düz metin yanıt ver. En fazla 4 cümle.`;
+}
+
+function getEffectiveAIPrompt(mode, fallback) {
+  const cfg = getAISettings();
+  const custom = (cfg.prompts && cfg.prompts[mode] || '').trim();
+  return custom || fallback || '';
+}
+
+function refreshAIPromptEditors(showDefaultsOnly = false) {
+  const cfg = getAISettings();
+  const map = {
+    form: document.getElementById('ai-form-system-prompt'),
+    command: document.getElementById('ai-command-system-prompt'),
+    analysis: document.getElementById('ai-analysis-system-prompt')
+  };
+  const defaults = { form: buildSystemPrompt('form'), command: buildSystemPrompt('command'), analysis: defaultAIAnalysisPrompt() };
+  Object.entries(map).forEach(([mode, el]) => {
+    if (!el) return;
+    const saved = (cfg.prompts && cfg.prompts[mode] || '').trim();
+    el.value = showDefaultsOnly ? defaults[mode] : (saved || defaults[mode]);
+    el.dataset.defaultPromptShown = saved ? '0' : '1';
+  });
+}
+
+function loadDefaultAIPromptsToUI() {
+  refreshAIPromptEditors(true);
+  const st = document.getElementById('ai-prompt-status');
+  if (st) st.textContent = 'Varsayılan promptlar ekrana getirildi. Kaydetmezsen mevcut özel promptlar değişmez.';
+}
+
+function saveAIPromptsFromUI() {
+  const cfg = getAISettings();
+  cfg.prompts = cfg.prompts || {};
+  const values = {
+    form: document.getElementById('ai-form-system-prompt')?.value || '',
+    command: document.getElementById('ai-command-system-prompt')?.value || '',
+    analysis: document.getElementById('ai-analysis-system-prompt')?.value || ''
+  };
+  const defaults = { form: buildSystemPrompt('form'), command: buildSystemPrompt('command'), analysis: defaultAIAnalysisPrompt() };
+  Object.entries(values).forEach(([mode, val]) => {
+    const trimmed = val.trim();
+    cfg.prompts[mode] = trimmed && trimmed !== defaults[mode].trim() ? trimmed : '';
+  });
+  saveAISettings(cfg);
+  refreshAIPromptEditors();
+  const st = document.getElementById('ai-prompt-status');
+  if (st) st.textContent = 'Promptlar kaydedildi. Boş/varsayılan olanlar otomatik prompt olarak çalışır.';
+  notify('Prompt ayarları kaydedildi', 'success');
+}
+
+function resetAIPrompts() {
+  const cfg = getAISettings();
+  cfg.prompts = { form:'', command:'', analysis:'' };
+  saveAISettings(cfg);
+  refreshAIPromptEditors();
+  const st = document.getElementById('ai-prompt-status');
+  if (st) st.textContent = 'Özel promptlar sıfırlandı. Program varsayılan dinamik promptları kullanacak.';
+  notify('Özel promptlar sıfırlandı', 'success');
 }
 
 function fillAIExample(type) {
@@ -9246,7 +9352,7 @@ KURALLAR:
 }
 
 function aiSystemPrompt() {
-  return buildSystemPrompt('form');
+  return getEffectiveAIPrompt('form', buildSystemPrompt('form'));
 }
 
 // Groq kullanımdan kaldırdığı modelleri otomatik güncel karşılığına çevir
@@ -16142,7 +16248,7 @@ async function runAITool(name, params) {
 // Direktifi AI'a gönder, hangi aracı çağıracağını JSON olarak iste
 async function interpretCommand(userText) {
   const cfg = (typeof getAISettings === 'function') ? getAISettings() : { provider: 'local' };
-  const sys = buildSystemPrompt('command');
+  const sys = getEffectiveAIPrompt('command', buildSystemPrompt('command'));
 
   if (cfg.provider === 'local') {
     // Yedek: AI yoksa basit anahtar kelime eşleme
@@ -16269,11 +16375,26 @@ function openAICommandConsole() {
         <button class="voice-btn" id="console-session-btn" title="Sürekli sesli oturum" onclick="(VOICE_SESSION.active?stopVoiceSession():startVoiceSession()); this.classList.toggle('active', VOICE_SESSION.active); this.textContent=VOICE_SESSION.active?'🎙️':'🎙';">🎙</button>
         <button class="voice-btn" id="console-proactive-btn" title="Proaktif izleme" onclick="this.classList.toggle('active', toggleProactive());">📡</button>
         <button class="voice-btn" id="console-tts-btn" title="Sesli cevap kapalı" onclick="toggleTTS('console-tts-btn')">🔇</button>
+        <button class="voice-btn" title="Komut promptunu düzenle" onclick="openAIPromptQuickEditor('command')">⚙️</button>
         <button class="primary-btn" onclick="runAICommand(document.getElementById('ai-console-input').value)">Gönder</button>
       </div>
     </div>`;
   document.body.appendChild(ov);
   aiConsoleLog('ai', 'Merhaba. Ne yapmamı istersiniz? Örnek: "sistem özetini ver", "geciken talepleri göster".');
+}
+
+function openAIPromptQuickEditor(mode = 'command') {
+  const cfg = getAISettings();
+  cfg.prompts = cfg.prompts || {};
+  const defaults = { form: buildSystemPrompt('form'), command: buildSystemPrompt('command'), analysis: defaultAIAnalysisPrompt() };
+  const labels = { form:'Form / süreç oluşturucu', command:'AI komut konsolu', analysis:'Analiz / yorum' };
+  const current = (cfg.prompts[mode] || '').trim() || defaults[mode] || '';
+  const edited = prompt((labels[mode] || mode) + ' promptu\n\nBoş bırakırsanız varsayılan dinamik prompt kullanılır:', current);
+  if (edited === null) return;
+  const trimmed = edited.trim();
+  cfg.prompts[mode] = trimmed && trimmed !== (defaults[mode] || '').trim() ? trimmed : '';
+  saveAISettings(cfg);
+  notify((labels[mode] || mode) + ' promptu kaydedildi', 'success');
 }
 window.runAICommand = runAICommand;
 window.openAICommandConsole = openAICommandConsole;
@@ -16328,7 +16449,7 @@ async function aiFreeformAnalysis(question, data) {
     if (!enYuklu && !enYavas) txt += 'Belirgin bir tıkanıklık görünmüyor.';
     return txt;
   }
-  const sys = `Sen bir fabrika yönetim sisteminin veri analistisin. Sana JSON formatında süreç ve görev verileri verilecek. Kullanıcının sorusunu bu veriye dayanarak, Türkçe, kısa ve somut biçimde yanıtla. Hangi sürecin/adımın tıkandığını, olası nedenini ve tek bir pratik öneriyi belirt. JSON değil, düz metin yanıt ver. En fazla 4 cümle.`;
+  const sys = getEffectiveAIPrompt('analysis', defaultAIAnalysisPrompt());
   const prompt = `Soru: ${question}\n\nVeri:\n${JSON.stringify(data, null, 2)}`;
   // buildProcessWithExternalAI JSON bekliyor; analiz için ayrı düz-metin çağrısı yapalım
   return await aiPlainTextCall(sys, prompt, cfg);
