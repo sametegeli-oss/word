@@ -19052,3 +19052,321 @@ setInterval(() => {
   setTimeout(installAll, 3500);
 })();
 </script>
+
+
+<script>
+/* =========================================================
+   FABRİKA AI v8 — Yerel sorgu kalıcılığı + GitHub aktarım katmanı
+   Amaç:
+   1) Kuyruktan yazılan sorgular aynı tarayıcıda kapanıp açılınca devrede kalsın.
+   2) GitHub sorguları + Firestore sorguları + yerel sorgular tek katalogda birleşsin.
+   3) Yerel sorgular GitHub kataloğuna aktarılabilecek JSON olarak dışa verilsin.
+   4) Öğrenme kuyruğu Firestore iznine takılmadan localStorage'da da yaşasın.
+   ========================================================= */
+(function(){
+  'use strict';
+
+  const LOCAL_QUERY_KEY = 'FABRIKA_SAVED_QUERIES_LOCAL';
+  const LOCAL_QUEUE_KEY = 'FABRIKA_LEARNING_QUEUE';
+
+  function safeParseJSON(raw, fallback) {
+    try { return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; }
+  }
+  function readLocalQueries() {
+    try { return safeParseJSON(localStorage.getItem(LOCAL_QUERY_KEY), []); } catch (_) { return []; }
+  }
+  function writeLocalQueries(list) {
+    try { localStorage.setItem(LOCAL_QUERY_KEY, JSON.stringify(Array.isArray(list) ? list : [], null, 2)); } catch (e) { console.warn('[Local Queries] yazılamadı:', e.message); }
+  }
+  function readLocalQueue() {
+    try { return safeParseJSON(localStorage.getItem(LOCAL_QUEUE_KEY), []); } catch (_) { return []; }
+  }
+  function writeLocalQueue(list) {
+    try { localStorage.setItem(LOCAL_QUEUE_KEY, JSON.stringify(Array.isArray(list) ? list : [], null, 2)); } catch (e) { console.warn('[Local Queue] yazılamadı:', e.message); }
+  }
+  function normText(s) { return String(s || '').trim().toLocaleLowerCase('tr-TR'); }
+
+  function mergeSavedQueriesWithLocal() {
+    if (!window.state) return [];
+    const current = Array.isArray(state.savedQueries) ? state.savedQueries : [];
+    const local = readLocalQueries().filter(q => q && q.id && q.name && q.params && q.params.koleksiyon);
+    const map = new Map();
+
+    // Önce GitHub/Firestore kayıtları, sonra yerel kayıtlar: yerel aynı id'yi ezsin.
+    current.forEach(q => { if (q && q.id) map.set(q.id, q); });
+    local.forEach(q => { map.set(q.id, { ...q, source: 'local' }); });
+
+    state.savedQueries = Array.from(map.values());
+    return state.savedQueries;
+  }
+
+  function mergeLearningQueueWithLocal() {
+    if (!window.state) return [];
+    const current = Array.isArray(state.aiLearningQueue) ? state.aiLearningQueue : [];
+    const local = readLocalQueue().filter(q => q && q.id && q.text);
+    const map = new Map();
+    current.forEach(q => { if (q && q.id) map.set(q.id, q); });
+    local.forEach(q => { if (q && q.id) map.set(q.id, q); });
+    state.aiLearningQueue = Array.from(map.values());
+    writeLocalQueue(state.aiLearningQueue);
+    return state.aiLearningQueue;
+  }
+
+  window.fabrikaMergeLocalAICatalog = function() {
+    const q = mergeSavedQueriesWithLocal();
+    const l = mergeLearningQueueWithLocal();
+    console.log('[FABRİKA AI v8] Yerel katalog birleştirildi:', { savedQueries: q.length, learningQueue: l.length, localQueries: readLocalQueries().length });
+    return { savedQueries: q.length, learningQueue: l.length, localQueries: readLocalQueries().length };
+  };
+
+  // Firestore yükleme bittiğinde yerel kayıtları da mutlaka katalog içine al.
+  if (typeof window.loadStateFromFirestore === 'function' && !window.loadStateFromFirestore.__fabrikaV8Wrapped) {
+    const oldLoadStateFromFirestore = window.loadStateFromFirestore;
+    window.loadStateFromFirestore = async function() {
+      const ret = await oldLoadStateFromFirestore.apply(this, arguments);
+      mergeSavedQueriesWithLocal();
+      mergeLearningQueueWithLocal();
+      return ret;
+    };
+    window.loadStateFromFirestore.__fabrikaV8Wrapped = true;
+    try { loadStateFromFirestore = window.loadStateFromFirestore; } catch (_) {}
+  }
+
+  // GitHub kataloğu çekilince yerel sorgular tekrar üstüne binsin.
+  if (typeof window.loadQueryCatalogFromGitHub === 'function' && !window.loadQueryCatalogFromGitHub.__fabrikaV8Wrapped) {
+    const oldLoadQueryCatalogFromGitHub = window.loadQueryCatalogFromGitHub;
+    window.loadQueryCatalogFromGitHub = async function() {
+      const ret = await oldLoadQueryCatalogFromGitHub.apply(this, arguments);
+      mergeSavedQueriesWithLocal();
+      if (typeof renderAdminContent === 'function' && window.state && state.adminTab === 'saved-queries') renderAdminContent();
+      return ret;
+    };
+    window.loadQueryCatalogFromGitHub.__fabrikaV8Wrapped = true;
+    try { loadQueryCatalogFromGitHub = window.loadQueryCatalogFromGitHub; } catch (_) {}
+  }
+
+  // Sorgu kaydetme: önce localStorage, sonra varsa Firestore. İzin hatası kaydı bozmaz.
+  window.persistSavedQuery = async function(q) {
+    if (!q || !q.id) throw new Error('Kaydedilecek sorgu geçersiz');
+    const clean = { ...q, source: 'local', updatedAt: Date.now() };
+    const local = readLocalQueries();
+    const idx = local.findIndex(x => x.id === clean.id);
+    if (idx >= 0) local[idx] = clean; else local.push(clean);
+    writeLocalQueries(local);
+
+    if (!Array.isArray(state.savedQueries)) state.savedQueries = [];
+    const sidx = state.savedQueries.findIndex(x => x.id === clean.id);
+    if (sidx >= 0) state.savedQueries[sidx] = clean; else state.savedQueries.push(clean);
+    mergeSavedQueriesWithLocal();
+
+    if (window.fb && window.fb.db) {
+      try {
+        const payload = typeof sanitize === 'function' ? sanitize(clean) : clean;
+        await window.fb.setDoc(window.fb.doc(window.fb.db, 'savedQueries', clean.id), payload);
+      } catch (e) {
+        console.warn('[Firestore] Sorgu Firestore’a yazılamadı; yerel kayıt devrede:', e.message);
+      }
+    }
+    return clean;
+  };
+  try { persistSavedQuery = window.persistSavedQuery; } catch (_) {}
+
+  window.saveNamedQuery = async function(name, params, aciklama = '', responseTemplate = '', speechTemplate = '') {
+    if (typeof hasPermission === 'function' && !hasPermission(state.currentUser, 'admin_processes_edit')) throw new Error('Sorgu kaydetme yetkiniz yok');
+    if (!name || !String(name).trim()) throw new Error('Sorguya bir isim verin');
+    if (!params || !params.koleksiyon) throw new Error('Geçersiz sorgu: koleksiyon belirtilmemiş');
+    if (typeof QUERY_COLLECTIONS !== 'undefined' && !QUERY_COLLECTIONS[params.koleksiyon]) throw new Error('Bilinmeyen tablo: ' + params.koleksiyon);
+    const id = (typeof slugQueryId === 'function') ? slugQueryId(name) : ('sorgu_' + Date.now());
+    const q = {
+      id,
+      name: String(name).trim(),
+      aciklama: String(aciklama || '').trim(),
+      params,
+      responseTemplate: String(responseTemplate || '').trim(),
+      speechTemplate: String(speechTemplate || '').trim(),
+      source: 'local',
+      createdBy: state.currentUser,
+      createdAt: Date.now()
+    };
+    await window.persistSavedQuery(q);
+    return q;
+  };
+  try { saveNamedQuery = window.saveNamedQuery; } catch (_) {}
+
+  window.deleteNamedQuery = async function(id) {
+    if (typeof hasPermission === 'function' && !hasPermission(state.currentUser, 'admin_processes_edit')) throw new Error('Sorgu silme yetkiniz yok');
+    state.savedQueries = (state.savedQueries || []).filter(q => q.id !== id);
+    writeLocalQueries(readLocalQueries().filter(q => q.id !== id));
+    if (window.fb && window.fb.db) {
+      try { await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'savedQueries', id)); }
+      catch (e) { console.warn('[Firestore] Sorgu silinemedi; yerel silme uygulandı:', e.message); }
+    }
+  };
+  try { deleteNamedQuery = window.deleteNamedQuery; } catch (_) {}
+
+  // Öğrenme kuyruğu: Firestore izin vermese de yerelde açık kayıt olarak sakla.
+  window.logUnansweredCommand = async function(userText, reason) {
+    const text = String(userText || '').trim();
+    if (!text || text.length < 2) return;
+    if (/^(yard[ıi]m|selam|merhaba|te[şs]ekk[üu]r|sa[ğg] ?ol|tamam|evet|hay[ıi]r)$/i.test(text)) return;
+    if (!Array.isArray(state.aiLearningQueue)) state.aiLearningQueue = [];
+    if (state.aiLearningQueue.some(q => q.status === 'open' && normText(q.text) === normText(text))) return;
+
+    const rec = {
+      id: 'lq_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      text,
+      reason: reason || 'eşleşmedi',
+      user: state.currentUser || '?',
+      model: (typeof aiActiveModelLabel === 'function') ? aiActiveModelLabel() : '',
+      at: Date.now(),
+      status: 'open'
+    };
+    state.aiLearningQueue.push(rec);
+    writeLocalQueue(state.aiLearningQueue);
+
+    if (window.fb && window.fb.db) {
+      try {
+        const payload = typeof sanitize === 'function' ? sanitize(rec) : rec;
+        await window.fb.setDoc(window.fb.doc(window.fb.db, 'aiLearningQueue', rec.id), payload);
+      } catch (e) {
+        console.warn('[Firestore] Öğrenme kuyruğu Firestore’a yazılamadı; yerel kayıt devrede:', e.message);
+      }
+    }
+  };
+  try { logUnansweredCommand = window.logUnansweredCommand; } catch (_) {}
+
+  window.resolveLearningItem = async function(id) {
+    const q = (state.aiLearningQueue || []).find(x => x.id === id);
+    if (!q) return;
+    q.status = 'resolved';
+    q.resolvedAt = Date.now();
+    q.resolvedBy = state.currentUser || '?';
+    writeLocalQueue(state.aiLearningQueue || []);
+    if (window.fb && window.fb.db) {
+      try { await window.fb.setDoc(window.fb.doc(window.fb.db, 'aiLearningQueue', id), (typeof sanitize === 'function' ? sanitize(q) : q)); }
+      catch (e) { console.warn('[Firestore] Öğrenme kuyruğu güncellenemedi; yerel durum devrede:', e.message); }
+    }
+    if (typeof renderAdminContent === 'function') renderAdminContent();
+  };
+  try { resolveLearningItem = window.resolveLearningItem; } catch (_) {}
+
+  window.clearLearningQueue = async function() {
+    const resolved = (state.aiLearningQueue || []).filter(q => q.status === 'resolved');
+    if (!resolved.length) { if (typeof notify === 'function') notify('Temizlenecek çözülmüş kayıt yok', 'info'); return; }
+    if (!confirm(`${resolved.length} çözülmüş kayıt silinecek. Emin misiniz?`)) return;
+    state.aiLearningQueue = (state.aiLearningQueue || []).filter(q => q.status !== 'resolved');
+    writeLocalQueue(state.aiLearningQueue);
+    for (const q of resolved) {
+      if (window.fb && window.fb.db) {
+        try { await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'aiLearningQueue', q.id)); } catch (_) {}
+      }
+    }
+    if (typeof notify === 'function') notify('Çözülmüş kayıtlar temizlendi', 'success');
+    if (typeof renderAdminContent === 'function') renderAdminContent();
+  };
+  try { clearLearningQueue = window.clearLearningQueue; } catch (_) {}
+
+  window.exportLocalQueriesForGitHub = function() {
+    const local = readLocalQueries();
+    const payload = {
+      _aciklama: 'FABRİKA yerel sorgu aktarımı. Bu dosyadaki queries dizisini GitHub sorgular.json kataloğuna ekleyebilirsiniz.',
+      _surum: 'local-export-v1',
+      _guncelleme: new Date().toISOString(),
+      queries: local.map(q => ({
+        name: q.name,
+        aciklama: q.aciklama || '',
+        params: q.params,
+        aliases: q.aliases || [],
+        responseTemplate: q.responseTemplate || '',
+        speechTemplate: q.speechTemplate || ''
+      }))
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sorgular_yerel_aktarim_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  window.importLocalQueriesFromFile = function(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function() {
+      try {
+        const data = JSON.parse(reader.result);
+        const list = Array.isArray(data) ? data : (Array.isArray(data.queries) ? data.queries : []);
+        if (!list.length) throw new Error('Dosyada queries bulunamadı');
+        const local = readLocalQueries();
+        let added = 0;
+        list.forEach(item => {
+          if (!item || !item.name || !item.params || !item.params.koleksiyon) return;
+          const id = item.id || ((typeof slugQueryId === 'function') ? slugQueryId(item.name) : ('sorgu_' + Date.now() + '_' + added));
+          const q = {
+            id,
+            name: item.name,
+            aciklama: item.aciklama || item.description || '',
+            params: item.params,
+            aliases: item.aliases || [],
+            responseTemplate: item.responseTemplate || '',
+            speechTemplate: item.speechTemplate || '',
+            source: 'local',
+            importedAt: Date.now(),
+            importedBy: state.currentUser || '?'
+          };
+          const idx = local.findIndex(x => x.id === q.id);
+          if (idx >= 0) local[idx] = q; else local.push(q);
+          added++;
+        });
+        writeLocalQueries(local);
+        mergeSavedQueriesWithLocal();
+        if (typeof notify === 'function') notify(`✓ ${added} yerel sorgu içe aktarıldı`, 'success');
+        if (typeof renderAdminContent === 'function') renderAdminContent();
+      } catch (e) {
+        if (typeof notify === 'function') notify('İçe aktarılamadı: ' + e.message, 'error');
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  };
+
+  // Kayıtlı sorgular ekranına yerel aktarım panelini ekle.
+  if (typeof window.renderSavedQueriesAdmin === 'function' && !window.renderSavedQueriesAdmin.__fabrikaV8Wrapped) {
+    const oldRenderSavedQueriesAdmin = window.renderSavedQueriesAdmin;
+    window.renderSavedQueriesAdmin = function(c) {
+      mergeSavedQueriesWithLocal();
+      mergeLearningQueueWithLocal();
+      oldRenderSavedQueriesAdmin.apply(this, arguments);
+      try {
+        const table = c.querySelector('table');
+        if (!table || c.querySelector('#local-query-export-panel')) return;
+        const localCount = readLocalQueries().length;
+        table.insertAdjacentHTML('beforebegin', `
+          <div id="local-query-export-panel" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;margin:0 0 14px;">
+            <div style="font-weight:600;margin-bottom:5px;">💾 Yerel Sorgular</div>
+            <div style="color:var(--text-dim);font-size:12px;margin-bottom:8px;line-height:1.45;">
+              Kuyruktan yazılan veya GitHub sorgusundan düzenlenen sorgular bu tarayıcıda saklanır. Program kapanıp açılsa da aynı tarayıcıda devrede kalır. Kalıcı ana kataloğa almak için dışa aktarıp GitHub <code>sorgular.json</code> dosyanıza ekleyin.
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+              <span style="font-size:12px;color:var(--text-dim);">Yerel sorgu sayısı: <b style="color:var(--text);">${localCount}</b></span>
+              <button class="ghost-btn" style="font-size:12px;" onclick="exportLocalQueriesForGitHub()">📤 GitHub'a Aktarım JSON'u İndir</button>
+              <label class="ghost-btn" style="font-size:12px;cursor:pointer;margin:0;">📥 Yerel Sorgu İçe Aktar<input type="file" accept=".json,application/json" style="display:none" onchange="importLocalQueriesFromFile(this.files && this.files[0]); this.value='';"></label>
+            </div>
+          </div>`);
+      } catch (e) { console.warn('[FABRİKA AI v8] yerel panel eklenemedi:', e.message); }
+    };
+    window.renderSavedQueriesAdmin.__fabrikaV8Wrapped = true;
+    try { renderSavedQueriesAdmin = window.renderSavedQueriesAdmin; } catch (_) {}
+  }
+
+  // Sayfa açılışında bir kez de direkt birleştir; Auth sonrası wrapper zaten tekrar çalışacak.
+  setTimeout(function(){
+    try {
+      mergeSavedQueriesWithLocal();
+      mergeLearningQueueWithLocal();
+      if (typeof renderAdminContent === 'function' && window.state && state.adminTab === 'saved-queries') renderAdminContent();
+    } catch (e) { console.warn('[FABRİKA AI v8] ilk birleştirme hatası:', e.message); }
+  }, 1200);
+
+  console.log('[FABRİKA AI v8] Yerel sorgu kalıcılığı aktif');
+})();
+</script>
