@@ -1,0 +1,70 @@
+{
+  "_aciklama": "FABRİKA platformu YZ sorgu kataloğu. Bu dosyayı GitHub'a yükleyin, raw URL'ini uygulamada Yönetim > Kayıtlı Sorgular ekranına girin. Geliştirici (Claude) yeni talepler geldikçe bu listeyi günceller.",
+  "_surum": 1,
+  "_guncelleme": "2026-06-09",
+  "_sema": {
+    "name": "Sorgunun çağrılacağı isim (kullanıcı 'X sorgusunu çalıştır' der)",
+    "aciklama": "Kısa açıklama",
+    "params": {
+      "koleksiyon": "users | instances | tasks | definitions | roles | orders",
+      "filtreler": "[{field, op, value}] op=eq|ne|gt|gte|lt|lte|contains|in|exists",
+      "grupla": "sayım için alan adı (opsiyonel)",
+      "alanlar": "döndürülecek alanlar (opsiyonel)",
+      "siralaAlan": "sıralama alanı (opsiyonel)",
+      "siralaYon": "asc | desc",
+      "limit": "max kayıt (opsiyonel)"
+    }
+  },
+  "queries": [
+    {
+      "name": "Rol dağılımı",
+      "aciklama": "Her rolde kaç kullanıcı olduğunu sayar (en fazladan aza).",
+      "params": { "koleksiyon": "users", "grupla": "roles" }
+    },
+    {
+      "name": "Açık talepler",
+      "aciklama": "Devam eden (running) tüm talepler.",
+      "params": { "koleksiyon": "instances", "filtreler": [{ "field": "status", "op": "eq", "value": "running" }], "alanlar": ["id", "defId", "ownerId", "createdAt"], "siralaAlan": "createdAt", "siralaYon": "asc" }
+    },
+    {
+      "name": "Tamamlanan talepler",
+      "aciklama": "Bitmiş (completed) talepler.",
+      "params": { "koleksiyon": "instances", "filtreler": [{ "field": "status", "op": "eq", "value": "completed" }], "alanlar": ["id", "defId", "ownerId"] }
+    },
+    {
+      "name": "Reddedilen talepler",
+      "aciklama": "Reddedilmiş talepler.",
+      "params": { "koleksiyon": "instances", "filtreler": [{ "field": "status", "op": "eq", "value": "rejected" }], "alanlar": ["id", "defId", "ownerId"] }
+    },
+    {
+      "name": "Talep durum dağılımı",
+      "aciklama": "Taleplerin duruma göre sayısı (açık/tamamlanan/reddedilen).",
+      "params": { "koleksiyon": "instances", "grupla": "status" }
+    },
+    {
+      "name": "Açık görevler",
+      "aciklama": "Henüz tamamlanmamış (open) tüm görevler.",
+      "params": { "koleksiyon": "tasks", "filtreler": [{ "field": "status", "op": "eq", "value": "open" }], "alanlar": ["id", "title", "assigneeId", "instanceId"] }
+    },
+    {
+      "name": "Görev yükü dağılımı",
+      "aciklama": "Hangi kişide kaç görev olduğunu sayar.",
+      "params": { "koleksiyon": "tasks", "filtreler": [{ "field": "status", "op": "eq", "value": "open" }], "grupla": "assigneeId" }
+    },
+    {
+      "name": "Süreç dağılımı",
+      "aciklama": "Hangi süreçte kaç talep açılmış (defId'ye göre).",
+      "params": { "koleksiyon": "instances", "grupla": "defId" }
+    },
+    {
+      "name": "Aktif süreçler",
+      "aciklama": "Açık (active) süreç tanımları.",
+      "params": { "koleksiyon": "definitions", "filtreler": [{ "field": "active", "op": "eq", "value": true }], "alanlar": ["id", "name"] }
+    },
+    {
+      "name": "Tüm roller",
+      "aciklama": "Sistemdeki tüm roller.",
+      "params": { "koleksiyon": "roles", "alanlar": ["id", "name", "description"] }
+    }
+  ]
+}

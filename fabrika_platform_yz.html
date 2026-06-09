@@ -4442,6 +4442,8 @@ let state = {
   tasks: [],
   notifications: [],
   comments: [],          // Talep yorumları (Firestore /comments)
+  savedQueries: [],      // Kayıtlı sorgular (ortak, Firestore /savedQueries)
+  aiLearningQueue: [],   // YZ'nin cevaplayamadığı talepler (öğrenme kuyruğu, Firestore /aiLearningQueue)
   roles: [],             // Özelleştirilebilir roller (Firestore /roles)
   history: [],
   // -- Üretim --
@@ -5136,6 +5138,29 @@ async function loadStateFromFirestore() {
     state.comments = commentsSnap.docs.map(d => d.data());
     state.roles = rolesSnap.docs.map(d => d.data());
 
+    // Kayıtlı sorgular (ortak) — ayrı ve hataya dayanıklı yükle
+    try {
+      const sqSnap = await window.fb.getDocs(window.fb.collection(db, 'savedQueries'));
+      state.savedQueries = sqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+      console.warn('[Firestore] Kayıtlı sorgular yüklenemedi:', e.message);
+      state.savedQueries = [];
+    }
+
+    // YZ öğrenme kuyruğu — ayrı ve hataya dayanıklı yükle
+    try {
+      const lqSnap = await window.fb.getDocs(window.fb.collection(db, 'aiLearningQueue'));
+      state.aiLearningQueue = lqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+      console.warn('[Firestore] Öğrenme kuyruğu yüklenemedi:', e.message);
+      state.aiLearningQueue = [];
+    }
+
+    // GitHub sorgu kataloğu (varsa) — arka planda çek, hata olsa da uygulamayı bloklamasın
+    if (typeof loadQueryCatalogFromGitHub === 'function' && (typeof getQueryCatalogUrl === 'function') && getQueryCatalogUrl()) {
+      loadQueryCatalogFromGitHub(false).catch(() => {});
+    }
+
     // İlk açılış - roller boşsa varsayılan 5 rolü kur
     if (state.roles.length === 0) {
       console.log('[Firestore] Roller boş, varsayılan 5 rol yazılıyor');
@@ -5200,6 +5225,8 @@ function loadState() {
   state.orders = [];
   state.notifications = [];
   state.comments = [];
+  state.savedQueries = [];
+  state.aiLearningQueue = [];
   state.roles = [];
   state.history = [];
   state.productionLog = [];
@@ -8043,6 +8070,7 @@ function renderAdminView(v) {
   // Aktif sekme yetkisiz ise ilk yetkili sekmeye geç
   if ((state.adminTab === 'processes' && !canProcesses) ||
       (state.adminTab === 'ai-builder' && !canAI) ||
+      (state.adminTab === 'saved-queries' && !canProcesses) ||
       (state.adminTab === 'ai-panel' && !canAI) ||
       (state.adminTab === 'users' && !canUsers) ||
       (state.adminTab === 'roles' && !canRoles)) {
@@ -8058,6 +8086,7 @@ function renderAdminView(v) {
       ${canProcesses ? `<button class="admin-nav-item ${state.adminTab === 'processes' ? 'active':''}" onclick="setAdminTab('processes')">📋 Süreçler</button>` : ''}
       ${canAI ? `<button class="admin-nav-item ${state.adminTab === 'ai-panel' ? 'active':''}" onclick="setAdminTab('ai-panel')">🧠 AI Kontrol Paneli</button>` : ''}
       ${canAI ? `<button class="admin-nav-item ${state.adminTab === 'ai-builder' ? 'active':''}" onclick="setAdminTab('ai-builder')">🤖 Yapay Zeka Form</button>` : ''}
+      ${canProcesses ? `<button class="admin-nav-item ${state.adminTab === 'saved-queries' ? 'active':''}" onclick="setAdminTab('saved-queries')">🔖 Kayıtlı Sorgular</button>` : ''}
       ${canUsers ? `<button class="admin-nav-item ${state.adminTab === 'users' ? 'active':''}" onclick="setAdminTab('users')">👥 Kullanıcılar</button>` : ''}
       ${canRoles ? `<button class="admin-nav-item ${state.adminTab === 'roles' ? 'active':''}" onclick="setAdminTab('roles')">🔐 Roller ve Yetkiler</button>` : ''}
     </aside>
@@ -8083,6 +8112,7 @@ function renderAdminContent() {
   else if (state.adminTab === 'roles') renderRolesAdmin(c);
   else if (state.adminTab === 'ai-panel') renderAIControlPanel(c);
   else if (state.adminTab === 'ai-builder') renderAIFormBuilder(c);
+  else if (state.adminTab === 'saved-queries') renderSavedQueriesAdmin(c);
   else if (state.designerProcessId) renderDesigner(c);
   else renderProcessesAdmin(c);
 }
@@ -8847,6 +8877,181 @@ function getAISettings() {
 }
 function saveAISettings(settings) { localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(settings)); }
 function maskKey(key) { if (!key) return 'Kayıtlı değil'; return key.length <= 8 ? '••••' : key.slice(0,4) + '••••••' + key.slice(-4); }
+function renderSavedQueriesAdmin(c) {
+  const canEdit = hasPermission(state.currentUser, 'admin_processes_edit');
+  const list = state.savedQueries || [];
+  const catUrl = (typeof getQueryCatalogUrl === 'function') ? getQueryCatalogUrl() : '';
+  const queue = (state.aiLearningQueue || []).filter(q => q.status !== 'resolved');
+
+  const rows = list.length ? list.map(q => {
+    const tablo = q.params?.koleksiyon || '-';
+    const kaynak = q.source === 'github'
+      ? '<span style="font-size:10px;background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:8px;">GitHub</span>'
+      : '<span style="font-size:10px;background:var(--panel-2);color:var(--text-dim);padding:1px 6px;border-radius:8px;">Yerel</span>';
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:8px;font-weight:600;">${escapeHtml(q.name)} ${kaynak}</td>
+      <td style="padding:8px;color:var(--text-dim);">${escapeHtml(q.aciklama || '')}</td>
+      <td style="padding:8px;font-family:var(--mono);font-size:11px;">${escapeHtml(tablo)}</td>
+      <td style="padding:8px;text-align:right;white-space:nowrap;">
+        <button class="ghost-btn" style="font-size:11px;padding:3px 8px;" onclick="runSavedQueryFromAdmin('${q.id}')">▶ Çalıştır</button>
+        ${(canEdit && q.source !== 'github') ? `<button class="ghost-btn" style="font-size:11px;padding:3px 8px;color:var(--red);" onclick="deleteSavedQueryFromAdmin('${q.id}')">🗑 Sil</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--text-mute);">Henüz kayıtlı sorgu yok.</td></tr>`;
+
+  c.innerHTML = `
+    <div style="max-width:920px;">
+      <h2 style="margin-bottom:6px;">🔖 Kayıtlı Sorgular</h2>
+      <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;">
+        Tüm kullanıcılar bu sorguları AI konsolunda adıyla çağırabilir. Her kullanıcı yalnızca kendi yetkisi dahilindeki tabloları görür.
+      </p>
+
+      ${canEdit ? `
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;">
+        <div style="font-weight:600;margin-bottom:8px;">🐙 GitHub Sorgu Kataloğu</div>
+        <p style="color:var(--text-dim);font-size:12px;margin-bottom:8px;">
+          Geliştiricinin hazırladığı sorgular bir GitHub raw JSON dosyasından çekilir. URL örneği:
+          <code style="font-size:11px;">https://raw.githubusercontent.com/KULLANICI/REPO/main/sorgular.json</code>
+        </p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <input id="cat-url" value="${escapeHtml(catUrl)}" placeholder="GitHub raw JSON URL" style="flex:1;min-width:280px;background:var(--bg);border:1px solid var(--border-hi);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;">
+          <button class="primary-btn" style="font-size:12px;" onclick="saveCatalogUrlFromUI()">💾 Kaydet</button>
+          <button class="ghost-btn" style="font-size:12px;" onclick="loadQueryCatalogFromGitHub(true)">⟳ Şimdi Çek</button>
+        </div>
+      </div>` : ''}
+
+      ${canEdit ? `<button class="primary-btn" style="margin-bottom:14px;" onclick="addSavedQueryManually()">+ Elle Sorgu Ekle</button>` : ''}
+
+      <table style="width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+        <thead><tr style="background:var(--panel-2);text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-mute);">
+          <th style="padding:8px;">Ad</th><th style="padding:8px;">Açıklama</th><th style="padding:8px;">Tablo</th><th style="padding:8px;text-align:right;">İşlem</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+
+      ${canEdit ? `
+      <h2 style="margin-bottom:6px;">🧠 YZ Öğrenme Kuyruğu</h2>
+      <p style="color:var(--text-dim);font-size:13px;margin-bottom:12px;">
+        YZ'nin cevaplayamadığı talepler burada birikir (${queue.length} açık kayıt). Dışa aktarıp geliştiriciye verin;
+        yeni sorgular eklenip GitHub kataloğu güncellendikçe YZ daha yetenekli olur.
+      </p>
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="primary-btn" style="font-size:12px;" onclick="exportLearningQueue()">📤 Kuyruğu Dışa Aktar (JSON)</button>
+        <button class="ghost-btn" style="font-size:12px;" onclick="copyLearningQueue()">📋 Panoya Kopyala</button>
+        <button class="ghost-btn" style="font-size:12px;color:var(--red);" onclick="clearLearningQueue()">🗑 Çözülenleri Temizle</button>
+      </div>
+      <div style="max-height:280px;overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:8px;">
+        ${queue.length ? queue.slice().reverse().map(q => `
+          <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div style="min-width:0;">
+              <div style="font-size:13px;">${escapeHtml(q.text)}</div>
+              <div style="font-size:10px;color:var(--text-mute);">${escapeHtml(q.user || '?')} · ${q.at ? new Date(q.at).toLocaleString('tr-TR') : ''} · ${escapeHtml(q.reason || '')}</div>
+            </div>
+            <button class="ghost-btn" style="font-size:11px;padding:3px 8px;flex-shrink:0;" onclick="resolveLearningItem('${q.id}')">✓ Çözüldü</button>
+          </div>`).join('') : '<div style="padding:16px;text-align:center;color:var(--text-mute);">Kuyruk boş — YZ tüm talepleri karşılıyor. 👍</div>'}
+      </div>` : ''}
+    </div>`;
+}
+
+function saveCatalogUrlFromUI() {
+  const url = document.getElementById('cat-url')?.value || '';
+  setQueryCatalogUrl(url);
+  notify('Katalog URL kaydedildi', 'success');
+  if (url) loadQueryCatalogFromGitHub(true);
+}
+window.saveCatalogUrlFromUI = saveCatalogUrlFromUI;
+
+// Öğrenme kuyruğunu JSON dosyası olarak indir
+function exportLearningQueue() {
+  const data = JSON.stringify(state.aiLearningQueue || [], null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'yz_ogrenme_kuyrugu_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+window.exportLearningQueue = exportLearningQueue;
+
+async function copyLearningQueue() {
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(state.aiLearningQueue || [], null, 2));
+    notify('Kuyruk panoya kopyalandı', 'success');
+  } catch (e) { notify('Kopyalanamadı: ' + e.message, 'error'); }
+}
+window.copyLearningQueue = copyLearningQueue;
+
+async function resolveLearningItem(id) {
+  const q = (state.aiLearningQueue || []).find(x => x.id === id);
+  if (!q) return;
+  q.status = 'resolved';
+  if (window.fb && window.fb.db) {
+    try { await window.fb.setDoc(window.fb.doc(window.fb.db, 'aiLearningQueue', id), (typeof sanitize === 'function' ? sanitize(q) : q)); } catch (_) {}
+  }
+  renderAdminContent();
+}
+window.resolveLearningItem = resolveLearningItem;
+
+async function clearLearningQueue() {
+  const resolved = (state.aiLearningQueue || []).filter(q => q.status === 'resolved');
+  if (!resolved.length) { notify('Temizlenecek çözülmüş kayıt yok', 'info'); return; }
+  if (!confirm(`${resolved.length} çözülmüş kayıt silinecek. Emin misiniz?`)) return;
+  for (const q of resolved) {
+    if (window.fb && window.fb.db) {
+      try { await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'aiLearningQueue', q.id)); } catch (_) {}
+    }
+  }
+  state.aiLearningQueue = (state.aiLearningQueue || []).filter(q => q.status !== 'resolved');
+  notify('Çözülmüş kayıtlar temizlendi', 'success');
+  renderAdminContent();
+}
+window.clearLearningQueue = clearLearningQueue;
+
+async function runSavedQueryFromAdmin(id) {
+  const q = (state.savedQueries || []).find(x => x.id === id);
+  if (!q) return;
+  try {
+    const result = await AI_TOOLS.sorgu.run(q.params || {});
+    const ozet = result.gruplandi
+      ? (result.enYuksek ? `En fazla "${result.enYuksek.deger}" (${result.enYuksek.sayi}). Toplam ${result.toplamKayit} kayıt.` : 'Sonuç yok.')
+      : `${result.toplam} kayıt eşleşti, ${result.donen} gösteriliyor.`;
+    alert(`"${q.name}" sonucu:\n\n${ozet}\n\n${JSON.stringify(result.items || result.gruplar || result, null, 2).slice(0, 1500)}`);
+  } catch (e) {
+    notify('Sorgu hatası: ' + e.message, 'error');
+  }
+}
+window.runSavedQueryFromAdmin = runSavedQueryFromAdmin;
+
+async function deleteSavedQueryFromAdmin(id) {
+  const q = (state.savedQueries || []).find(x => x.id === id);
+  if (!q) return;
+  if (!confirm(`"${q.name}" kayıtlı sorgusu silinecek. Emin misiniz?`)) return;
+  try {
+    await deleteNamedQuery(id);
+    notify('Kayıtlı sorgu silindi', 'success');
+    renderAdminContent();
+  } catch (e) { notify('Silinemedi: ' + e.message, 'error'); }
+}
+window.deleteSavedQueryFromAdmin = deleteSavedQueryFromAdmin;
+
+async function addSavedQueryManually() {
+  const ad = prompt('Sorgu adı:');
+  if (!ad || !ad.trim()) return;
+  const orn = JSON.stringify({ koleksiyon: 'users', grupla: 'roles' }, null, 2);
+  const pj = prompt('Sorgu parametreleri (JSON):\nÖrnek:\n' + orn, orn);
+  if (pj === null) return;
+  let params;
+  try { params = JSON.parse(pj); }
+  catch (e) { notify('JSON geçersiz: ' + e.message, 'error'); return; }
+  const aciklama = prompt('Açıklama (opsiyonel):') || '';
+  try {
+    await saveNamedQuery(ad, params, aciklama);
+    notify('Kayıtlı sorgu eklendi', 'success');
+    renderAdminContent();
+  } catch (e) { notify('Eklenemedi: ' + e.message, 'error'); }
+}
+window.addSavedQueryManually = addSavedQueryManually;
+
 function renderAIFormBuilder(c) {
   const canEdit = hasPermission(state.currentUser, 'admin_processes_edit');
   const cfg = getAISettings();
@@ -9005,6 +9210,22 @@ function onAIProviderChange() {
   if (customField) customField.style.display = provider === 'custom' ? 'block' : 'none';
   const hint = document.getElementById('ai-key-hint');
   if (hint) hint.textContent = 'Durum: ' + maskKey(cfg.keys[provider] || '');
+
+  // Sağlayıcı seçimini ANINDA kaydet — kullanıcının ayrıca "Kaydet"e basması gerekmesin.
+  // (API key gibi alanlar yine "Kaydet" ile yazılır.)
+  if (cfg.provider !== provider) {
+    cfg.provider = provider;
+    saveAISettings(cfg);
+    // Konsol açıksa başlık rozetini hemen güncelle
+    const badge = document.getElementById('ai-console-model');
+    if (badge && typeof aiActiveModelLabel === 'function') badge.textContent = 'Model: ' + aiActiveModelLabel();
+    // Anahtar gerektiren ama anahtarı olmayan sağlayıcı seçildiyse uyar
+    if (AI_PROVIDERS[provider]?.needsKey && !cfg.keys[provider]) {
+      if (typeof notify === 'function') notify(`${provider} seçildi — bu sağlayıcı için API anahtarı girip "Kaydet" demeniz gerekir.`, 'info');
+    } else {
+      if (typeof notify === 'function') notify(`Aktif sağlayıcı: ${provider}`, 'success');
+    }
+  }
 }
 
 function saveAISettingsFromUI() {
@@ -9336,8 +9557,18 @@ ${typeof aiToolsManifest === 'function' ? aiToolsManifest() : ''}
 
 KURALLAR:
 - Yalnızca şu JSON'u döndür, başka hiçbir şey yazma: {"tool":"araç_adı","params":{...},"explain":"kullanıcıya tek cümlelik Türkçe açıklama"}.
+- "tool" alanı, yukarıdaki listede AYNEN geçen araç adlarından biri OLMAK ZORUNDA. Adı ASLA çevirme, kısaltma veya İngilizceye uydurma. Örneğin kullanıcı oluşturma için "createUser" değil "kullaniciOlusturmaEkraniAc" yaz.
+- Kullanıcı/personel oluşturma, ekleme, tanımlama veya kaydetme istenirse "kullaniciOlusturmaEkraniAc" aracını seç; varsa kişinin adını params.ad içine koy.
 - Seçtiğin araç [risk:confirm] ise, explain cümlende işlemin onay isteyeceğini belirt (örn. "...oluşturulacak, onayınızı isteyeceğim").
-- Uygun araç yoksa {"tool":null,"explain":"neden yapılamadığı"} döndür.`;
+- Hazır araçların hiçbiri tam karşılamıyorsa ama veri sistemde varsa "sorgu" aracını kullan: kendi filtreni yaz.
+  SORGU ŞEMASI: {"tool":"sorgu","params":{"koleksiyon":"users|instances|tasks|definitions|roles|orders","filtreler":[{"field":"alan","op":"eq|ne|gt|gte|lt|lte|contains|in|exists","value":...}],"grupla":"alan (sayım için)","alanlar":["istenen","alanlar"],"siralaAlan":"alan","siralaYon":"asc|desc","limit":50}}
+  - instances alanları: id, defId, status(running|completed|rejected), ownerId, currentStep, createdAt(ms), data. tasks: id, instanceId, title, status(open|done), assigneeId, createdAt. users: id, name, email, roles(dizi), dahili, cep, manager, hireDate.
+  - SAYIM/GRUPLAMA: "en fazla hangi X", "kaç tane Y", "role göre dağılım" gibi sorularda "grupla" kullan. Örn "en fazla hangi rolde kullanıcı var" -> {"tool":"sorgu","params":{"koleksiyon":"users","grupla":"roles"},"explain":"Kullanıcılar role göre sayılıyor."}. Sonuç en yüksekten düşüğe sıralı gelir.
+  - Tarih/süre filtrelerinde createdAt milisaniye epoch'tur; "son 7 gün" için gt değeri olarak şu anki zamandan 7*86400000 çıkar.
+  - Örnek: "running durumundaki talepleri sahibe göre" -> {"tool":"sorgu","params":{"koleksiyon":"instances","filtreler":[{"field":"status","op":"eq","value":"running"}],"alanlar":["id","ownerId","createdAt"]},"explain":"Açık talepler sorgulanıyor."}
+  - ÖNEMLİ: Sayım, gruplama, filtreleme veya herhangi bir veri sorusu için ASLA yeni araç adı uydurma (get_user_count_by_role gibi). Bu tür her şey "sorgu" aracıyla yapılır.
+- KAYITLI SORGULAR: Kullanıcı daha önce kaydedilmiş isimli bir sorguyu isterse "kayitliSorguCalistir" (params.ad = sorgu adı) kullan. Kayıtlı sorguları listelemek için "kayitliSorgular". Bir sorguyu kaydetmek isterse "sorguKaydet" (params: ad, params{sorgu parametreleri}, aciklama).
+- Listede gerçekten uygun araç yoksa ve sorgu da uymuyorsa {"tool":null,"explain":"neden yapılamadığı"} döndür; var olmayan bir araç adı UYDURMA.`;
   }
 
   // mode === 'form'
@@ -16122,7 +16353,7 @@ const AI_TOOLS = {
   listeKullanicilar: {
     desc: 'Kullanıcıları listeler. Parametre: role (opsiyonel rol id)',
     risk: 'safe',
-    perm: 'users_view',
+    perm: 'admin_users_view',
     run: ({ role = null }) => {
       let us = state.users.slice();
       if (role) us = us.filter(u => (u.roles || []).includes(role));
@@ -16232,7 +16463,7 @@ function aiToolsManifest() {
 AI_TOOLS.kullaniciDetay = {
   desc: 'Tek bir kullanıcının detayını verir (rol, dahili, cep, açık görev sayısı). Parametre: ad veya id',
   risk: 'safe',
-  perm: 'users_view',
+  perm: 'admin_users_view',
   run: ({ ad = '', id = null }) => {
     const hedef = (ad || id || '').toString().toLocaleLowerCase('tr-TR').trim();
     if (!hedef) throw new Error('Kullanıcı adı veya id belirtilmedi');
@@ -16302,7 +16533,7 @@ AI_TOOLS.enYukluKisiler = {
 AI_TOOLS.izinliler = {
   desc: 'Belirtilen tarihte (varsayılan bugün) izinli olan kişileri listeler. Parametre: tarih (YYYY-AA-GG, opsiyonel)',
   risk: 'safe',
-  perm: 'users_view',
+  perm: 'admin_users_view',
   run: ({ tarih = null }) => {
     const gun = tarih ? new Date(tarih) : new Date();
     const gunStr = gun.toISOString().slice(0, 10);
@@ -16312,6 +16543,282 @@ AI_TOOLS.izinliler = {
       return bas && gunStr >= bas && gunStr <= bit;
     }));
     return { tarih: gunStr, count: izinli.length, items: izinli.map(u => ({ kisi: u.name })) };
+  }
+};
+
+// ---- Serbest sorgu aracı: YZ kendi sorgusunu yazar (SALT-OKUMA, güvenli) ----
+// İzinli koleksiyonlar ve gerektirdikleri yetki. Buraya olmayan koleksiyon sorgulanamaz.
+const QUERY_COLLECTIONS = {
+  users:        { perm: 'admin_users_view', alanlar: ['id','name','email','roles','dahili','cep','manager','hireDate'] },
+  instances:    { perm: 'workflows_view',   alanlar: ['id','defId','status','ownerId','currentStep','createdAt','data'] },
+  tasks:        { perm: 'workflows_view',   alanlar: ['id','instanceId','title','status','assigneeId','createdAt'] },
+  definitions:  { perm: 'workflows_view',   alanlar: ['id','name','active','description'] },
+  roles:        { perm: 'admin_roles_view', alanlar: ['id','name','description'] },
+  orders:       { perm: 'production_view',  alanlar: ['id','status','createdAt'] }
+};
+
+// Tek bir filtre koşulunu uygula. op: eq, ne, gt, gte, lt, lte, contains, in, exists
+function applyQueryFilter(row, f) {
+  const v = row ? row[f.field] : undefined;
+  const t = f.value;
+  switch ((f.op || 'eq')) {
+    case 'eq':  return v === t;
+    case 'ne':  return v !== t;
+    case 'gt':  return v > t;
+    case 'gte': return v >= t;
+    case 'lt':  return v < t;
+    case 'lte': return v <= t;
+    case 'contains':
+      if (Array.isArray(v)) return v.includes(t);
+      return String(v ?? '').toLocaleLowerCase('tr-TR').includes(String(t).toLocaleLowerCase('tr-TR'));
+    case 'in':  return Array.isArray(t) && t.includes(v);
+    case 'exists': return (v !== undefined && v !== null && v !== '');
+    default: throw new Error('Bilinmeyen operatör: ' + f.op);
+  }
+}
+
+AI_TOOLS.sorgu = {
+  desc: 'Sistemdeki bir tabloda (koleksiyon) salt-okuma sorgu çalıştırır. Parametre: koleksiyon (' + Object.keys(QUERY_COLLECTIONS).join('|') + '), filtreler (dizi: {field, op, value}; op=eq|ne|gt|gte|lt|lte|contains|in|exists), grupla (bir alana göre sayım yapar, ör. "roles" veya "status"), alanlar (döndürülecek alanlar), siralaAlan, siralaYon (asc|desc), limit. Yalnızca okuma yapar.',
+  risk: 'safe',
+  perm: null, // yetki koleksiyon bazında kontrol edilir
+  run: ({ koleksiyon, filtreler = [], grupla = null, alanlar = null, siralaAlan = null, siralaYon = 'asc', limit = 100 }) => {
+    const def = QUERY_COLLECTIONS[koleksiyon];
+    if (!def) throw new Error('Sorgulanamayan/bilinmeyen tablo: ' + koleksiyon + '. İzinli tablolar: ' + Object.keys(QUERY_COLLECTIONS).join(', '));
+    if (def.perm && !hasPermission(state.currentUser, def.perm)) throw new Error('Bu tabloyu görme yetkiniz yok: ' + koleksiyon);
+
+    let rows = Array.isArray(state[koleksiyon]) ? state[koleksiyon].slice() : [];
+
+    // Filtreler — yalnızca izinli alanlar üzerinde
+    (filtreler || []).forEach(f => {
+      if (!f || !f.field) return;
+      if (!def.alanlar.includes(f.field)) throw new Error(`"${f.field}" alanı ${koleksiyon} için sorgulanamaz. İzinli alanlar: ${def.alanlar.join(', ')}`);
+      rows = rows.filter(r => applyQueryFilter(r, f));
+    });
+
+    // --- GRUPLAMA / SAYIM: "en fazla hangi rolde kullanıcı var" gibi sorular için ---
+    if (grupla) {
+      if (!def.alanlar.includes(grupla)) throw new Error(`"${grupla}" alanına göre gruplanamaz. İzinli alanlar: ${def.alanlar.join(', ')}`);
+      const sayac = {};
+      rows.forEach(r => {
+        let v = r[grupla];
+        const ekle = (key) => { const k = (key === undefined || key === null || key === '') ? '(boş)' : String(key); sayac[k] = (sayac[k] || 0) + 1; };
+        if (Array.isArray(v)) { if (v.length === 0) ekle(''); else v.forEach(ekle); } // roles gibi dizi alanlar
+        else ekle(v);
+      });
+      // roles için id->ad çevirisi (okunabilirlik)
+      const cevir = (key) => {
+        if (koleksiyon === 'users' && grupla === 'roles') return (state.roles || []).find(x => x.id === key)?.name || key;
+        if (grupla === 'defId') return getDef(key)?.name || key;
+        if (grupla === 'ownerId' || grupla === 'assigneeId') return getUser(key)?.name || key;
+        return key;
+      };
+      let gruplar = Object.entries(sayac).map(([k, n]) => ({ deger: cevir(k), sayi: n })).sort((a, b) => b.sayi - a.sayi);
+      return { koleksiyon, gruplandi: grupla, toplamKayit: rows.length, enYuksek: gruplar[0] || null, gruplar };
+    }
+
+    // Sıralama
+    if (siralaAlan && def.alanlar.includes(siralaAlan)) {
+      rows.sort((a, b) => {
+        const av = a[siralaAlan], bv = b[siralaAlan];
+        if (av === bv) return 0;
+        const cmp = av > bv ? 1 : -1;
+        return siralaYon === 'desc' ? -cmp : cmp;
+      });
+    }
+
+    const toplam = rows.length;
+    const lim = Math.min(Math.max(1, limit || 100), 200);
+    rows = rows.slice(0, lim);
+
+    // Yalnızca izinli alanları döndür (alanlar verilmişse onları, yoksa hepsini izinli set içinden)
+    const seclilAlanlar = (Array.isArray(alanlar) && alanlar.length ? alanlar : def.alanlar).filter(a => def.alanlar.includes(a));
+    const items = rows.map(r => {
+      const o = {};
+      seclilAlanlar.forEach(a => { o[a] = r[a]; });
+      return o;
+    });
+    return { koleksiyon, toplam, donen: items.length, alanlar: seclilAlanlar, items };
+  }
+};
+
+// ===== GITHUB SORGU KATALOĞU =====
+// Geliştiricinin (senin) hazırladığı sorgular GitHub'da bir JSON dosyasında tutulur.
+// Uygulama açılışta bunları çeker ve kayıtlı sorgulara (salt-okuma) ekler.
+// URL, AI ayarlarında saklanır: cfg.queryCatalogUrl
+const QUERY_CATALOG_KEY = 'fabrika_query_catalog_url';
+
+function getQueryCatalogUrl() {
+  try { return localStorage.getItem(QUERY_CATALOG_KEY) || ''; } catch (_) { return ''; }
+}
+function setQueryCatalogUrl(url) {
+  try { localStorage.setItem(QUERY_CATALOG_KEY, (url || '').trim()); } catch (_) {}
+}
+
+// GitHub raw URL'inden sorgu kataloğunu çek ve state.savedQueries'e (source:'github') ekle
+async function loadQueryCatalogFromGitHub(showNotif = false) {
+  const url = getQueryCatalogUrl();
+  if (!url) { if (showNotif) notify('Önce GitHub katalog URL\'i ayarlayın', 'info'); return 0; }
+  try {
+    // Önbelleği atlamak için zaman damgası ekle
+    const bust = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    const res = await fetch(bust, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (Array.isArray(data.queries) ? data.queries : []);
+    if (!list.length) { if (showNotif) notify('Katalogda sorgu bulunamadı', 'info'); return 0; }
+
+    // Önceki github kaynaklı sorguları temizle, yenilerini ekle (Firestore'a YAZILMAZ; salt-okuma)
+    state.savedQueries = (state.savedQueries || []).filter(q => q.source !== 'github');
+    let n = 0;
+    list.forEach(item => {
+      if (!item || !item.name || !item.params || !item.params.koleksiyon) return;
+      if (!QUERY_COLLECTIONS[item.params.koleksiyon]) return; // bilinmeyen tabloyu atla
+      const id = 'gh_' + (typeof slugifyTR === 'function' ? slugifyTR(item.name) : item.name.toLowerCase()).replace(/-/g, '_').replace(/[^a-z0-9_]/g, '');
+      state.savedQueries.push({
+        id, name: item.name, aciklama: item.aciklama || item.description || '',
+        params: item.params, source: 'github', createdAt: item.createdAt || Date.now()
+      });
+      n++;
+    });
+    if (showNotif) notify(`✓ ${n} sorgu GitHub kataloğundan yüklendi`, 'success');
+    if (typeof renderAdminContent === 'function' && state.adminTab === 'saved-queries') renderAdminContent();
+    return n;
+  } catch (e) {
+    console.warn('[loadQueryCatalogFromGitHub]', e.message);
+    if (showNotif) notify('Katalog yüklenemedi: ' + e.message, 'error');
+    return 0;
+  }
+}
+window.loadQueryCatalogFromGitHub = loadQueryCatalogFromGitHub;
+
+// ===== YZ ÖĞRENME KUYRUĞU (cevaplanamayan talepler) =====
+// YZ bir komutu işleyemediğinde buraya kaydedilir; yönetici dışa aktarıp geliştiriciye verir.
+let _lastLoggedUnanswered = ''; // aynı metni üst üste loglamayı önle
+async function logUnansweredCommand(userText, reason) {
+  try {
+    const text = (userText || '').trim();
+    if (!text || text.length < 2) return;
+    // Yardım/selamlama gibi kasıtlı boş dönüşleri loglama
+    if (/^(yard[ıi]m|selam|merhaba|te[şs]ekk[üu]r|sa[ğg] ?ol|tamam|evet|hay[ıi]r)$/i.test(text)) return;
+    if (text === _lastLoggedUnanswered) return;
+    _lastLoggedUnanswered = text;
+    const rec = {
+      id: 'lq_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      text,
+      reason: reason || 'eşleşmedi',
+      user: state.currentUser || '?',
+      model: (typeof aiActiveModelLabel === 'function') ? aiActiveModelLabel() : '',
+      at: Date.now(),
+      status: 'open'  // open | resolved
+    };
+    if (!Array.isArray(state.aiLearningQueue)) state.aiLearningQueue = [];
+    // Aynı metin zaten açık kayıttaysa tekrar ekleme (gürültüyü azalt)
+    if (state.aiLearningQueue.some(q => q.status === 'open' && String(q.text).toLocaleLowerCase('tr-TR') === text.toLocaleLowerCase('tr-TR'))) return;
+    state.aiLearningQueue.push(rec);
+    if (window.fb && window.fb.db) {
+      const payload = typeof sanitize === 'function' ? sanitize(rec) : rec;
+      await window.fb.setDoc(window.fb.doc(window.fb.db, 'aiLearningQueue', rec.id), payload);
+    }
+  } catch (e) {
+    console.warn('[logUnansweredCommand]', e.message);
+  }
+}
+window.logUnansweredCommand = logUnansweredCommand;
+
+// ===== KAYITLI SORGULAR (ortak; yetkili yazar, herkes çalıştırır) =====
+const SAVED_QUERY_EDIT_PERM = 'admin_processes_edit'; // kaydetme/silme yetkisi
+
+function slugQueryId(name) {
+  const base = (typeof slugifyTR === 'function' ? slugifyTR(name) : String(name).toLowerCase()).replace(/-/g, '_').replace(/[^a-z0-9_]/g, '') || 'sorgu';
+  let id = base, n = 1;
+  const mevcut = new Set((state.savedQueries || []).map(q => q.id));
+  while (mevcut.has(id)) { id = base + '_' + (++n); }
+  return id;
+}
+
+// Kayıtlı sorguyu Firestore'a yaz (ortak koleksiyon)
+async function persistSavedQuery(q) {
+  if (window.fb && window.fb.db) {
+    const payload = typeof sanitize === 'function' ? sanitize(q) : q;
+    await window.fb.setDoc(window.fb.doc(window.fb.db, 'savedQueries', q.id), payload);
+  }
+}
+
+// Yeni kayıtlı sorgu oluştur (params = sorgu aracının parametreleri)
+async function saveNamedQuery(name, params, aciklama = '') {
+  if (!hasPermission(state.currentUser, SAVED_QUERY_EDIT_PERM)) throw new Error('Sorgu kaydetme yetkiniz yok');
+  if (!name || !name.trim()) throw new Error('Sorguya bir isim verin');
+  if (!params || !params.koleksiyon) throw new Error('Geçersiz sorgu: koleksiyon belirtilmemiş');
+  if (!QUERY_COLLECTIONS[params.koleksiyon]) throw new Error('Bilinmeyen tablo: ' + params.koleksiyon);
+  const q = {
+    id: slugQueryId(name),
+    name: name.trim(),
+    aciklama: (aciklama || '').trim(),
+    params,
+    createdBy: state.currentUser,
+    createdAt: Date.now()
+  };
+  if (!Array.isArray(state.savedQueries)) state.savedQueries = [];
+  state.savedQueries.push(q);
+  await persistSavedQuery(q);
+  return q;
+}
+
+async function deleteNamedQuery(id) {
+  if (!hasPermission(state.currentUser, SAVED_QUERY_EDIT_PERM)) throw new Error('Sorgu silme yetkiniz yok');
+  const idx = (state.savedQueries || []).findIndex(q => q.id === id);
+  if (idx < 0) throw new Error('Sorgu bulunamadı: ' + id);
+  state.savedQueries.splice(idx, 1);
+  if (window.fb && window.fb.db) {
+    await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'savedQueries', id));
+  }
+}
+
+// Kayıtlı sorguyu isim veya id ile bul
+function findSavedQuery(nameOrId) {
+  const t = String(nameOrId || '').toLocaleLowerCase('tr-TR').trim();
+  if (!t) return null;
+  return (state.savedQueries || []).find(q =>
+    q.id === t || String(q.name).toLocaleLowerCase('tr-TR') === t || String(q.name).toLocaleLowerCase('tr-TR').includes(t)
+  ) || null;
+}
+
+// --- Araç: kayıtlı sorguları listele ---
+AI_TOOLS.kayitliSorgular = {
+  desc: 'Kaydedilmiş (isimli) sorguları listeler.',
+  risk: 'safe',
+  perm: null,
+  run: () => ({
+    count: (state.savedQueries || []).length,
+    items: (state.savedQueries || []).map(q => ({ ad: q.name, id: q.id, tablo: q.params?.koleksiyon, aciklama: q.aciklama || '' }))
+  })
+};
+
+// --- Araç: kayıtlı bir sorguyu isimle çalıştır ---
+AI_TOOLS.kayitliSorguCalistir = {
+  desc: 'Daha önce kaydedilmiş bir sorguyu adıyla çalıştırır. Parametre: ad (kayıtlı sorgu adı veya id)',
+  risk: 'safe',
+  perm: null, // çalıştırma sırasında sorgu aracı koleksiyon yetkisini kontrol eder
+  run: async ({ ad }) => {
+    const q = findSavedQuery(ad);
+    if (!q) {
+      const liste = (state.savedQueries || []).map(x => x.name).join(', ') || '(kayıtlı sorgu yok)';
+      throw new Error(`"${ad}" adında kayıtlı sorgu bulunamadı. Mevcut: ${liste}`);
+    }
+    const result = await AI_TOOLS.sorgu.run(q.params || {});
+    return { kayitliSorgu: q.name, ...result };
+  }
+};
+
+// --- Araç: aktif sorguyu isimle kaydet (yetki gerektirir) ---
+AI_TOOLS.sorguKaydet = {
+  desc: 'Bir sorguyu isimle kaydeder, sonra herkes adıyla çalıştırabilir. Parametre: ad, params (sorgu parametreleri), aciklama (opsiyonel). Yetki gerekir.',
+  risk: 'confirm',
+  perm: SAVED_QUERY_EDIT_PERM,
+  summarize: ({ ad }) => `"${ad}" adıyla yeni bir kayıtlı sorgu oluşturulacak (tüm kullanıcılar çağırabilir).`,
+  run: async ({ ad, params, aciklama }) => {
+    const q = await saveNamedQuery(ad, params, aciklama);
+    return { kaydedildi: true, ad: q.name, id: q.id };
   }
 };
 
@@ -16332,10 +16839,47 @@ async function runAITool(name, params) {
   return await tool.run(params || {});
 }
 
+// Modelin verdiği yakın/yanlış araç adını gerçek araca çevir (emniyet katmanı)
+function resolveToolAlias(name) {
+  if (!name) return null;
+  const n = String(name).toLowerCase().replace(/[_\-\s]/g, '');
+  const ALIASES = {
+    createuser: 'kullaniciOlusturmaEkraniAc', adduser: 'kullaniciOlusturmaEkraniAc',
+    newuser: 'kullaniciOlusturmaEkraniAc', kullaniciolustur: 'kullaniciOlusturmaEkraniAc',
+    kullaniciekle: 'kullaniciOlusturmaEkraniAc', personelekle: 'kullaniciOlusturmaEkraniAc',
+    createrole: 'rolOlustur', addrole: 'rolOlustur', newrole: 'rolOlustur', rolekle: 'rolOlustur',
+    listusers: 'listeKullanicilar', getusers: 'listeKullanicilar', users: 'listeKullanicilar',
+    listrequests: 'listeTalepler', listtasks: 'listeTalepler', requests: 'listeTalepler',
+    listprocesses: 'listeSurecler', processes: 'listeSurecler', forms: 'listeSurecler',
+    summary: 'ozet', overview: 'ozet', dashboard: 'ozet',
+    overdue: 'gecikenTalepler', laterequests: 'gecikenTalepler', delayed: 'gecikenTalepler',
+    sendreminder: 'hatirlatmaGonder', remind: 'hatirlatmaGonder',
+    bulkreminder: 'topluHatirlatma', sendreminders: 'topluHatirlatma',
+    userdetail: 'kullaniciDetay', getuser: 'kullaniciDetay',
+    requestdetail: 'talepDetay', taskdetail: 'talepDetay',
+    usertasks: 'kisininGorevleri', persontasks: 'kisininGorevleri',
+    busiest: 'enYukluKisiler', topworkload: 'enYukluKisiler',
+    onleave: 'izinliler', absent: 'izinliler',
+    analyze: 'analizYap', bottleneck: 'analizYap', analysis: 'analizYap'
+  };
+  if (ALIASES[n]) return ALIASES[n];
+  // Tam ada büyük/küçük harf duyarsız eşleşme (model sadece harf farkı yaptıysa)
+  const tools = Object.keys(AI_TOOLS);
+  const ci = tools.find(t => t.toLowerCase() === n);
+  return ci || null;
+}
+
 // Direktifi AI'a gönder, hangi aracı çağıracağını JSON olarak iste
 async function interpretCommand(userText) {
   const cfg = (typeof getAISettings === 'function') ? getAISettings() : { provider: 'local' };
   const sys = getEffectiveAIPrompt('command', buildSystemPrompt('command'));
+
+  // Yardım/yönlendirme niyeti: sağlayıcı açık olsa bile LLM'e gitmeden doğrudan
+  // komut listesini göster. ("nasıl komut girerim", "ne yapabilirsin" vb.)
+  const sLow = (userText || '').toLocaleLowerCase('tr-TR');
+  if (/yard[ıi]m|ne yapabil|neler yapabil|nas[ıi]l komut|komut.*(listesi|göster|gir|ver|yaz|kullan)|hangi komut|komutlar.*(ne|var|liste|göster)|nas[ıi]l kullan|ne.*söyleyebil|örnek.*(komut|kullan)|seni nas[ıi]l|sana nas[ıi]l|yönlendir/.test(sLow)) {
+    return { tool: null, isHelp: true, explain: (typeof aiHelpText === 'function' ? aiHelpText() : 'Komut listesi alınamadı.') };
+  }
 
   if (cfg.provider === 'local') {
     // Yedek: AI yoksa basit anahtar kelime eşleme
@@ -16366,11 +16910,17 @@ async function interpretCommand(userText) {
     return { tool: null, explain: plan.explain || 'Bu komutu bir işleme bağlayamadım.' };
   }
   if (!AI_TOOLS[plan.tool]) {
-    // Model geçersiz araç seçtiyse: yereli dene, o da bulamazsa kullanıcıya açıkla
-    const fallback = localInterpret(userText);
-    if (fallback && fallback.tool) return fallback;
-    const mevcut = Object.keys(AI_TOOLS).join(', ');
-    return { tool: null, explain: `Komutu tanımlı bir araca eşleyemedim (model "${plan.tool}" önerdi). Kullanılabilir işlemler: ${mevcut}` };
+    // Model yakın ama yanlış bir ad verdiyse (İngilizce/uydurma): takma ad tablosuyla çözmeyi dene
+    const alias = resolveToolAlias(plan.tool);
+    if (alias && AI_TOOLS[alias]) {
+      plan.tool = alias;
+    } else {
+      // Yereli dene, o da bulamazsa kullanıcıya açıkla
+      const fallback = localInterpret(userText);
+      if (fallback && fallback.tool) return fallback;
+      const mevcut = Object.keys(AI_TOOLS).join(', ');
+      return { tool: null, explain: `Komutu tanımlı bir araca eşleyemedim (model "${plan.tool}" önerdi). Kullanılabilir işlemler: ${mevcut}` };
+    }
   }
   plan.params = (plan.params && typeof plan.params === 'object') ? plan.params : {};
   plan.explain = plan.explain || ('Çalıştırılıyor: ' + plan.tool);
@@ -16430,16 +16980,45 @@ async function aiInterpretCall(sys, userText, cfg) {
 }
 
 // AI olmadan da çalışan basit yerel yorumlayıcı (yedek)
+// Kullanıcı dostu yardım metni — hem "yardım" komutu hem açılış mesajı kullanır.
+// Ham araç adları yerine örnek cümleler gösterir; yalnızca kullanıcının yetkisi
+// olan işlemleri listeler.
+function aiHelpText() {
+  const ornekler = [
+    { perm: null, ornek: '"sistem özetini ver"', aciklama: 'genel durum (kullanıcı, talep, görev sayıları)' },
+    { perm: 'workflows_view', ornek: '"açık talepleri göster"', aciklama: 'açık / tamamlanan / reddedilen talepler' },
+    { perm: 'workflows_view', ornek: '"10 günden eski geciken talepler"', aciklama: 'uzun süredir bekleyenler' },
+    { perm: 'workflows_view', ornek: '"<talep no> detayı"', aciklama: 'bir talebin hangi adımda olduğu' },
+    { perm: 'workflows_view', ornek: '"ahmet\'in görevleri"', aciklama: 'bir kişinin açık görevleri' },
+    { perm: 'workflows_view', ornek: '"en yüklü kişiler"', aciklama: 'iş yükü sıralaması' },
+    { perm: 'admin_users_view', ornek: '"kullanıcıları listele"', aciklama: 'kişiler (rol filtresi de olur)' },
+    { perm: 'admin_users_view', ornek: '"ahmet yavuz kimdir"', aciklama: 'tek kişinin detayı' },
+    { perm: 'admin_users_view', ornek: '"bugün kimler izinli"', aciklama: 'izinli kişiler' },
+    { perm: 'reports_view', ornek: '"hangi süreç tıkanıyor"', aciklama: 'darboğaz / performans analizi' },
+    { perm: 'admin_roles_edit', ornek: '"pazarlama rolü oluştur"', aciklama: 'yeni rol (onay ister)' },
+    { perm: 'admin_users_edit', ornek: '"ahmet yavuz adında kullanıcı tanımla"', aciklama: 'kullanıcı ekleme ekranını açar' },
+    { perm: 'workflows_view', ornek: '"<talep no> sahibine hatırlatma gönder"', aciklama: 'hatırlatma (onay ister)' }
+  ];
+  const izinli = ornekler.filter(o => !o.perm || (typeof hasPermission === 'function' ? hasPermission(state.currentUser, o.perm) : true));
+  const satirlar = izinli.map(o => `• ${o.ornek} — ${o.aciklama}`).join('\n');
+  return 'Bana doğal Türkçe ile yazabilir veya 🎤 ile söyleyebilirsiniz. Örnekler:\n\n' + satirlar +
+    '\n\nİsmi olan komutlarda kişi/talep adını cümle içinde söylemeniz yeterli. Kritik işlemler her zaman onayınızı ister.';
+}
+
 function localInterpret(t) {
   const s = t.toLocaleLowerCase('tr-TR');
   // Rol oluştur: "... rolü aç/oluştur/ekle"
   let m = s.match(/([a-zçğıöşü0-9 ]+?)\s*(?:rol[üu]?|rol)\s*(?:olu[şs]tur|a[çc]|ekle)/);
   if (m && m[1] && m[1].trim()) return { tool: 'rolOlustur', params: { ad: m[1].trim() }, explain: `"${m[1].trim()}" rolü oluşturulacak.` };
   if (/(rol olu[şs]tur|yeni rol|rol ekle)/.test(s)) return { tool: 'rolOlustur', params: { ad: t.replace(/.*rol/i,'').replace(/(olu[şs]tur|a[çc]|ekle)/gi,'').trim() }, explain: 'Rol oluşturulacak.' };
-  // Kullanıcı oluştur
-  if (/(kullanıcı (olu[şs]tur|a[çc]|ekle)|yeni kullanıcı|personel ekle|çalışan ekle)/.test(s)) {
-    const adMatch = s.match(/(?:kullanıcı|personel|çalışan)?\s*(?:olu[şs]tur|a[çc]|ekle)?\s*(?:adı|ismi|isminde|adında)?\s*([a-zçğıöşü ]+)?/);
-    return { tool: 'kullaniciOlusturmaEkraniAc', params: {}, explain: 'Kullanıcı oluşturma ekranı açılıyor (şifre ve onay sizde kalır).' };
+  // Kullanıcı oluştur — "tanımla", "kaydet", "ekle", "aç", "oluştur" + araya sıfat (ör. pazarlamacı) girebilir
+  if (/(kullanıcı|personel|çalışan|eleman)[^.]*\b(olu[şs]tur|a[çc]|ekle|tanımla|kaydet|gir)|\b(olu[şs]tur|tanımla|ekle|kaydet)[^.]*\b(kullanıcı|personel|çalışan|eleman)|(yeni|bir)\b[^.]*\b(kullanıcı|personel|çalışan|eleman)/.test(s)) {
+    // İsim çıkarımı: "ahmet yavuz adında", "adı ahmet yavuz olan", "ahmet yavuz isimli" gibi kalıplar
+    let ad = '';
+    let am = t.match(/([a-zçğıöşüA-ZÇĞİÖŞÜ]+(?:\s+[a-zçğıöşüA-ZÇĞİÖŞÜ]+)?)\s*(?:adında|adıyla|isminde|isimli|ismiyle)/);
+    if (!am) am = t.match(/(?:adı|ismi)\s+([a-zçğıöşüA-ZÇĞİÖŞÜ]+(?:\s+[a-zçğıöşüA-ZÇĞİÖŞÜ]+)?)\s*(?:olan|olarak)?/);
+    if (am && am[1]) ad = am[1].trim();
+    return { tool: 'kullaniciOlusturmaEkraniAc', params: ad ? { ad } : {}, explain: `Kullanıcı oluşturma ekranı açılıyor${ad ? ' ("' + ad + '" ile dolduruluyor)' : ''} — şifre ve onay sizde kalır.` };
   }
   // Kişinin görevleri: "Ali'nin görevleri", "Ahmet'in işleri"
   let gm = s.match(/([a-zçğıöşü]+)['']?(?:n[ıi]n|in|nin)?\s*(?:üzerindeki\s*)?(?:açık\s*)?(?:görev|i[şs])(?:ler)?/);
@@ -16447,6 +17026,15 @@ function localInterpret(t) {
     return { tool: 'kisininGorevleri', params: { ad: gm[1].trim() }, explain: `"${gm[1].trim()}" kişisinin görevleri listeleniyor.` };
   }
   if (/en yük[lü]ü|en çok görev|kim yoğun|en meşgul|iş yükü/.test(s)) return { tool: 'enYukluKisiler', params: {}, explain: 'En yüklü kişiler sıralanıyor.' };
+
+  // Kayıtlı sorgular: "kayıtlı sorgular", "<ad> sorgusunu çalıştır"
+  if (/(kay[ıi]tl[ıi] sorgu(lar)?|kaydedilmi[şs] sorgu)/.test(s) && !/çal[ıi][şs]t[ıi]r|aç/.test(s)) {
+    return { tool: 'kayitliSorgular', params: {}, explain: 'Kayıtlı sorgular listeleniyor.' };
+  }
+  let sq = t.match(/["']?([a-zA-ZçğıöşüÇĞİÖŞÜ0-9 _-]+?)["']?\s*(?:adl[ıi]|isimli|adındaki)?\s*sorgu\w*\s*(?:çal[ıi][şs]t[ıi]r|aç|getir|listele)/i);
+  if (sq && sq[1] && sq[1].trim() && !/^(kay[ıi]tl[ıi]|kaydedilmi[şs]|t[üu]m|b[üu]t[üu]n)$/i.test(sq[1].trim())) {
+    return { tool: 'kayitliSorguCalistir', params: { ad: sq[1].trim() }, explain: `"${sq[1].trim()}" kayıtlı sorgusu çalıştırılıyor.` };
+  }
   if (/izinli|izinde|bugün kim yok|kimler izinli|tatilde/.test(s)) return { tool: 'izinliler', params: {}, explain: 'İzinli kişiler listeleniyor.' };
 
   if (/(tıkan|tikan|darbo[ğg]az|en yava[şs]|neden gecik|hangi süreç.*sorun|performans|analiz|yorumla|de[ğg]erlendir)/.test(s)) return { tool: 'analizYap', params: { soru: t }, explain: 'Tıkanıklık/performans analizi yapılıyor.' };
@@ -16479,24 +17067,42 @@ function localInterpret(t) {
   if (/t[üu]m talepler|b[üu]t[üu]n talepler|talepleri.*hepsi/.test(s)) return { tool: 'listeTalepler', params: { status: 'all' }, explain: 'Tüm talepler listeleniyor.' };
   if (/talep.*listele|talepleri göster|açık talep/.test(s)) return { tool: 'listeTalepler', params: { status: 'running' }, explain: 'Açık talepler listeleniyor.' };
 
-  // Yardım: hangi komutları anlıyorum?
-  if (/(yardım|ne yapabilir|hangi komut|komutlar nedir|neler yapabilir)/.test(s)) {
-    const liste = Object.entries(AI_TOOLS).map(([n, t]) => `• ${n}: ${t.desc}`).join('\n');
-    return { tool: null, explain: 'Şu işlemleri yapabilirim:\n' + liste };
+  // Yardım / yönlendirme: "nasıl komut girerim", "ne yapabilirsin", "komut listesi" vb.
+  if (/yard[ıi]m|ne yapabil|neler yapabil|nas[ıi]l komut|komut.*(listesi|göster|gir|ver|yaz|kullan)|hangi komut|komutlar.*(ne|var|liste|göster)|ne.*komut|nas[ıi]l kullan|ne.*söyleyebil|örnek.*(komut|kullan)|seni nas[ıi]l|sana nas[ıi]l|yönlendir/.test(s)) {
+    return { tool: null, isHelp: true, explain: (typeof aiHelpText === 'function' ? aiHelpText() : 'Komut listesi alınamadı.') };
   }
 
   return { tool: null, explain: 'Komutu anlayamadım. "yardım" yazarak neler yapabileceğimi görebilirsiniz.' };
 }
 
 // Konsola sonuç yaz + (açıksa) sesli oku
+// Aktif yapay zeka sağlayıcısı + model adını okunabilir biçimde döndürür.
+// Konsol başlığı ve her AI cevabının etiketi bunu kullanır.
+function aiActiveModelLabel() {
+  const cfg = (typeof getAISettings === 'function') ? getAISettings() : { provider: 'local' };
+  const provider = cfg.provider || 'local';
+  const providerNames = { local: 'Yerel motor', openai: 'OpenAI', groq: 'Groq', gemini: 'Gemini', anthropic: 'Claude', custom: 'Özel API' };
+  const pName = providerNames[provider] || provider;
+  if (provider === 'local') return 'Yerel motor (AI kapalı)';
+  let model = cfg.models?.[provider] || (typeof AI_PROVIDERS !== 'undefined' ? AI_PROVIDERS[provider]?.model : '') || '';
+  if (typeof GROQ_MODEL_REMAP !== 'undefined' && provider === 'groq' && GROQ_MODEL_REMAP[model]) model = GROQ_MODEL_REMAP[model];
+  return model ? `${pName} · ${model}` : pName;
+}
+window.aiActiveModelLabel = aiActiveModelLabel;
+
 function aiConsoleLog(role, text, data) {
   const box = document.getElementById('ai-console-log');
   if (box) {
     const div = document.createElement('div');
     div.style.cssText = 'margin-bottom:10px;font-size:13px;line-height:1.5;';
-    const who = role === 'user' ? '🗣️ Siz' : '🤖 AI';
-    const color = role === 'user' ? 'var(--text)' : 'var(--accent)';
-    let html = `<div style="color:${color};font-weight:600;">${who}</div><div style="color:var(--text-dim);">${escapeHtml(text)}</div>`;
+    const isAI = role !== 'user';
+    const who = isAI ? '🤖 AI' : '🗣️ Siz';
+    const color = isAI ? 'var(--accent)' : 'var(--text)';
+    // AI satırlarında o an aktif olan modeli küçük bir etiketle göster
+    const modelTag = isAI
+      ? `<span style="font-weight:400;font-size:10px;color:var(--text-mute,#64748b);margin-left:6px;">· ${escapeHtml(aiActiveModelLabel())}</span>`
+      : '';
+    let html = `<div style="color:${color};font-weight:600;">${who}${modelTag}</div><div style="color:var(--text-dim);">${escapeHtml(text)}</div>`;
     if (data !== undefined) {
       html += `<pre style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px;margin-top:5px;font-size:11px;overflow:auto;max-height:240px;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
     }
@@ -16505,6 +17111,74 @@ function aiConsoleLog(role, text, data) {
     box.scrollTop = box.scrollHeight;
   }
 }
+
+// Çalıştırılan sorguyu düzenlenebilir bir kutuda göster (kullanıcı değiştirip yeniden çalıştırabilir)
+function aiConsoleShowQuery(params) {
+  const box = document.getElementById('ai-console-log');
+  if (!box) return;
+  const canSaveQuery = (typeof hasPermission === 'function') && hasPermission(state.currentUser, SAVED_QUERY_EDIT_PERM);
+  const qid = 'aiq_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  const json = JSON.stringify(params || {}, null, 2);
+  const div = document.createElement('div');
+  div.style.cssText = 'margin-bottom:10px;font-size:13px;';
+  div.innerHTML =
+    `<div style="color:var(--text-mute,#64748b);font-size:11px;margin-bottom:4px;">🔧 Kullanılan sorgu (düzenleyip yeniden çalıştırabilir veya adıyla kaydedebilirsiniz):</div>` +
+    `<textarea id="${qid}" data-original="${escapeHtml(json)}" spellcheck="false" style="width:100%;min-height:120px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px;color:var(--text);font-family:var(--mono,monospace);font-size:11px;resize:vertical;">${escapeHtml(json)}</textarea>` +
+    `<div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;">` +
+    `<button class="primary-btn" style="font-size:11px;padding:4px 10px;" onclick="rerunEditedQuery('${qid}')">▶ Çalıştır</button>` +
+    `<button class="voice-btn" style="font-size:11px;padding:4px 10px;" onclick="(function(){var e=document.getElementById('${qid}');e.value=e.getAttribute('data-original');})()">↺ Sıfırla</button>` +
+    (canSaveQuery ? `<button class="voice-btn" style="font-size:11px;padding:4px 10px;" onclick="saveQueryFromBox('${qid}')">💾 Adıyla kaydet</button>` : '') +
+    `</div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+window.aiConsoleShowQuery = aiConsoleShowQuery;
+
+// Düzenlenmiş sorgu kutusundaki JSON'u alıp sorgu aracını tekrar çalıştır
+async function rerunEditedQuery(qid) {
+  const el = document.getElementById(qid);
+  if (!el) return;
+  let params;
+  try {
+    params = JSON.parse(el.value);
+  } catch (e) {
+    aiConsoleLog('ai', 'Sorgu JSON geçersiz: ' + e.message + ' — virgül/tırnak hatası olabilir.');
+    return;
+  }
+  aiConsoleLog('ai', 'Düzenlenen sorgu çalıştırılıyor...');
+  try {
+    const result = await runAITool('sorgu', params);
+    if (result && result.iptal) { aiConsoleLog('ai', result.mesaj); return; }
+    aiConsoleShowQuery(params); // yeni sürümü de düzenlenebilir göster
+    const spoken = summarizeResultForSpeech('sorgu', result);
+    aiConsoleLog('ai', spoken, result);
+    speak(spoken);
+  } catch (e) {
+    aiConsoleLog('ai', 'Sorgu başarısız: ' + e.message);
+  }
+}
+window.rerunEditedQuery = rerunEditedQuery;
+
+// Sorgu kutusundaki (düzenlenmiş) JSON'u alıp isim sorarak kayıtlı sorgu olarak sakla
+async function saveQueryFromBox(qid) {
+  const el = document.getElementById(qid);
+  if (!el) return;
+  let params;
+  try { params = JSON.parse(el.value); }
+  catch (e) { aiConsoleLog('ai', 'Sorgu JSON geçersiz, kaydedilemedi: ' + e.message); return; }
+  const ad = prompt('Bu sorguyu hangi isimle kaydedeyim?\n(Tüm kullanıcılar bu adla çağırabilir.)');
+  if (ad === null) return;
+  if (!ad.trim()) { aiConsoleLog('ai', 'İsim boş olamaz, kaydetme iptal edildi.'); return; }
+  const aciklama = prompt('Kısa açıklama (opsiyonel):') || '';
+  try {
+    const q = await saveNamedQuery(ad, params, aciklama);
+    aiConsoleLog('ai', `✓ "${q.name}" adıyla kaydedildi. Artık "${q.name} sorgusunu çalıştır" diyebilirsiniz.`);
+    if (typeof renderAll === 'function') renderAll();
+  } catch (e) {
+    aiConsoleLog('ai', 'Kaydedilemedi: ' + e.message);
+  }
+}
+window.saveQueryFromBox = saveQueryFromBox;
 
 // Ana akış: direktif al → yorumla → çalıştır → bildir
 let AI_COMMAND_RUNNING = false;
@@ -16551,12 +17225,19 @@ async function _runAICommandInner(userText) {
   }
   if (!plan || !plan.tool) {
     const msg = (plan && plan.explain) || 'Bu komutu bir işleme bağlayamadım.';
-    aiConsoleLog('ai', msg); speak(msg); return;
+    aiConsoleLog('ai', msg); speak(msg);
+    // Yardım/yönlendirme değilse, cevaplanamayan talebi öğrenme kuyruğuna ekle
+    if (!(plan && plan.isHelp)) logUnansweredCommand(userText, 'eşleşmedi');
+    return;
   }
   aiConsoleLog('ai', plan.explain || ('Çalıştırılıyor: ' + plan.tool));
   try {
     const result = await runAITool(plan.tool, plan.params || {});
     if (result && result.iptal) { aiConsoleLog('ai', result.mesaj); speak(result.mesaj); return; }
+    // "sorgu" aracı kullanıldıysa: çalıştırılan sorguyu düzenlenebilir biçimde göster
+    if (plan.tool === 'sorgu' && typeof aiConsoleShowQuery === 'function') {
+      aiConsoleShowQuery(plan.params || {});
+    }
     const spoken = summarizeResultForSpeech(plan.tool, result);
     aiConsoleLog('ai', spoken, result);
     speak(spoken);
@@ -16564,6 +17245,7 @@ async function _runAICommandInner(userText) {
   } catch (e) {
     const msg = 'İşlem başarısız: ' + e.message;
     aiConsoleLog('ai', msg); speak(msg);
+    logUnansweredCommand(userText, 'hata: ' + e.message);
   }
 }
 
@@ -16571,6 +17253,16 @@ async function _runAICommandInner(userText) {
 function summarizeResultForSpeech(tool, r) {
   if (!r) return 'İşlem tamamlandı.';
   if (r.analiz) return r.analiz;
+  if (tool === 'kayitliSorgular') return r.count ? `${r.count} kayıtlı sorgu var.` : 'Henüz kayıtlı sorgu yok.';
+  if (tool === 'sorguKaydet') return r.kaydedildi ? `"${r.ad}" adıyla kaydedildi.` : 'Kaydedilemedi.';
+  if (tool === 'kayitliSorguCalistir') {
+    if (r.gruplandi) return r.enYuksek ? `"${r.kayitliSorgu}": en fazla "${r.enYuksek.deger}" (${r.enYuksek.sayi}).` : `"${r.kayitliSorgu}" sonuç vermedi.`;
+    return `"${r.kayitliSorgu}": ${r.toplam} kayıt eşleşti.`;
+  }
+  if (tool === 'sorgu') {
+    if (r.gruplandi) return r.enYuksek ? `En fazla "${r.enYuksek.deger}" (${r.enYuksek.sayi} kayıt). Toplam ${r.toplamKayit} kayıt gruplandı.` : 'Gruplanacak kayıt bulunamadı.';
+    return `${r.koleksiyon} tablosunda ${r.toplam} kayıt eşleşti, ${r.donen} tanesi gösteriliyor.`;
+  }
   if (tool === 'kullaniciDetay') return `${r.ad}, ${r.roller} rolünde, ${r.acikGorev} açık görevi var.`;
   if (tool === 'talepDetay') return `${r.surec} talebi ${r.durum} durumunda, ${r.suandakiAdim} adımında, ${r.gunSayisi} gündür açık.`;
   if (tool === 'kisininGorevleri') return `${r.kisi} üzerinde ${r.count} açık görev var.`;
@@ -16586,14 +17278,23 @@ function summarizeResultForSpeech(tool, r) {
 }
 
 function openAICommandConsole() {
-  if (document.getElementById('ai-console-overlay')) { document.getElementById('ai-console-overlay').style.display = 'flex'; return; }
+  if (document.getElementById('ai-console-overlay')) {
+    document.getElementById('ai-console-overlay').style.display = 'flex';
+    // Ayarlardan model değişmiş olabilir — başlık rozetini tazele
+    const badge = document.getElementById('ai-console-model');
+    if (badge && typeof aiActiveModelLabel === 'function') badge.textContent = 'Model: ' + aiActiveModelLabel();
+    return;
+  }
   const ov = document.createElement('div');
   ov.id = 'ai-console-overlay';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
   ov.innerHTML = `
     <div style="background:var(--panel,#0f172a);border:1px solid var(--border,#334155);border-radius:12px;width:min(560px,92vw);max-height:82vh;display:flex;flex-direction:column;overflow:hidden;">
       <div style="padding:14px 16px;border-bottom:1px solid var(--border,#334155);display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-weight:700;">🤖 AI Komut Konsolu</div>
+        <div>
+          <div style="font-weight:700;">🤖 AI Komut Konsolu</div>
+          <div id="ai-console-model" style="font-size:11px;color:var(--text-mute,#64748b);margin-top:2px;">Model: ${escapeHtml(typeof aiActiveModelLabel === 'function' ? aiActiveModelLabel() : '—')}</div>
+        </div>
         <button class="voice-btn" onclick="document.getElementById('ai-console-overlay').style.display='none'">✕</button>
       </div>
       <div id="ai-console-log" style="flex:1;overflow:auto;padding:16px;min-height:200px;"></div>
@@ -16608,7 +17309,7 @@ function openAICommandConsole() {
       </div>
     </div>`;
   document.body.appendChild(ov);
-  aiConsoleLog('ai', 'Merhaba. Ne yapmamı istersiniz? Örnek: "sistem özetini ver", "geciken talepleri göster".');
+  aiConsoleLog('ai', 'Merhaba! Ne yapmamı istersiniz? Örnek: "sistem özetini ver", "geciken talepleri göster". Tüm komutları görmek için "yardım" yazın.');
 }
 
 function openAIPromptQuickEditor(mode = 'command') {
