@@ -17941,6 +17941,56 @@ window.saveQueryFromBox = saveQueryFromBox;
 
 // Ana akış: direktif al → yorumla → çalıştır → bildir
 let AI_COMMAND_RUNNING = false;
+
+function aiConsoleShowQueryChoices(userText, candidates) {
+  const box = document.getElementById('ai-console-log');
+  if (!box) return false;
+  const safeCandidates = Array.isArray(candidates) ? candidates : [];
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-bottom:10px;font-size:13px;line-height:1.5;';
+  const buttons = safeCandidates.length ? safeCandidates.map((c, i) => `
+    <button type="button" data-ai-choice="${i}" style="display:block;width:100%;text-align:left;margin:6px 0;padding:9px 10px;background:var(--panel-2);color:var(--text);border:1px solid var(--border-hi);border-radius:6px;cursor:pointer;">
+      <b>${escapeHtml(c.name || ('Sorgu ' + (i+1)))}</b>
+      <span style="float:right;color:var(--accent);font-family:var(--mono);">%${escapeHtml(String(c.score || 0))}</span><br>
+      <span style="color:var(--text-dim);font-size:12px;">${escapeHtml(c.aciklama || '')} ${c.collection ? '· ' + escapeHtml(c.collection) : ''}</span>
+    </button>`).join('') : '<div style="color:var(--text-dim);">Yakın kayıtlı sorgu bulunamadı.</div>';
+  wrap.innerHTML = `
+    <div style="color:var(--accent);font-weight:600;">🤖 AI<span style="font-weight:400;font-size:10px;color:var(--text-mute);margin-left:6px;">· ${escapeHtml(aiActiveModelLabel())}</span></div>
+    <div style="color:var(--text-dim);margin-bottom:6px;">Tam emin olamadım. Aşağıdakilerden hangisini kastettiniz?</div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px;margin-top:5px;">${buttons}
+      <button type="button" data-ai-none="1" style="display:block;width:100%;text-align:left;margin-top:10px;padding:9px 10px;background:#3a1f1f;color:#f87171;border:1px solid #f87171;border-radius:6px;cursor:pointer;">Bunlardan hiçbiri — öğrenme kuyruğuna ekle</button>
+    </div>`;
+  wrap.querySelectorAll('[data-ai-choice]').forEach(btn => {
+    btn.onclick = async () => {
+      const idx = Number(btn.getAttribute('data-ai-choice'));
+      const c = safeCandidates[idx];
+      if (!c) return;
+      wrap.querySelectorAll('button').forEach(b => b.disabled = true);
+      aiConsoleLog('ai', 'Seçilen kayıtlı sorgu çalıştırılıyor: ' + c.name);
+      try {
+        const result = await runAITool('sorgu', c.params || {});
+        if (typeof aiConsoleShowQuery === 'function') aiConsoleShowQuery(c.params || {});
+        const spoken = summarizeResultForSpeech('sorgu', result);
+        aiConsoleLog('ai', spoken, result);
+        speak(spoken);
+        if (typeof renderAll === 'function') renderAll();
+      } catch (e) {
+        const msg = 'Sorgu bulundu fakat çalıştırılamadı: ' + e.message;
+        aiConsoleLog('ai', msg); speak(msg);
+      }
+    };
+  });
+  const none = wrap.querySelector('[data-ai-none]');
+  if (none) none.onclick = () => {
+    wrap.querySelectorAll('button').forEach(b => b.disabled = true);
+    aiConsoleLog('ai', 'Anladım, bunu öğrenme kuyruğuna ekledim. Bir yönetici uygun sorguyu tanımlayabilir.');
+    logUnansweredCommand(userText, 'bunlardan hiçbiri seçildi');
+  };
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return true;
+}
+
 async function runAICommand(userText) {
   userText = (userText || '').trim();
   if (!userText) return;
@@ -17982,7 +18032,19 @@ async function _runAICommandInner(userText) {
     const msg = 'Komutu yorumlayamadım: ' + e.message;
     aiConsoleLog('ai', msg); speak(msg); return;
   }
+  if (plan && plan.needsChoice) {
+    const shown = aiConsoleShowQueryChoices(userText, plan.candidates || []);
+    if (!shown) aiConsoleLog('ai', plan.explain || 'Tam emin olamadım.');
+    speak('Tam emin olamadım. Ekrandaki seçeneklerden birini seçin.');
+    return;
+  }
   if (!plan || !plan.tool) {
+    const alts = window.FabrikaIntentEngine && window.FabrikaIntentEngine.findQueryAlternatives ? window.FabrikaIntentEngine.findQueryAlternatives(userText, 5) : [];
+    if (alts && alts.length) {
+      aiConsoleShowQueryChoices(userText, alts);
+      speak('Tam emin olamadım. Ekrandaki seçeneklerden birini seçin.');
+      return;
+    }
     const msg = (plan && plan.explain) || 'Bu komutu bir işleme bağlayamadım.';
     aiConsoleLog('ai', msg); speak(msg);
     // Yardım/yönlendirme değilse, cevaplanamayan talebi öğrenme kuyruğuna ekle
@@ -18884,6 +18946,25 @@ setInterval(() => {
     return best;
   }
 
+  function findAlternatives(userText, limit = 5) {
+    const sp = specialQuery(userText);
+    const list = getQueries()
+      .map(q => ({ query: q, score: score(userText, q) }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    if (sp && !list.some(x => x.query && x.query.name === sp.name)) {
+      list.unshift({ query: sp, score: 120, special: true });
+    }
+    return list.slice(0, limit).map(x => ({
+      name: x.query.name || '',
+      aciklama: x.query.aciklama || x.query.name || '',
+      collection: x.query.params && x.query.params.koleksiyon ? x.query.params.koleksiyon : '',
+      params: clone(x.query.params || {}),
+      score: x.score,
+      source: x.query.__source || x.query.kaynak || 'catalog'
+    }));
+  }
+
   function findMatch(userText) {
     const sp = specialQuery(userText);
     if (sp) return { query: sp, score: 120, special: true };
@@ -18904,19 +18985,28 @@ setInterval(() => {
       return { tool:'kayitliSorgular', params:{}, explain:'Kayıtlı sorgular listeleniyor.' };
     }
     const m = findMatch(userText);
-    if (!m || !m.query) return null;
+    const alts = findAlternatives(userText, 5);
+    if (!m || !m.query) {
+      return { needsChoice:true, originalText:userText, candidates:alts, explain:'Tam emin olamadım. Aşağıdaki sorgulardan hangisini kastettiniz?' };
+    }
+    // Skor 90 altındaysa doğrudan yanlış sorgu çalıştırma; kullanıcıya seçenek sun.
+    // Özel kesin kurallar ve birebir eşleşmeler ise doğrudan çalışır.
+    if (!m.special && m.score < 90) {
+      return { needsChoice:true, originalText:userText, candidates:alts, explain:'Tam emin olamadım. Aşağıdaki sorgulardan hangisini kastettiniz?' };
+    }
     const q = m.query;
     const p = clone(q.params || {});
     if (q.tip === 'ai_tool' || p.tool) {
-      return { tool: p.tool, params: p.params || {}, explain:'"' + q.name + '" aracı eşleşti. Skor: ' + m.score };
+      return { tool: p.tool, params: p.params || {}, explain:'"' + q.name + '" aracı eşleşti. Skor: ' + m.score, score:m.score, queryName:q.name };
     }
-    return { tool:'sorgu', params:p, explain:'"' + q.name + '" sorgusu eşleşti. Skor: ' + m.score };
+    return { tool:'sorgu', params:p, explain:'"' + q.name + '" sorgusu eşleşti. Skor: ' + m.score, score:m.score, queryName:q.name };
   }
 
   window.FabrikaIntentEngine = window.FabrikaIntentEngine || {};
   window.FabrikaIntentEngine.normalizeTR = normTR;
   window.FabrikaIntentEngine.getQueriesForAIConsole = getQueries;
   window.FabrikaIntentEngine.findQueryMatch = findMatch;
+  window.FabrikaIntentEngine.findQueryAlternatives = findAlternatives;
   window.FabrikaIntentEngine.makePlan = makePlan;
 
   function installInterpretPatch() {
