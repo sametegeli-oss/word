@@ -8899,6 +8899,7 @@ function renderSavedQueriesAdmin(c) {
       <td style="padding:8px;font-family:var(--mono);font-size:11px;">${escapeHtml(tablo)}</td>
       <td style="padding:8px;text-align:right;white-space:nowrap;">
         <button class="ghost-btn" style="font-size:11px;padding:3px 8px;" onclick="runSavedQueryFromAdmin('${q.id}')">▶ Çalıştır</button>
+        ${canEdit ? `<button class="ghost-btn" style="font-size:11px;padding:3px 8px;" onclick="openQueryWizardForSavedQuery('${q.id}')">🧙 Sorgu</button>` : ''}
         ${(canEdit && q.source !== 'github') ? `<button class="ghost-btn" style="font-size:11px;padding:3px 8px;color:var(--red);" onclick="deleteSavedQueryFromAdmin('${q.id}')">🗑 Sil</button>` : ''}
       </td>
     </tr>`;
@@ -8925,7 +8926,7 @@ function renderSavedQueriesAdmin(c) {
         </div>
       </div>` : ''}
 
-      ${canEdit ? `<button class="primary-btn" style="margin-bottom:14px;" onclick="addSavedQueryManually()">+ Elle Sorgu Ekle</button>` : ''}
+      ${canEdit ? `<button class="primary-btn" style="margin-bottom:14px;" onclick="openQueryWizardForNewQuery()">+ Elle Sorgu Ekle</button>` : ''}
 
       <table style="width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:24px;">
         <thead><tr style="background:var(--panel-2);text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-mute);">
@@ -9066,6 +9067,7 @@ window.addSavedQueryManually = addSavedQueryManually;
 // ===== YZ Öğrenme Kuyruğu -> Sorgu Sihirbazı =====
 // Kuyruğa düşen bir ifadeyi, yönetici ekranından doğrudan kayıtlı sorguya çevirir.
 let _queryWizardLearningId = null;
+let _queryWizardEditId = null;
 
 function qWizardFieldsFor(koleksiyon) {
   const def = QUERY_COLLECTIONS[koleksiyon];
@@ -9165,6 +9167,108 @@ function qWizardUsePreset(type) {
   }
 }
 
+function qWizardApplyParams(params) {
+  params = params || {};
+  const col = params.koleksiyon || 'users';
+  const colEl = document.getElementById('qw-collection');
+  if (colEl) colEl.value = col;
+  qWizardRefreshFields();
+
+  const filters = document.getElementById('qw-filters');
+  if (filters) filters.innerHTML = '';
+  (params.filtreler || []).forEach(f => qWizardAddFilter(f.field || '', f.op || 'eq', f.value === undefined ? '' : String(Array.isArray(f.value) ? f.value.join(',') : f.value)));
+  if (!(params.filtreler || []).length) qWizardAddFilter();
+
+  const group = document.getElementById('qw-group');
+  if (group) group.value = params.grupla || '';
+  const sort = document.getElementById('qw-sort-field');
+  if (sort) sort.value = params.siralaAlan || '';
+  const dir = document.getElementById('qw-sort-dir');
+  if (dir) dir.value = params.siralaYon || 'asc';
+  const limit = document.getElementById('qw-limit');
+  if (limit) limit.value = params.limit || 50;
+
+  const alanlar = params.alanlar || qWizardFieldsFor(col);
+  document.querySelectorAll('.qw-out').forEach(cb => { cb.checked = alanlar.includes(cb.value); });
+  qWizardRefreshPreview();
+}
+
+function openQueryWizardForNewQuery() {
+  _queryWizardLearningId = null;
+  _queryWizardEditId = null;
+  openQueryWizardModal({
+    title: '🧙 Yeni Sorgu Sihirbazı',
+    infoHtml: '<div style="font-size:12px;color:var(--text-dim);">Yeni kayıtlı sorgu oluşturun. Kaydetmeden önce Test Et ile deneyin.</div>',
+    name: '',
+    desc: '',
+    params: { koleksiyon: 'users', limit: 50 }
+  });
+}
+
+function openQueryWizardForSavedQuery(id) {
+  const q = (state.savedQueries || []).find(x => x.id === id);
+  if (!q) { notify('Sorgu bulunamadı', 'error'); return; }
+  _queryWizardLearningId = null;
+  _queryWizardEditId = id;
+  const sourceNote = q.source === 'github'
+    ? '<div style="font-size:11px;color:var(--amber);margin-top:4px;">Bu sorgu GitHub kataloğundan gelmiş. Düzenleyip kaydederseniz tarayıcıda yerel kopya olarak saklanır; GitHub dosyasını ayrıca güncellemeniz gerekir.</div>'
+    : '<div style="font-size:11px;color:var(--text-mute);margin-top:4px;">Yerel kayıtlı sorgu düzenleniyor.</div>';
+  openQueryWizardModal({
+    title: '🧙 Kayıtlı Sorgu Düzenle',
+    infoHtml: `<div style="font-size:11px;color:var(--text-mute);margin-bottom:3px;">Düzenlenen sorgu</div><div style="font-weight:600;">${escapeHtml(q.name || '')}</div>${sourceNote}`,
+    name: q.name || '',
+    desc: q.aciklama || '',
+    params: q.params || { koleksiyon: 'users', limit: 50 }
+  });
+}
+
+function openQueryWizardModal({title, infoHtml, name, desc, params}) {
+  const collections = Object.keys(QUERY_COLLECTIONS || {});
+  const overlay = document.createElement('div');
+  overlay.id = 'query-wizard-modal';
+  overlay.className = 'modal-overlay show';
+  overlay.style.zIndex = '999999';
+  overlay.innerHTML = `
+    <div class="modal wide" style="width:860px;max-width:96vw;">
+      <div class="modal-head">
+        <h3>${escapeHtml(title || '🧙 Sorgu Sihirbazı')}</h3>
+        <button class="modal-close" onclick="closeQueryWizard()">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;">
+          ${infoHtml || ''}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">
+          <div>
+            <div class="form-field"><label>Sorgu adı</label><input id="qw-name" value="${escapeHtml(name || '')}"></div>
+            <div class="form-field"><label>Açıklama</label><input id="qw-desc" value="${escapeHtml(desc || '')}"></div>
+            <div class="form-field"><label>Tablo / Koleksiyon</label>
+              <select id="qw-collection" onchange="qWizardRefreshFields()">${collections.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+              <button class="ghost-btn" style="font-size:11px;" onclick="qWizardUsePreset('managerless')">⚡ Müdürü/Yöneticisi olmayan kullanıcılar</button>
+            </div>
+            <div class="form-field"><label>Filtreler</label><div id="qw-filters"></div><button class="ghost-btn" style="font-size:12px;" onclick="qWizardAddFilter()">+ Filtre Ekle</button></div>
+            <div class="form-field"><label>Grupla / Say</label><select id="qw-group" onchange="qWizardRefreshPreview()"></select><div class="field-hint">Boş kalırsa liste döner. Doluysa alan bazında sayım yapar.</div></div>
+            <div class="form-field"><label>Sıralama</label><div style="display:flex;gap:6px;"><select id="qw-sort-field" onchange="qWizardRefreshPreview()"></select><select id="qw-sort-dir" onchange="qWizardRefreshPreview()"><option value="asc">asc</option><option value="desc">desc</option></select><input id="qw-limit" type="number" min="1" max="500" value="50" oninput="qWizardRefreshPreview()" style="max-width:90px;"></div></div>
+            <div class="form-field"><label>Döndürülecek alanlar</label><div id="qw-outputs" onchange="qWizardRefreshPreview()"></div></div>
+          </div>
+          <div>
+            <div class="form-field"><label>Oluşan sorgu JSON</label><textarea id="qw-json" style="min-height:260px;font-family:var(--mono);font-size:12px;" oninput=""></textarea></div>
+            <div id="qw-test-result" style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:120px;max-height:220px;overflow:auto;">Önce “Test Et” ile sorguyu deneyin.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="ghost-btn" onclick="closeQueryWizard()">Vazgeç</button>
+        <button class="ghost-btn" onclick="testQueryWizard()">▶ Test Et</button>
+        <button class="primary-btn" onclick="saveQueryWizard()">💾 Kaydet</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  qWizardApplyParams(params || { koleksiyon: 'users', limit: 50 });
+}
+
 function openQueryWizardForLearning(id) {
   _queryWizardLearningId = id;
   const item = (state.aiLearningQueue || []).find(x => x.id === id);
@@ -9222,6 +9326,7 @@ function openQueryWizardForLearning(id) {
 function closeQueryWizard() {
   document.getElementById('query-wizard-modal')?.remove();
   _queryWizardLearningId = null;
+  _queryWizardEditId = null;
 }
 
 async function testQueryWizard() {
@@ -9244,15 +9349,37 @@ async function saveQueryWizard() {
     const desc = (document.getElementById('qw-desc')?.value || '').trim();
     const params = JSON.parse(document.getElementById('qw-json')?.value || '{}');
     await AI_TOOLS.sorgu.run(params); // kaydetmeden önce doğrula
-    await saveNamedQuery(name, params, desc);
+
+    if (_queryWizardEditId) {
+      const idx = (state.savedQueries || []).findIndex(x => x.id === _queryWizardEditId);
+      if (idx < 0) throw new Error('Düzenlenecek sorgu bulunamadı');
+      const old = state.savedQueries[idx];
+      const updated = {
+        ...old,
+        id: old.id, // var olan bağlantılar bozulmasın diye id korunur
+        name,
+        aciklama: desc,
+        params,
+        source: 'local',
+        updatedBy: state.currentUser,
+        updatedAt: Date.now()
+      };
+      state.savedQueries[idx] = updated;
+      await persistSavedQuery(updated);
+      notify('Sorgu güncellendi', 'success');
+    } else {
+      await saveNamedQuery(name, params, desc);
+      notify('Sorgu kaydedildi', 'success');
+    }
+
     if (_queryWizardLearningId) await resolveLearningItem(_queryWizardLearningId);
     closeQueryWizard();
-    notify('Sorgu kaydedildi ve kuyruk kaydı çözüldü', 'success');
     renderAdminContent();
   } catch (e) { notify('Kaydedilemedi: ' + e.message, 'error'); }
 }
-
 window.openQueryWizardForLearning = openQueryWizardForLearning;
+window.openQueryWizardForSavedQuery = openQueryWizardForSavedQuery;
+window.openQueryWizardForNewQuery = openQueryWizardForNewQuery;
 window.closeQueryWizard = closeQueryWizard;
 window.qWizardRefreshFields = qWizardRefreshFields;
 window.qWizardAddFilter = qWizardAddFilter;
