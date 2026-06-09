@@ -17589,6 +17589,265 @@ function openAIPromptQuickEditor(mode = 'command') {
   saveAISettings(cfg);
   notify((labels[mode] || mode) + ' promptu kaydedildi', 'success');
 }
+
+// ============== FABRİKA AI V4: KURUMSAL DANIŞMAN + GELİŞMİŞ NİYET MOTORU ==============
+// Bu blok mevcut AI_TOOLS ve localInterpret katmanını bozmadan genişletir.
+(function(){
+  if (window.__FAB_AI_V4_INSTALLED__) return;
+  window.__FAB_AI_V4_INSTALLED__ = true;
+
+  const arr = (x) => Array.isArray(x) ? x : [];
+  const now = () => Date.now();
+  const dayMs = 86400000;
+  const safeDate = (v) => {
+    const n = Number(v || 0);
+    if (!n || Number.isNaN(n)) return '-';
+    try { return new Date(n).toLocaleString('tr-TR'); } catch(e) { return '-'; }
+  };
+  const daysSince = (v) => {
+    const n = Number(v || 0);
+    if (!n || Number.isNaN(n)) return 0;
+    return Math.max(0, Math.floor((now() - n) / dayMs));
+  };
+  const defName = (id) => (typeof getDef === 'function' ? (getDef(id)?.name || id || '-') : id || '-');
+  const userName = (id) => (typeof getUser === 'function' ? (getUser(id)?.name || id || '-') : id || '-');
+  const roleName = (id) => (arr(state.roles).find(r => r.id === id)?.name || id || '-');
+  const countBy = (items, fn) => {
+    const m = {};
+    arr(items).forEach(x => { const k = fn(x) || '-'; m[k] = (m[k] || 0) + 1; });
+    return Object.entries(m).sort((a,b) => b[1] - a[1]).map(([deger, sayi]) => ({ deger, sayi }));
+  };
+  const top = (items, n=10) => arr(items).slice(0, n);
+  const openInstances = () => arr(state.instances).filter(i => i.status === 'running');
+  const openTasks = () => arr(state.tasks).filter(t => t.status === 'open');
+  const doneTasks = () => arr(state.tasks).filter(t => t.status === 'done');
+  const doneInstances = () => arr(state.instances).filter(i => i.status === 'completed');
+  const rejectedInstances = () => arr(state.instances).filter(i => i.status === 'rejected');
+
+  function fmtList(items, mapper, limit=20) {
+    return top(items, limit).map(mapper);
+  }
+
+  function riskScoreOfInstance(i) {
+    const gun = daysSince(i.createdAt);
+    let score = 0;
+    if (i.status === 'running') score += 15;
+    if (gun >= 3) score += 15;
+    if (gun >= 7) score += 25;
+    if (gun >= 14) score += 25;
+    if (!i.ownerId) score += 10;
+    if (!i.currentStep) score += 10;
+    return score;
+  }
+
+  function makeBottleneckRows() {
+    const groups = {};
+    openInstances().forEach(i => {
+      const key = i.defId || '-';
+      const g = groups[key] || (groups[key] = { defId:key, surec:defName(key), acik:0, enEskiGun:0, toplamGun:0, adimlar:{} });
+      const gun = daysSince(i.createdAt);
+      g.acik++; g.toplamGun += gun; g.enEskiGun = Math.max(g.enEskiGun, gun);
+      const step = i.currentStep || 'adımsız';
+      g.adimlar[step] = (g.adimlar[step] || 0) + 1;
+    });
+    return Object.values(groups).map(g => {
+      const topStep = Object.entries(g.adimlar).sort((a,b)=>b[1]-a[1])[0];
+      const skor = g.acik * 10 + g.enEskiGun * 3 + (topStep ? topStep[1] * 5 : 0);
+      return { ...g, ortGun: g.acik ? +(g.toplamGun/g.acik).toFixed(1) : 0, enYogunAdim: topStep ? topStep[0] : '-', adimBekleyen: topStep ? topStep[1] : 0, riskSkoru: skor };
+    }).sort((a,b)=>b.riskSkoru-a.riskSkoru);
+  }
+
+  Object.assign(AI_TOOLS, {
+    ceoOzeti: {
+      desc: 'CEO/Yönetici için şirketin anlık operasyon özetini, riskleri ve aksiyon önerilerini üretir.', risk: 'safe', perm: 'reports_view',
+      run: () => {
+        const acik = openInstances();
+        const geciken = acik.filter(i => daysSince(i.createdAt) >= 7);
+        const kritik = acik.map(i => ({...i, riskSkoru:riskScoreOfInstance(i), gun:daysSince(i.createdAt)})).sort((a,b)=>b.riskSkoru-a.riskSkoru);
+        const tikanan = makeBottleneckRows();
+        const yuk = countBy(openTasks().filter(t=>t.assigneeId), t => t.assigneeId).slice(0,5).map(x => ({ kisi:userName(x.deger), acikGorev:x.sayi }));
+        const analiz = `CEO özeti: ${acik.length} açık talep, ${geciken.length} geciken talep, ${openTasks().length} açık görev var. En riskli süreç: ${tikanan[0]?.surec || 'yok'}. En yoğun kişi: ${yuk[0]?.kisi || 'yok'}.`;
+        return { analiz, kpi:{ kullanici:arr(state.users).length, rol:arr(state.roles).length, surec:arr(state.definitions).length, acikTalep:acik.length, gecikenTalep:geciken.length, acikGorev:openTasks().length, tamamlananTalep:doneInstances().length, reddedilenTalep:rejectedInstances().length }, enRiskliTalepler:fmtList(kritik, i=>({id:i.id, surec:defName(i.defId), sahip:userName(i.ownerId), gun:i.gun, riskSkoru:i.riskSkoru}), 10), tikananSurecler:top(tikanan,5), enYukluKisiler:yuk, oneriler:[ '7 günü aşan açık talepler için sorumlu kişiye hatırlatma gönderin.', 'En yoğun kişiden yeni görev alıp boş kapasitesi olan kişilere aktarın.', 'En riskli süreçteki en yoğun adımı yöneticinin ekranına taşıyın.' ] };
+      }
+    },
+    riskAnalizi: {
+      desc: 'Açık talepler, görevler ve süreçler üzerinden operasyonel risk analizi yapar.', risk:'safe', perm:'reports_view',
+      run: ({ gun = 7 } = {}) => {
+        const acik = openInstances();
+        const riskli = acik.map(i => ({...i, gun:daysSince(i.createdAt), riskSkoru:riskScoreOfInstance(i)})).filter(i => i.riskSkoru >= 25 || i.gun >= gun).sort((a,b)=>b.riskSkoru-a.riskSkoru);
+        const sahipsiz = acik.filter(i => !i.ownerId).length;
+        const adimsiz = acik.filter(i => !i.currentStep).length;
+        const analiz = `${riskli.length} riskli açık talep bulundu. ${sahipsiz} talep sahipsiz, ${adimsiz} talebin mevcut adımı boş.`;
+        return { analiz, esikGun:gun, toplamAcik:acik.length, riskliSayi:riskli.length, sahipsiz, adimsiz, items:fmtList(riskli, i=>({id:i.id, surec:defName(i.defId), sahip:userName(i.ownerId), gun:i.gun, riskSkoru:i.riskSkoru, adim:i.currentStep || '-'}), 50) };
+      }
+    },
+    yoneticiDanismani: {
+      desc: 'Yöneticiye müdahale edilmesi gereken konuları ve aksiyon önerilerini söyler.', risk:'safe', perm:'reports_view',
+      run: () => {
+        const bottlenecks = makeBottleneckRows();
+        const stale = openInstances().filter(i=>daysSince(i.createdAt)>=7).sort((a,b)=>daysSince(b.createdAt)-daysSince(a.createdAt));
+        const unassigned = openTasks().filter(t=>!t.assigneeId);
+        const load = countBy(openTasks().filter(t=>t.assigneeId), t=>t.assigneeId).map(x=>({kisi:userName(x.deger), acikGorev:x.sayi}));
+        const actions = [];
+        if (stale.length) actions.push(`${stale.length} talep 7 günü aşmış; önce en eski ${stale[0].id} incelenmeli.`);
+        if (unassigned.length) actions.push(`${unassigned.length} açık görev atanmamış; boş kapasiteye dağıtılmalı.`);
+        if (bottlenecks[0]) actions.push(`En büyük darboğaz: ${bottlenecks[0].surec} / ${bottlenecks[0].enYogunAdim}.`);
+        if (load[0]) actions.push(`En yoğun kişi ${load[0].kisi}; yeni iş vermeden önce yük dengeleme yapılmalı.`);
+        return { analiz: actions.length ? actions.join(' ') : 'Şu an belirgin bir operasyonel kriz görünmüyor.', aksiyonlar:actions, tikananSurecler:top(bottlenecks,5), gecikenTalepler:fmtList(stale, i=>({id:i.id, surec:defName(i.defId), sahip:userName(i.ownerId), gun:daysSince(i.createdAt)}), 10), atanmamisGorev:unassigned.length, isYuku:top(load,10) };
+      }
+    },
+    isYukuAnalizi: {
+      desc: 'Kişi bazlı açık/tamamlanan görev yükünü analiz eder.', risk:'safe', perm:'reports_view',
+      run: () => {
+        const users = arr(state.users).map(u => {
+          const acik = openTasks().filter(t=>t.assigneeId===u.id).length;
+          const tamam = doneTasks().filter(t=>t.assigneeId===u.id).length;
+          return { id:u.id, kisi:u.name, roller:arr(u.roles).map(roleName).join(', '), acikGorev:acik, tamamlananGorev:tamam, toplam:acik+tamam };
+        }).sort((a,b)=>b.acikGorev-a.acikGorev || b.toplam-a.toplam);
+        const analiz = users.length ? `En yüksek açık görev yükü ${users[0].kisi} üzerinde: ${users[0].acikGorev} açık görev.` : 'Kullanıcı verisi yok.';
+        return { analiz, count:users.length, items:users };
+      }
+    },
+    kapasiteAnalizi: {
+      desc: 'Boşta veya düşük yükte olan kişileri ve aşırı yüklenmiş kişileri birlikte gösterir.', risk:'safe', perm:'reports_view',
+      run: ({ esik = 0, yuksekEsik = 5 } = {}) => {
+        const users = arr(state.users).map(u => ({ id:u.id, kisi:u.name, acikGorev:openTasks().filter(t=>t.assigneeId===u.id).length, roller:arr(u.roles).map(roleName).join(', ') }));
+        const bos = users.filter(u=>u.acikGorev<=esik).sort((a,b)=>a.acikGorev-b.acikGorev);
+        const yogun = users.filter(u=>u.acikGorev>=yuksekEsik).sort((a,b)=>b.acikGorev-a.acikGorev);
+        return { analiz:`${bos.length} kişi düşük/boş kapasitede, ${yogun.length} kişi yüksek yükte görünüyor.`, bosKapasite:bos, yogunKisiler:yogun };
+      }
+    },
+    slaAnalizi: {
+      desc: 'SLA/süre aşımı analizi yapar; varsayılan eşik 3 gündür.', risk:'safe', perm:'reports_view',
+      run: ({ gun = 3 } = {}) => AI_TOOLS.slaAsanlar ? AI_TOOLS.slaAsanlar.run({ gun }) : AI_TOOLS.riskAnalizi.run({ gun })
+    },
+    performansAnalizi: {
+      desc: 'Tamamlanan işler ve açık yük üzerinden kişi/süreç performansını özetler.', risk:'safe', perm:'reports_view',
+      run: () => {
+        const tamamByUser = countBy(doneTasks().filter(t=>t.assigneeId), t=>t.assigneeId).map(x=>({kisi:userName(x.deger), tamamlanan:x.sayi}));
+        const acikByUser = countBy(openTasks().filter(t=>t.assigneeId), t=>t.assigneeId).map(x=>({kisi:userName(x.deger), acik:x.sayi}));
+        const surec = countBy(doneInstances(), i=>i.defId).map(x=>({surec:defName(x.deger), tamamlanan:x.sayi}));
+        return { analiz:`${doneTasks().length} tamamlanan görev, ${openTasks().length} açık görev var.`, enCokTamamlayan:top(tamamByUser,10), acikYuk:top(acikByUser,10), tamamlananSurecler:top(surec,10) };
+      }
+    },
+    departmanAnalizi: {
+      desc: 'Rol/departman bazlı kullanıcı, açık görev ve tamamlanan görev dağılımını verir.', risk:'safe', perm:'reports_view',
+      run: () => {
+        const rows = arr(state.roles).map(r => {
+          const users = arr(state.users).filter(u=>arr(u.roles).includes(r.id));
+          const ids = new Set(users.map(u=>u.id));
+          const acik = openTasks().filter(t=>ids.has(t.assigneeId)).length;
+          const tamam = doneTasks().filter(t=>ids.has(t.assigneeId)).length;
+          return { rol:r.name || r.id, kullanici:users.length, acikGorev:acik, tamamlananGorev:tamam };
+        }).sort((a,b)=>b.acikGorev-a.acikGorev);
+        return { analiz:rows[0] ? `En yoğun departman/rol: ${rows[0].rol} (${rows[0].acikGorev} açık görev).` : 'Rol verisi yok.', items:rows };
+      }
+    },
+    operasyonSaglikSkoru: {
+      desc: 'Operasyon sağlığını 0-100 arası skorlar.', risk:'safe', perm:'reports_view',
+      run: () => {
+        const acik = openInstances().length;
+        const geciken = openInstances().filter(i=>daysSince(i.createdAt)>=7).length;
+        const atanmamis = openTasks().filter(t=>!t.assigneeId).length;
+        const tikanan = makeBottleneckRows().filter(x=>x.riskSkoru>=50).length;
+        let skor = 100 - Math.min(35, geciken*3) - Math.min(25, atanmamis*2) - Math.min(25, tikanan*5) - Math.min(15, Math.floor(acik/10));
+        skor = Math.max(0, Math.min(100, skor));
+        const durum = skor >= 80 ? 'sağlıklı' : skor >= 60 ? 'dikkat' : skor >= 40 ? 'riskli' : 'kritik';
+        return { analiz:`Operasyon sağlık skoru ${skor}/100: ${durum}.`, skor, durum, acikTalep:acik, gecikenTalep:geciken, atanmamisGorev:atanmamis, tikananSurec:tikanan };
+      }
+    },
+    kullaniciVeriKalitesi: {
+      desc: 'Kullanıcı kayıtlarında eksik telefon, e-posta, dahili, yönetici ve rol bilgilerini denetler.', risk:'safe', perm:'admin_users_view',
+      run: () => {
+        const users = arr(state.users);
+        const eksikler = users.map(u => ({ id:u.id, ad:u.name, eksikler:[!u.email?'email':null,!u.cep?'cep':null,!u.dahili?'dahili':null,!u.manager?'manager':null,!arr(u.roles).length?'roles':null].filter(Boolean) })).filter(x=>x.eksikler.length);
+        return { analiz:`${users.length} kullanıcıdan ${eksikler.length} tanesinde eksik profil bilgisi var.`, count:eksikler.length, items:eksikler };
+      }
+    },
+    surecKaliteKontrol: {
+      desc: 'Süreç tanımlarında aktiflik, adım ve açıklama eksiklerini kontrol eder.', risk:'safe', perm:'workflows_view',
+      run: () => {
+        const rows = arr(state.definitions).map(d => ({ id:d.id, ad:d.name, aktif:!!d.active, adimSayisi:arr(d.steps).length, alanSayisi:arr(d.fields).length, eksikler:[!d.name?'ad':null,!arr(d.steps).length?'adım':null,!arr(d.fields).length?'form alanı':null,!d.description?'açıklama':null].filter(Boolean) })).filter(x=>x.eksikler.length);
+        return { analiz:`${arr(state.definitions).length} süreçten ${rows.length} tanesinde tasarım/veri eksikleri var.`, count:rows.length, items:rows };
+      }
+    },
+    atanmamisIsAnalizi: {
+      desc: 'Atanmamış görevleri, bağlı talep ve süreç bilgisiyle listeler.', risk:'safe', perm:'workflows_view',
+      run: () => {
+        const items = openTasks().filter(t=>!t.assigneeId).map(t => { const ins = arr(state.instances).find(i=>i.id===t.instanceId); return { id:t.id, baslik:t.title || t.id, talep:t.instanceId || '-', surec:ins ? defName(ins.defId) : '-', tarih:safeDate(t.createdAt) }; });
+        return { analiz:`${items.length} açık görev atanmamış durumda.`, count:items.length, items };
+      }
+    }
+  });
+
+  if (typeof resolveToolAlias === 'function') {
+    const __oldResolveToolAlias = resolveToolAlias;
+    resolveToolAlias = function(name) {
+      const n = String(name || '').toLowerCase().replace(/[^a-z0-9ığüşöçİĞÜŞÖÇ]/g, '');
+      const extra = {
+        ceo:'ceoOzeti', ceosummary:'ceoOzeti', executive:'ceoOzeti', health:'operasyonSaglikSkoru', saglik:'operasyonSaglikSkoru', sağlik:'operasyonSaglikSkoru',
+        risk:'riskAnalizi', risks:'riskAnalizi', advisor:'yoneticiDanismani', manageradvisor:'yoneticiDanismani', workload:'isYukuAnalizi', performance:'performansAnalizi', department:'departmanAnalizi', dataquality:'kullaniciVeriKalitesi'
+      };
+      return extra[n] || __oldResolveToolAlias(name);
+    };
+  }
+
+  const __fabOriginalLocalInterpret = (typeof localInterpret === 'function') ? localInterpret : null;
+  localInterpret = function(t) {
+    const raw = String(t || '').trim();
+    const s = raw.toLocaleLowerCase('tr-TR');
+
+    // Yönetici/CEO ve danışman niyetleri önce yakalanır; bunlar genel analizYap'a düşmesin.
+    if (/(ceo|patron|genel müdür|üst yönetim|şirketin durumu|şirket durumu|firma durumu|genel sağlık|sağlık skoru|sağlik skoru|durum raporu|yönetici özeti|üst yönetim özeti)/.test(s)) return { tool:'ceoOzeti', params:{}, explain:'CEO / üst yönetim özeti hazırlanıyor.' };
+    if (/(operasyon sağl[ıi][ğg][ıi]|sağl[ıi]k skoru|genel skor|sistem skoru|durum skoru)/.test(s)) return { tool:'operasyonSaglikSkoru', params:{}, explain:'Operasyon sağlık skoru hesaplanıyor.' };
+    if (/(en büyük risk|risk analizi|riskler|tehlike|kritik konu|alarm veren|önemli sorun|müdahale gereken)/.test(s)) return { tool:'riskAnalizi', params:{}, explain:'Operasyonel risk analizi yapılıyor.' };
+    if (/(neye müdahale|ne yapmalıyım|önerin ne|yönetici danışmanı|aksiyon öner|hangi işe bakmalıyım|öncelik ne|önce ne)/.test(s)) return { tool:'yoneticiDanismani', params:{}, explain:'Yönetici aksiyon önerileri hazırlanıyor.' };
+    if (/(iş yükü analizi|yük analizi|kimde ne kadar iş|kim yoğun|kim boşta|kapasite analizi|kapasite durumu|boş kapasite)/.test(s)) return { tool:'kapasiteAnalizi', params:{}, explain:'Kapasite ve iş yükü analizi yapılıyor.' };
+    if (/(performans analizi|performans raporu|kim daha verimli|verimlilik|en verimli|en düşük performans)/.test(s)) return { tool:'performansAnalizi', params:{}, explain:'Performans analizi hazırlanıyor.' };
+    if (/(departman analizi|rol analizi|ekip analizi|departman durumu|ekip durumu)/.test(s)) return { tool:'departmanAnalizi', params:{}, explain:'Departman / rol analizi hazırlanıyor.' };
+    if (/(kullanıcı veri kalitesi|eksik profil|eksik kullanıcı bilgisi|profil eksikleri|veri kalitesi)/.test(s)) return { tool:'kullaniciVeriKalitesi', params:{}, explain:'Kullanıcı veri kalitesi kontrol ediliyor.' };
+    if (/(süreç kalite|süreç kontrol|tasarım eksikleri|form eksikleri|adımı olmayan süreç|alanı olmayan süreç)/.test(s)) return { tool:'surecKaliteKontrol', params:{}, explain:'Süreç tasarım kalitesi kontrol ediliyor.' };
+    if (/(atanmamış iş analizi|atanmamış görev analizi|sahipsiz iş analizi|kimseye verilmeyen görev)/.test(s)) return { tool:'atanmamisIsAnalizi', params:{}, explain:'Atanmamış işler analiz ediliyor.' };
+
+    // Kısa ve doğal varyasyonlar: kullanıcının yazdığı yalın ifadeleri mevcut araçlara bağla.
+    if (/^(personel|personeller|çalışanlar|ekip|ekip üyeleri|kullanıcı|kullanıcılar|kullanıcıları|kullanıcıları söyle|kullanıcı listesini ver|çalışanları göster)$/i.test(s)) return { tool:'listeKullanicilar', params:{}, explain:'Kullanıcılar listeleniyor.' };
+    if (/^(süreç|süreçler|form|formlar|iş akışları|akışlar|tanımlı süreçler)$/i.test(s)) return { tool:'listeSurecler', params:{}, explain:'Süreçler listeleniyor.' };
+    if (/^(talepler|açık talepler|bekleyen işler|açık işler|devam eden işler)$/i.test(s)) return { tool:'listeTalepler', params:{status:'running'}, explain:'Açık talepler listeleniyor.' };
+    if (/^(özet|genel özet|dashboard|pano|sistem özeti)$/i.test(s)) return { tool:'ozet', params:{}, explain:'Sistem özeti getiriliyor.' };
+
+    const plan = __fabOriginalLocalInterpret ? __fabOriginalLocalInterpret(raw) : null;
+    if (plan && (plan.tool || plan.isHelp)) return plan;
+
+    // Son şans: kayıtlı sorgu adlarıyla gevşek eşleşme.
+    try {
+      const queries = arr(typeof getSavedQueries === 'function' ? getSavedQueries() : []);
+      const q = queries.find(x => {
+        const n = String(x.name || '').toLocaleLowerCase('tr-TR');
+        return n && (n === s || n.includes(s) || s.includes(n));
+      });
+      if (q) return { tool:'kayitliSorguCalistir', params:{ad:q.name}, explain:`"${q.name}" kayıtlı sorgusu çalıştırılıyor.` };
+    } catch(e) {}
+
+    return plan || { tool:null, explain:'Komutu anlayamadım. "yardım" yazarak neler yapabileceğimi görebilirsiniz.' };
+  };
+
+  if (typeof aiHelpText === 'function') {
+    const __oldAiHelpText = aiHelpText;
+    aiHelpText = function() {
+      return __oldAiHelpText() + '\n\nYönetici komutları:\n' +
+        '• "CEO özeti ver" — üst yönetim özeti\n' +
+        '• "en büyük risk ne" — risk analizi\n' +
+        '• "neye müdahale etmeliyim" — aksiyon önerisi\n' +
+        '• "operasyon sağlık skoru" — 0-100 durum skoru\n' +
+        '• "kapasite analizi" — boş/yüklü kişiler\n' +
+        '• "performans analizi" — kişi ve süreç performansı\n' +
+        '• "kullanıcı veri kalitesi" — eksik profil bilgileri\n' +
+        '• "süreç kalite kontrol" — eksik süreç tasarımları';
+    };
+  }
+})();
+
+
 window.runAICommand = runAICommand;
 window.openAICommandConsole = openAICommandConsole;
 window.AI_TOOLS = AI_TOOLS;
