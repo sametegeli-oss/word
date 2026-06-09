@@ -1,8 +1,8 @@
 {
   "_aciklama": "FABRİKA platformu profesyonel YZ sorgu kataloğu. v5: kayıtlı sorgular + aliases + AI_TOOL yönlendirme kayıtları.",
-  "_surum": 5,
+  "_surum": "5.1",
   "_guncelleme": "2026-06-09",
-  "_not": "v5 profesyonel katalog: tek-koleksiyon sorgu motoru için genişletilmiş kayıtlar, doğal dil aliases ve AI_TOOLS yönlendirme kayıtları içerir.",
+  "_not": "v5.1: Yeni öğrenme kuyruğu kayıtlarına göre avans talepleri sorguları eklendi. Kayıtlı sorgu sayısı/listeleme talepleri _sistem_komutlari altında AI_TOOLS yönlendirmesi olarak tanımlandı.",
   "_kullanim": "Yönetim > Kayıtlı Sorgular ekranına yüklenir. Program aliases alanını desteklemiyorsa sorgular yine name/aciklama ile çalışır; aliases için intent motoruna destek eklenmelidir.",
   "queries": [
     {
@@ -10787,13 +10787,327 @@
         "kime atanmadı"
       ],
       "tip": "ai_tool"
+    },
+    {
+      "name": "Avans talep edenler",
+      "aciklama": "defId alanında avans geçen talepleri listeler",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "defId",
+            "op": "contains",
+            "value": "avans"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "defId",
+          "ownerId",
+          "status",
+          "currentStep",
+          "createdAt",
+          "data"
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "desc",
+        "limit": 200
+      },
+      "aliases": [
+        "avans talep edenler",
+        "avans isteyenler",
+        "avans talepleri",
+        "avans isteyen personeller",
+        "avans talebi açanlar"
+      ]
+    },
+    {
+      "name": "Avans talebi açan kişiler",
+      "aciklama": "Avans süreç/talep kayıtlarını ownerId ile listeler",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "defId",
+            "op": "contains",
+            "value": "avans"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "ownerId",
+          "defId",
+          "status",
+          "createdAt"
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "desc",
+        "limit": 200
+      },
+      "aliases": [
+        "kim avans talep etmiş",
+        "avans talep eden kişiler",
+        "avans isteyen kişiler"
+      ]
+    },
+    {
+      "name": "Açık avans talepleri",
+      "aciklama": "Açık durumdaki avans taleplerini listeler",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "defId",
+            "op": "contains",
+            "value": "avans"
+          },
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "running"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "defId",
+          "ownerId",
+          "status",
+          "currentStep",
+          "createdAt",
+          "data"
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "asc",
+        "limit": 200
+      },
+      "aliases": [
+        "bekleyen avans talepleri",
+        "açık avanslar",
+        "onay bekleyen avans talepleri"
+      ]
+    },
+    {
+      "name": "Tamamlanan avans talepleri",
+      "aciklama": "Tamamlanan avans taleplerini listeler",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "defId",
+            "op": "contains",
+            "value": "avans"
+          },
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "completed"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "ownerId",
+          "defId",
+          "status",
+          "createdAt"
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "desc",
+        "limit": 200
+      },
+      "aliases": [
+        "ödenen avans talepleri",
+        "tamamlanmış avanslar"
+      ]
+    },
+    {
+      "name": "Reddedilen avans talepleri",
+      "aciklama": "Reddedilen avans taleplerini listeler",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "defId",
+            "op": "contains",
+            "value": "avans"
+          },
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "rejected"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "ownerId",
+          "defId",
+          "status",
+          "createdAt"
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "desc",
+        "limit": 200
+      },
+      "aliases": [
+        "reddedilen avanslar",
+        "avans reddedilenler"
+      ]
+    },
+    {
+      "name": "Avans süreçleri",
+      "aciklama": "Adında avans geçen süreç tanımlarını listeler",
+      "params": {
+        "koleksiyon": "definitions",
+        "filtreler": [
+          {
+            "field": "name",
+            "op": "contains",
+            "value": "avans"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name",
+          "active",
+          "description"
+        ],
+        "siralaAlan": "name",
+        "siralaYon": "asc",
+        "limit": 100
+      },
+      "aliases": [
+        "avans süreçlerini göster",
+        "avans formu var mı",
+        "avans süreci var mı"
+      ]
+    },
+    {
+      "name": "Avans görevleri",
+      "aciklama": "Başlığında avans geçen görevleri listeler",
+      "params": {
+        "koleksiyon": "tasks",
+        "filtreler": [
+          {
+            "field": "title",
+            "op": "contains",
+            "value": "avans"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "title",
+          "status",
+          "assigneeId",
+          "instanceId",
+          "createdAt"
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "desc",
+        "limit": 200
+      },
+      "aliases": [
+        "avansla ilgili görevler",
+        "avans görevlerini listele"
+      ]
+    },
+    {
+      "name": "Açık avans görevleri",
+      "aciklama": "Başlığında avans geçen açık görevleri listeler",
+      "params": {
+        "koleksiyon": "tasks",
+        "filtreler": [
+          {
+            "field": "title",
+            "op": "contains",
+            "value": "avans"
+          },
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "open"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "title",
+          "status",
+          "assigneeId",
+          "instanceId",
+          "createdAt"
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "asc",
+        "limit": 200
+      },
+      "aliases": [
+        "bekleyen avans görevleri",
+        "açık avans işi"
+      ]
+    },
+    {
+      "name": "Avans talep sayısı",
+      "aciklama": "Avans defId taşıyan talepleri saymak/listemek için",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "defId",
+            "op": "contains",
+            "value": "avans"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "ownerId",
+          "defId",
+          "status",
+          "createdAt"
+        ],
+        "limit": 200
+      },
+      "aliases": [
+        "kaç avans talebi var",
+        "avans talebi sayısı"
+      ]
+    },
+    {
+      "name": "Avans taleplerinin durum dağılımı",
+      "aciklama": "Avans taleplerini durumlarına göre gruplar",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "defId",
+            "op": "contains",
+            "value": "avans"
+          }
+        ],
+        "grupla": "status"
+      },
+      "aliases": [
+        "avans talepleri hangi durumda",
+        "avans durum dağılımı"
+      ]
     }
   ],
   "_istatistik": {
-    "toplam_sorgu": 520,
+    "toplam_sorgu": 530,
     "alias_toplam": 649,
     "ai_tool_yonlendirme": 12,
-    "dogal_dil_soru_katalog_adedi": 1166
+    "dogal_dil_soru_katalog_adedi": 1166,
+    "son_eklenen_sorgu_sayisi": 10,
+    "son_eklenen_sorgular": [
+      "Avans talep edenler",
+      "Avans talebi açan kişiler",
+      "Açık avans talepleri",
+      "Tamamlanan avans talepleri",
+      "Reddedilen avans talepleri",
+      "Avans süreçleri",
+      "Avans görevleri",
+      "Açık avans görevleri",
+      "Avans talep sayısı",
+      "Avans taleplerinin durum dağılımı"
+    ],
+    "sistem_komutu_sayisi": 2
   },
   "_dogal_dil_soru_katalogu": [
     {
@@ -15549,6 +15863,32 @@
     "Departman analizi",
     "Kullanıcı veri kalitesi",
     "Süreç kalite kontrol",
-    "Atanmamış iş analizi"
+    "Atanmamış iş analizi",
+    "Sistemde kaç adet sorgu yüklü",
+    "Kayıtlı olan sorguları listele"
+  ],
+  "_sistem_komutlari": [
+    {
+      "name": "Sistemde kaç adet sorgu yüklü",
+      "tool": "kayitliSorgular",
+      "aliases": [
+        "sistemde kaç adet sorgu yüklü",
+        "kaç sorgu var",
+        "kayıtlı sorgu sayısı",
+        "sorgu kataloğunda kaç kayıt var"
+      ],
+      "not": "Bu bir tablo sorgusu değildir; AI_TOOLS.kayitliSorgular ile cevaplanır."
+    },
+    {
+      "name": "Kayıtlı olan sorguları listele",
+      "tool": "kayitliSorgular",
+      "aliases": [
+        "kayıtlı olan sorguları listele",
+        "kayıtlı sorguları listele",
+        "sorguları listele",
+        "sorgu kataloğunu göster"
+      ],
+      "not": "Bu bir tablo sorgusu değildir; AI_TOOLS.kayitliSorgular ile cevaplanır."
+    }
   ]
 }
