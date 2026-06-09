@@ -16228,6 +16228,93 @@ function aiToolsManifest() {
   return Object.entries(AI_TOOLS).map(([name, t]) => `${name}: ${t.desc} [risk:${t.risk}]`).join('\n');
 }
 
+// ---- Ek güvenli (salt-okuma) araçlar: sistemi daha yetenekli yapar ----
+AI_TOOLS.kullaniciDetay = {
+  desc: 'Tek bir kullanıcının detayını verir (rol, dahili, cep, açık görev sayısı). Parametre: ad veya id',
+  risk: 'safe',
+  perm: 'users_view',
+  run: ({ ad = '', id = null }) => {
+    const hedef = (ad || id || '').toString().toLocaleLowerCase('tr-TR').trim();
+    if (!hedef) throw new Error('Kullanıcı adı veya id belirtilmedi');
+    const u = state.users.find(x => x.id === hedef || String(x.name).toLocaleLowerCase('tr-TR').includes(hedef));
+    if (!u) throw new Error('Kullanıcı bulunamadı: ' + (ad || id));
+    const acikGorev = (state.tasks || []).filter(t => t.status === 'open' && t.assigneeId === u.id).length;
+    return {
+      id: u.id, ad: u.name, roller: (u.roles || []).map(rid => (state.roles || []).find(r => r.id === rid)?.name || rid).join(', '),
+      dahili: u.dahili || '-', cep: u.cep || '-', email: u.email || '-', acikGorev
+    };
+  }
+};
+
+AI_TOOLS.talepDetay = {
+  desc: 'Tek bir talebin detayını ve hangi adımda olduğunu verir. Parametre: instanceId',
+  risk: 'safe',
+  perm: 'workflows_view',
+  run: ({ instanceId }) => {
+    if (!instanceId) throw new Error('Talep id belirtilmedi');
+    const i = state.instances.find(x => x.id === instanceId);
+    if (!i) throw new Error('Talep bulunamadı: ' + instanceId);
+    const def = getDef(i.defId);
+    const adim = def?.steps?.find(st => st.id === i.currentStep);
+    return {
+      id: i.id, surec: def?.name || i.defId, durum: i.status,
+      sahip: getUser(i.ownerId)?.name || i.ownerId,
+      suandakiAdim: adim?.title || i.currentStep || '-',
+      acilis: new Date(i.createdAt).toLocaleString('tr-TR'),
+      gunSayisi: Math.floor((Date.now() - i.createdAt) / 86400000)
+    };
+  }
+};
+
+AI_TOOLS.kisininGorevleri = {
+  desc: 'Bir kişinin üzerindeki açık görevleri listeler. Parametre: ad veya id',
+  risk: 'safe',
+  perm: 'workflows_view',
+  run: ({ ad = '', id = null }) => {
+    const hedef = (ad || id || '').toString().toLocaleLowerCase('tr-TR').trim();
+    if (!hedef) throw new Error('Kişi adı veya id belirtilmedi');
+    const u = state.users.find(x => x.id === hedef || String(x.name).toLocaleLowerCase('tr-TR').includes(hedef));
+    if (!u) throw new Error('Kullanıcı bulunamadı: ' + (ad || id));
+    const gorevler = (state.tasks || []).filter(t => t.status === 'open' && t.assigneeId === u.id);
+    return {
+      kisi: u.name, count: gorevler.length,
+      items: gorevler.slice(0, 50).map(t => ({
+        baslik: t.title || t.id,
+        talep: getDef(state.instances.find(i => i.id === t.instanceId)?.defId)?.name || '-',
+        tarih: t.createdAt ? new Date(t.createdAt).toLocaleDateString('tr-TR') : '-'
+      }))
+    };
+  }
+};
+
+AI_TOOLS.enYukluKisiler = {
+  desc: 'Üzerinde en çok açık görev olan kişileri sıralar. Parametre: limit (varsayılan 5)',
+  risk: 'safe',
+  perm: 'workflows_view',
+  run: ({ limit = 5 }) => {
+    const sayac = {};
+    (state.tasks || []).filter(t => t.status === 'open' && t.assigneeId).forEach(t => { sayac[t.assigneeId] = (sayac[t.assigneeId] || 0) + 1; });
+    const sirali = Object.entries(sayac).sort((a, b) => b[1] - a[1]).slice(0, Math.max(1, limit));
+    return { count: sirali.length, items: sirali.map(([uid, n]) => ({ kisi: getUser(uid)?.name || uid, acikGorev: n })) };
+  }
+};
+
+AI_TOOLS.izinliler = {
+  desc: 'Belirtilen tarihte (varsayılan bugün) izinli olan kişileri listeler. Parametre: tarih (YYYY-AA-GG, opsiyonel)',
+  risk: 'safe',
+  perm: 'users_view',
+  run: ({ tarih = null }) => {
+    const gun = tarih ? new Date(tarih) : new Date();
+    const gunStr = gun.toISOString().slice(0, 10);
+    const izinli = (state.users || []).filter(u => (u.absences || []).some(a => {
+      const bas = (a.start || a.from || '').slice(0, 10);
+      const bit = (a.end || a.to || a.start || a.from || '').slice(0, 10);
+      return bas && gunStr >= bas && gunStr <= bit;
+    }));
+    return { tarih: gunStr, count: izinli.length, items: izinli.map(u => ({ kisi: u.name })) };
+  }
+};
+
 // Bir aracı yetki + onay mantığıyla çalıştır
 async function runAITool(name, params) {
   const tool = AI_TOOLS[name];
@@ -16254,8 +16341,92 @@ async function interpretCommand(userText) {
     // Yedek: AI yoksa basit anahtar kelime eşleme
     return localInterpret(userText);
   }
-  const draft = await buildProcessWithExternalAI(userText, { ...cfg, _systemOverride: sys });
-  return draft;
+
+  let plan;
+  try {
+    // Komut yorumlama, form üretiminden FARKLI bir iştir: küçük JSON ({tool,params,explain})
+    // döndürür. Bu yüzden ayrı, hafif bir JSON çağrısı kullanıyoruz.
+    plan = await aiInterpretCall(sys, userText, cfg);
+  } catch (e) {
+    // LLM başarısız olursa yerel motora düş — kullanıcı tamamen takılı kalmasın
+    console.warn('[interpretCommand] LLM hatası, yerel motora düşülüyor:', e.message);
+    const fallback = localInterpret(userText);
+    if (fallback && fallback.tool) {
+      fallback.explain = (fallback.explain || '') + ' (AI erişilemedi, yerel motor kullanıldı.)';
+      return fallback;
+    }
+    throw e;
+  }
+
+  // --- Dönen planı doğrula: model var olmayan/yanlış bir araç adı uydurabilir ---
+  if (!plan || typeof plan !== 'object') {
+    return localInterpret(userText);
+  }
+  if (plan.tool === null || plan.tool === undefined || plan.tool === '' || plan.tool === 'null') {
+    return { tool: null, explain: plan.explain || 'Bu komutu bir işleme bağlayamadım.' };
+  }
+  if (!AI_TOOLS[plan.tool]) {
+    // Model geçersiz araç seçtiyse: yereli dene, o da bulamazsa kullanıcıya açıkla
+    const fallback = localInterpret(userText);
+    if (fallback && fallback.tool) return fallback;
+    const mevcut = Object.keys(AI_TOOLS).join(', ');
+    return { tool: null, explain: `Komutu tanımlı bir araca eşleyemedim (model "${plan.tool}" önerdi). Kullanılabilir işlemler: ${mevcut}` };
+  }
+  plan.params = (plan.params && typeof plan.params === 'object') ? plan.params : {};
+  plan.explain = plan.explain || ('Çalıştırılıyor: ' + plan.tool);
+  return plan;
+}
+
+// Komut yorumlama için ayrılmış hafif JSON çağrısı.
+// buildProcessWithExternalAI form şeması üretmek içindir; burada küçük bir
+// {tool,params,explain} nesnesi istiyoruz, bu yüzden düşük token ve JSON modu kullanıyoruz.
+async function aiInterpretCall(sys, userText, cfg) {
+  cfg = cfg || getAISettings();
+  const provider = cfg.provider;
+  const key = cfg.keys?.[provider];
+  let model = cfg.models?.[provider] || (typeof AI_PROVIDERS !== 'undefined' ? AI_PROVIDERS[provider]?.model : '') || '';
+  if (typeof GROQ_MODEL_REMAP !== 'undefined' && provider === 'groq' && GROQ_MODEL_REMAP[model]) model = GROQ_MODEL_REMAP[model];
+  if (AI_PROVIDERS[provider]?.needsKey && !key) throw new Error('API anahtarı girilmedi');
+
+  let text = '';
+  if (provider === 'openai' || provider === 'groq') {
+    const url = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+    const res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: model || (provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini'),
+        temperature: 0.1, max_tokens: 800, response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: userText }]
+      })
+    });
+    if (!res.ok) { const b = await res.text().catch(() => ''); throw new Error(provider + ' hata: ' + res.status + (b ? ' - ' + b.slice(0, 200) : '')); }
+    const d = await res.json();
+    text = d.choices?.[0]?.message?.content || '';
+  } else if (provider === 'anthropic') {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: model || 'claude-3-5-haiku-latest', max_tokens: 800, temperature: 0.1, system: sys, messages: [{ role: 'user', content: userText }] })
+    });
+    if (!res.ok) { const b = await res.text().catch(() => ''); throw new Error('Claude hata: ' + res.status + (b ? ' - ' + b.slice(0, 200) : '')); }
+    const d = await res.json();
+    text = d.content?.map(x => x.text || '').join('') || '';
+  } else if (provider === 'gemini') {
+    const u = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model || 'gemini-1.5-flash')}:generateContent?key=${encodeURIComponent(key)}`;
+    const res = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: sys + '\n\nKullanıcı direktifi:\n' + userText }] }], generationConfig: { temperature: 0.1, responseMimeType: 'application/json' } }) });
+    if (!res.ok) throw new Error('Gemini hata: ' + res.status);
+    const d = await res.json();
+    text = d.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+  } else if (provider === 'custom') {
+    if (!cfg.customUrl) throw new Error('Özel API URL girilmedi');
+    const res = await fetch(cfg.customUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ prompt: userText, system: sys, model }) });
+    if (!res.ok) throw new Error('Özel API hata: ' + res.status);
+    const d = await res.json();
+    if (d && typeof d === 'object' && (d.tool !== undefined)) return d;
+    text = d.text || d.content || JSON.stringify(d);
+  } else {
+    throw new Error('Bu sağlayıcı komut yorumlamayı desteklemiyor');
+  }
+  return parseAIJSON(text);
 }
 
 // AI olmadan da çalışan basit yerel yorumlayıcı (yedek)
@@ -16270,13 +16441,51 @@ function localInterpret(t) {
     const adMatch = s.match(/(?:kullanıcı|personel|çalışan)?\s*(?:olu[şs]tur|a[çc]|ekle)?\s*(?:adı|ismi|isminde|adında)?\s*([a-zçğıöşü ]+)?/);
     return { tool: 'kullaniciOlusturmaEkraniAc', params: {}, explain: 'Kullanıcı oluşturma ekranı açılıyor (şifre ve onay sizde kalır).' };
   }
-  if (/(tıkan|tikan|darbo[ğg]az|en yava[şs]|neden gecik|hangi süreç.*sorun|performans|analiz)/.test(s)) return { tool: 'analizYap', params: { soru: t }, explain: 'Tıkanıklık/performans analizi yapılıyor.' };
-  if (/(özel|genel durum|durum nedir|özet)/.test(s)) return { tool: 'ozet', params: {}, explain: 'Sistem özeti getiriliyor.' };
-  if (/geciken|gecikmiş|bekleyen.*uzun/.test(s)) return { tool: 'gecikenTalepler', params: {}, explain: 'Geciken talepler listeleniyor.' };
-  if (/kullanıcı.*listele|kim var|çalışanlar|kullanıcıları göster/.test(s)) return { tool: 'listeKullanicilar', params: {}, explain: 'Kullanıcılar listeleniyor.' };
-  if (/süreç.*listele|form.*listele|hangi süreç|süreçleri göster/.test(s)) return { tool: 'listeSurecler', params: {}, explain: 'Süreçler listeleniyor.' };
+  // Kişinin görevleri: "Ali'nin görevleri", "Ahmet'in işleri"
+  let gm = s.match(/([a-zçğıöşü]+)['']?(?:n[ıi]n|in|nin)?\s*(?:üzerindeki\s*)?(?:açık\s*)?(?:görev|i[şs])(?:ler)?/);
+  if (gm && gm[1] && gm[1].length > 2 && !/kim|hangi|tüm|bütün/.test(gm[1])) {
+    return { tool: 'kisininGorevleri', params: { ad: gm[1].trim() }, explain: `"${gm[1].trim()}" kişisinin görevleri listeleniyor.` };
+  }
+  if (/en yük[lü]ü|en çok görev|kim yoğun|en meşgul|iş yükü/.test(s)) return { tool: 'enYukluKisiler', params: {}, explain: 'En yüklü kişiler sıralanıyor.' };
+  if (/izinli|izinde|bugün kim yok|kimler izinli|tatilde/.test(s)) return { tool: 'izinliler', params: {}, explain: 'İzinli kişiler listeleniyor.' };
+
+  if (/(tıkan|tikan|darbo[ğg]az|en yava[şs]|neden gecik|hangi süreç.*sorun|performans|analiz|yorumla|de[ğg]erlendir)/.test(s)) return { tool: 'analizYap', params: { soru: t }, explain: 'Tıkanıklık/performans analizi yapılıyor.' };
+  if (/(özel|genel durum|durum nedir|özet|genel bak|dashboard|panele bak)/.test(s)) return { tool: 'ozet', params: {}, explain: 'Sistem özeti getiriliyor.' };
+
+  // Geciken talepler — "X günden eski" gibi sayı yakalama
+  if (/geciken|gecikmiş|bekleyen.*uzun|uzun süredir/.test(s)) {
+    const gunMatch = s.match(/(\d+)\s*g[üu]n/);
+    const params = gunMatch ? { gun: parseInt(gunMatch[1], 10) } : {};
+    return { tool: 'gecikenTalepler', params, explain: `Geciken talepler listeleniyor${gunMatch ? ' (' + gunMatch[1] + ' günden eski)' : ''}.` };
+  }
+
+  // Kullanıcı listeleme (opsiyonel rol filtresi)
+  if (/kullanıcı.*listele|kim var|çalışanlar|kullanıcıları göster|personel listesi|personelleri göster/.test(s)) {
+    const rolMatch = s.match(/(?:rol[üu]?|rolünde|rolündeki|olan)\s*([a-zçğıöşü_]+)/);
+    let role = null;
+    if (rolMatch && rolMatch[1]) {
+      const aday = rolMatch[1].trim();
+      const bulunan = (state.roles || []).find(r => r.id === aday || String(r.name).toLocaleLowerCase('tr-TR').includes(aday));
+      if (bulunan) role = bulunan.id;
+    }
+    return { tool: 'listeKullanicilar', params: role ? { role } : {}, explain: 'Kullanıcılar listeleniyor.' };
+  }
+
+  if (/süreç.*listele|form.*listele|hangi süreç|süreçleri göster|form tipleri|tanımlı form/.test(s)) return { tool: 'listeSurecler', params: {}, explain: 'Süreçler listeleniyor.' };
+
+  // Talep durumu (tamamlanan / reddedilen / açık / hepsi)
+  if (/tamamlanan.*talep|biten.*talep|talepleri.*tamamlan/.test(s)) return { tool: 'listeTalepler', params: { status: 'completed' }, explain: 'Tamamlanan talepler listeleniyor.' };
+  if (/reddedilen.*talep|red.*talep|talepleri.*reddedil/.test(s)) return { tool: 'listeTalepler', params: { status: 'rejected' }, explain: 'Reddedilen talepler listeleniyor.' };
+  if (/t[üu]m talepler|b[üu]t[üu]n talepler|talepleri.*hepsi/.test(s)) return { tool: 'listeTalepler', params: { status: 'all' }, explain: 'Tüm talepler listeleniyor.' };
   if (/talep.*listele|talepleri göster|açık talep/.test(s)) return { tool: 'listeTalepler', params: { status: 'running' }, explain: 'Açık talepler listeleniyor.' };
-  return { tool: null, explain: 'Komutu anlayamadım. Daha açık söyleyebilir misiniz?' };
+
+  // Yardım: hangi komutları anlıyorum?
+  if (/(yardım|ne yapabilir|hangi komut|komutlar nedir|neler yapabilir)/.test(s)) {
+    const liste = Object.entries(AI_TOOLS).map(([n, t]) => `• ${n}: ${t.desc}`).join('\n');
+    return { tool: null, explain: 'Şu işlemleri yapabilirim:\n' + liste };
+  }
+
+  return { tool: null, explain: 'Komutu anlayamadım. "yardım" yazarak neler yapabileceğimi görebilirsiniz.' };
 }
 
 // Konsola sonuç yaz + (açıksa) sesli oku
@@ -16298,9 +16507,23 @@ function aiConsoleLog(role, text, data) {
 }
 
 // Ana akış: direktif al → yorumla → çalıştır → bildir
+let AI_COMMAND_RUNNING = false;
 async function runAICommand(userText) {
   userText = (userText || '').trim();
   if (!userText) return;
+  if (AI_COMMAND_RUNNING) return; // Aynı anda iki komut işlenmesin (Enter + buton)
+  AI_COMMAND_RUNNING = true;
+  const sendBtn = document.querySelector('#ai-console-overlay .primary-btn');
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.6'; }
+  try {
+    await _runAICommandInner(userText);
+  } finally {
+    AI_COMMAND_RUNNING = false;
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = ''; }
+  }
+}
+
+async function _runAICommandInner(userText) {
   aiConsoleLog('user', userText);
   const inputEl = document.getElementById('ai-console-input');
   if (inputEl) inputEl.value = '';
@@ -16348,6 +16571,11 @@ async function runAICommand(userText) {
 function summarizeResultForSpeech(tool, r) {
   if (!r) return 'İşlem tamamlandı.';
   if (r.analiz) return r.analiz;
+  if (tool === 'kullaniciDetay') return `${r.ad}, ${r.roller} rolünde, ${r.acikGorev} açık görevi var.`;
+  if (tool === 'talepDetay') return `${r.surec} talebi ${r.durum} durumunda, ${r.suandakiAdim} adımında, ${r.gunSayisi} gündür açık.`;
+  if (tool === 'kisininGorevleri') return `${r.kisi} üzerinde ${r.count} açık görev var.`;
+  if (tool === 'enYukluKisiler' && r.items?.length) return `En yüklü kişi ${r.items[0].kisi}, ${r.items[0].acikGorev} açık görevle.`;
+  if (tool === 'izinliler') return r.count ? `${r.tarih} tarihinde ${r.count} kişi izinli.` : `${r.tarih} tarihinde izinli kimse yok.`;
   if (typeof r.gonderildi === 'number') return `${r.gonderildi} hatırlatma gönderildi.`;
   if (r.olusturuldu) return `${r.ad} rolü oluşturuldu. Yetkilerini kontrol etmeyi unutmayın.`;
   if (r.ekranAcildi) return r.not || 'Kullanıcı oluşturma ekranı açıldı.';
@@ -16465,13 +16693,13 @@ async function aiPlainTextCall(sys, prompt, cfg) {
   if (provider === 'openai' || provider === 'groq') {
     const url = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model: model || (provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini'), temperature: 0.3, max_tokens: 600, messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }] }) });
+      body: JSON.stringify({ model: model || (provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini'), temperature: 0.3, max_tokens: 1500, messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }] }) });
     if (!res.ok) { const b = await res.text().catch(() => ''); throw new Error(provider + ' hata: ' + res.status + ' ' + b.slice(0, 200)); }
     const d = await res.json();
     return d.choices?.[0]?.message?.content || '';
   } else if (provider === 'anthropic') {
     const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: model || 'claude-3-5-haiku-latest', max_tokens: 600, system: sys, messages: [{ role: 'user', content: prompt }] }) });
+      body: JSON.stringify({ model: model || 'claude-3-5-haiku-latest', max_tokens: 1500, system: sys, messages: [{ role: 'user', content: prompt }] }) });
     if (!res.ok) throw new Error('Claude hata: ' + res.status);
     const d = await res.json();
     return d.content?.map(x => x.text || '').join('') || '';
