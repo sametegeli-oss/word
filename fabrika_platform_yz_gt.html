@@ -48,6 +48,23 @@
   .voice-btn.active { border-color: var(--accent, #6366f1); color: var(--accent, #6366f1); }
   @keyframes voicePulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); } 50% { box-shadow: 0 0 0 5px rgba(239,68,68,0); } }
   .voice-row { display: flex; align-items: center; gap: 6px; }
+<script src="intent-engine.js"></script>
+<script src="ai-tools.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded', async () => {
+  if (window.FabrikaIntentEngine) {
+    await FabrikaIntentEngine.initFabrikaIntentEngine({
+      queriesUrl: 'sorgular.json',
+      intentsUrl: 'intent.json'
+    });
+    console.log('[Intent] yüklendi:', {
+      intents: window.FABRIKA_INTENTS?.length,
+      queries: window.FABRIKA_QUERIES?.length
+    });
+  }
+});
+</script>
+  
   body {
     font-family: var(--sans);
     background: var(--bg); color: var(--text);
