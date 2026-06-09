@@ -16721,6 +16721,68 @@ const QUERY_COLLECTIONS = {
 };
 
 // Tek bir filtre koşulunu uygula. op: eq, ne, gt, gte, lt, lte, contains, in, exists
+// Katalog Türkçe slug'ını (mudur, uretim, satis...) gerçek rol ID'lerine çevirir.
+// Veri tabanında rol ID'leri karışık olabilir: bazıları İngilizce (manager, worker, hr),
+// bazıları Türkçe (konfeksiyon_uretim, pazarlama_satis). Bu fonksiyon köprü kurar.
+function resolveRoleSlugToIds(needleSlug) {
+  const out = new Set();
+  if (!needleSlug) return out;
+
+  const slug = x => String(x ?? '').toLocaleLowerCase('tr-TR')
+    .replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u')
+    .replace(/[_\s-]+/g,' ').trim();
+
+  const n = slug(needleSlug);
+
+  // Bilinen Türkçe slug → olası rol adı/ID parçaları köprüsü.
+  // (rol ID veya adı bu parçalardan birini içeriyorsa eşleşir)
+  const KOPRU = {
+    'mudur': ['mudur', 'manager'],
+    'isci': ['isci', 'worker', 'calisan'],
+    'yonetici': ['yonetici', 'yonetim', 'manager', 'admin'],
+    'uretim': ['uretim', 'konfeksiyon uretim', 'konfeksiyon', 'production'],
+    'satis': ['satis', 'pazarlama satis', 'sales'],
+    'pazarlama': ['pazarlama', 'pazarlama satis', 'marketing'],
+    'insan kaynaklari': ['insan kaynaklari', 'hr'],
+    'satin alma': ['satin alma', 'satinalma', 'purchasing'],
+    'muhasebe': ['muhasebe', 'mali isler', 'accounting', 'finans'],
+    'finans': ['finans', 'mali isler', 'finance'],
+    'bakim': ['bakim', 'bakim teknik', 'maintenance'],
+    'kalite': ['kalite', 'kalite sefi', 'quality'],
+    'admin': ['admin', 'sistem yoneticisi'],
+    'planlama': ['planlama', 'planning'],
+    'depo': ['depo', 'warehouse'],
+    'sevkiyat': ['sevkiyat', 'shipping'],
+    'operator': ['operator'],
+    'isg': ['isg', 'guvenlik', 'is guvenligi'],
+    'bilgi islem': ['bilgi islem', 'it']
+  };
+
+  const parcalar = new Set([n, ...((KOPRU[n] || []))]);
+
+  const roller = (typeof state !== 'undefined' && Array.isArray(state.roles)) ? state.roles : [];
+  for (const r of roller) {
+    if (!r) continue;
+    const rid = slug(r.id);
+    const rname = slug(r.name);
+    for (const p of parcalar) {
+      if (!p) continue;
+      // ID veya ad, aranan parçaya eşit ya da onu içeriyorsa bu rolü hedefe ekle
+      if (rid === p || rname === p || rid.includes(p) || rname.includes(p) || p.includes(rid)) {
+        out.add(slug(r.id));
+        out.add(String(r.id));
+        break;
+      }
+    }
+  }
+
+  // Hiç rol tanımı eşleşmediyse, en azından slug'ın kendisini hedef kabul et
+  // (ör. "kalite" gibi ID'si zaten eşleşenler için yukarıda yakalanır; buraya nadiren düşer)
+  if (!out.size) { out.add(n); for (const p of parcalar) out.add(p); }
+
+  return out;
+}
+
 function applyQueryFilter(row, f) {
   const v = row ? row[f.field] : undefined;
   const t = f.value;
@@ -16734,11 +16796,21 @@ function applyQueryFilter(row, f) {
     case 'contains': {
       const slug = x => String(x ?? '').toLocaleLowerCase('tr-TR')
         .replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u')
-        .replace(/[_\s]+/g,' ').trim();
+        .replace(/[_\s-]+/g,' ').trim();
       const needle = slug(t);
+
+      // 'roles' alanı için akıllı çözümleme: katalogdaki Türkçe slug (mudur, uretim, satis...)
+      // gerçek rol ID'lerine (manager, konfeksiyon_uretim, pazarlama_satis...) çevrilir.
+      if (f.field === 'roles' && Array.isArray(v)) {
+        const hedefIdler = resolveRoleSlugToIds(needle);
+        if (hedefIdler.size) {
+          return v.some(el => hedefIdler.has(slug(el)) || hedefIdler.has(String(el)));
+        }
+        // Çözümlenemezse normalize + kısmi eşleşmeye düş
+        return v.some(el => slug(el).includes(needle));
+      }
+
       if (Array.isArray(v)) {
-        // Dizi alanlar (ör. roles): tam eşleşme yerine Türkçe-normalize + kısmi eşleşme.
-        // "mudur" → "Müdür", "mudur_uretim", "MUDUR" gibi varyantları yakalar.
         return v.some(el => slug(el).includes(needle));
       }
       return slug(v).includes(needle);
@@ -18485,6 +18557,195 @@ setInterval(() => {
     return true;
   }
 
+  // ===================================================================
+  // ÖĞRENME DÖNGÜSÜ
+  // Düşük/belirsiz skorda kullanıcıya "hangisi?" sorulur.
+  // Seçilen → o sorguya alias olarak öğrenilir (localStorage + Firestore).
+  // Hiçbiri → öğrenme kuyruğuna (yazılacak sorgular) eklenir.
+  // ===================================================================
+  const LEARN_LS_KEY = 'FABRIKA_LEARNED_ALIASES';   // { "Sorgu Adı": ["alias1","alias2"] }
+  const QUEUE_LS_KEY = 'FABRIKA_LEARNING_QUEUE';     // [ {text, candidates, at, status} ]
+
+  function lsGet(key, def) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch (_) { return def; }
+  }
+  function lsSet(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (_) { return false; }
+  }
+
+  // Öğrenilen alias'ları katalog sorgularının aliases dizisine enjekte et (kalıcı etki).
+  function applyLearnedAliases() {
+    const learned = lsGet(LEARN_LS_KEY, {});
+    const list = patchGetQueries();
+    let n = 0;
+    for (const q of list) {
+      const arr = learned[q.name];
+      if (Array.isArray(arr) && arr.length) {
+        q.aliases = Array.isArray(q.aliases) ? q.aliases : [];
+        for (const a of arr) {
+          if (a && !q.aliases.some(x => patchNormTR(x) === patchNormTR(a))) { q.aliases.push(a); n++; }
+        }
+      }
+    }
+    return n;
+  }
+
+  // Bir alias'ı kalıcı olarak öğren: localStorage + (yetki varsa) Firestore.
+  async function learnAlias(queryName, aliasText) {
+    if (!queryName || !aliasText) return;
+    const learned = lsGet(LEARN_LS_KEY, {});
+    learned[queryName] = Array.isArray(learned[queryName]) ? learned[queryName] : [];
+    if (!learned[queryName].some(x => patchNormTR(x) === patchNormTR(aliasText))) {
+      learned[queryName].push(aliasText);
+    }
+    lsSet(LEARN_LS_KEY, learned);
+
+    // Katalogdaki sorguya da hemen ekle ki bu oturumda da geçerli olsun
+    const q = patchGetQueries().find(x => x.name === queryName);
+    if (q) {
+      q.aliases = Array.isArray(q.aliases) ? q.aliases : [];
+      if (!q.aliases.some(x => patchNormTR(x) === patchNormTR(aliasText))) q.aliases.push(aliasText);
+    }
+
+    // Firestore'a yaz (yetki yoksa sessizce geç)
+    await firestoreSaveLearned(queryName, aliasText).catch(() => {});
+  }
+
+  // Firestore'a öğrenilen alias yazma (varsa global db/firestore yardımcıları üzerinden).
+  async function firestoreSaveLearned(queryName, aliasText) {
+    try {
+      const fs = window.fbDb || window.db || window.firestoreDb || null;
+      // Proje kendi yardımcı fonksiyonunu sağlıyorsa onu tercih et
+      if (typeof window.saveLearnedAliasToFirestore === 'function') {
+        return await window.saveLearnedAliasToFirestore(queryName, aliasText);
+      }
+      // Modüler Firebase v9 API'si window'a açılmış olabilir
+      if (fs && window.fbCollection && window.fbAddDoc) {
+        await window.fbAddDoc(window.fbCollection(fs, 'aiLearnedAliases'), {
+          queryName, alias: aliasText, at: Date.now(),
+          user: (window.state && state.currentUser && (state.currentUser.email || state.currentUser.id)) || null
+        });
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  // Öğrenme kuyruğuna ekle (hiçbiri seçilmedi → yazılacak sorgu).
+  async function queueUnmatched(userText, candidates) {
+    const q = lsGet(QUEUE_LS_KEY, []);
+    q.push({
+      text: userText,
+      candidates: (candidates || []).map(c => ({ name: c.q.name, score: c.score })),
+      at: Date.now(),
+      status: 'open'
+    });
+    lsSet(QUEUE_LS_KEY, q);
+
+    // Projenin kendi kuyruk fonksiyonu varsa onu da çağır (Firestore'a yazar)
+    try {
+      if (typeof window.logUnansweredCommand === 'function') {
+        await window.logUnansweredCommand(userText, 'kullanıcı hiçbirini seçmedi');
+      }
+    } catch (_) {}
+  }
+
+  // Skorlu aday listesi (en iyi N).
+  function patchTopCandidates(userText, n) {
+    n = n || 5;
+    const list = patchGetQueries();
+    const scored = [];
+    for (const q of list) {
+      const sc = patchScore(userText, q);
+      if (sc > 0) scored.push({ q, score: sc });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    // Aynı params'a sahip kopya sorguları (ör. "Müdür Kullanıcıları" + "Mudur rolündeki...")
+    // tek adaya indir — kullanıcıya aynı şeyi iki kez sormayalım.
+    // Anahtar sırasından bağımsız karşılaştırma için params'ı normalize et.
+    const normKey = (obj) => {
+      const seen2 = (o) => {
+        if (Array.isArray(o)) return o.map(seen2);
+        if (o && typeof o === 'object') {
+          const out = {};
+          for (const k of Object.keys(o).sort()) out[k] = seen2(o[k]);
+          return out;
+        }
+        return o;
+      };
+      try { return JSON.stringify(seen2(obj || {})); } catch (_) { return Math.random().toString(); }
+    };
+    const seen = new Set();
+    const uniq = [];
+    for (const c of scored) {
+      const key = normKey(c.q.params);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniq.push(c);
+      if (uniq.length >= n) break;
+    }
+    return uniq;
+  }
+
+  // "Hangisini demek istediniz?" panelini gösterir; seçilen adayı (ya da null) döndürür.
+  function askWhichIntent(userText, candidates) {
+    return new Promise(resolve => {
+      const box = document.createElement('div');
+      box.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;';
+      const panel = document.createElement('div');
+      panel.style.cssText = 'background:#1a2028;color:#e4e8ee;width:520px;max-width:92vw;border:1px solid #3d4854;border-radius:10px;padding:18px;font-family:system-ui,sans-serif;';
+      panel.innerHTML =
+        '<h3 style="margin:0 0 10px;font-size:16px;">Bunlardan hangisini demek istediniz?</h3>' +
+        '<div style="font-size:13px;color:#8a95a3;margin-bottom:12px;">Sorduğunuz: <b></b></div>';
+      panel.querySelector('b').textContent = userText;
+
+      const done = (val) => { try { document.body.removeChild(box); } catch (_) {} resolve(val); };
+
+      candidates.forEach((c, i) => {
+        const btn = document.createElement('button');
+        btn.textContent = (i + 1) + ') ' + (c.q.name) + '  (%' + c.score + ')';
+        btn.style.cssText = 'display:block;width:100%;text-align:left;margin:6px 0;padding:10px;background:#232a34;color:#e4e8ee;border:1px solid #3d4854;border-radius:6px;cursor:pointer;font-size:14px;';
+        btn.onmouseover = () => btn.style.background = '#2c3540';
+        btn.onmouseout = () => btn.style.background = '#232a34';
+        btn.onclick = () => done(c);
+        panel.appendChild(btn);
+      });
+
+      const none = document.createElement('button');
+      none.textContent = 'Hiçbiri değil (öğrenme kuyruğuna ekle)';
+      none.style.cssText = 'display:block;width:100%;text-align:left;margin-top:12px;padding:10px;background:#3a1f1f;color:#f87171;border:1px solid #f87171;border-radius:6px;cursor:pointer;font-size:14px;';
+      none.onclick = () => done(null);
+      panel.appendChild(none);
+
+      box.appendChild(panel);
+      box.addEventListener('click', e => { if (e.target === box) done('cancel'); });
+      document.body.appendChild(box);
+    });
+  }
+
+  // Bir adayı plana çevir.
+  function candidateToPlan(c) {
+    if (!c || !c.q || !c.q.params) return null;
+    return {
+      tool: 'sorgu',
+      params: JSON.parse(JSON.stringify(c.q.params)),
+      explain: '"' + (c.q.name || 'Sorgu') + '" çalıştırılıyor.'
+    };
+  }
+
+  // Bir planı çalıştırıp konsola yazan ortak yardımcı.
+  async function runPlan(plan) {
+    if (!plan || !plan.tool || typeof runAITool !== 'function') return null;
+    if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', plan.explain || 'Çalıştırılıyor.');
+    const result = await runAITool(plan.tool, plan.params || {});
+    if (plan.tool === 'sorgu' && typeof aiConsoleShowQuery === 'function') aiConsoleShowQuery(plan.params || {});
+    const spoken = (typeof summarizeResultForSpeech === 'function') ? summarizeResultForSpeech(plan.tool, result) : 'Tamamlandı.';
+    if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', spoken, result);
+    if (typeof speak === 'function') speak(spoken);
+    if (typeof renderAll === 'function') renderAll();
+    return result;
+  }
+
   function installRunAICommandFallbackPatch() {
     const old =
       (typeof window.runAICommand === 'function') ? window.runAICommand :
@@ -18494,27 +18755,70 @@ setInterval(() => {
     if (!old || old.__fabrikaAliasPatched) return false;
 
     const patched = async function(userText) {
-      const plan = patchMakePlan(userText);
-      if (plan && plan.tool && typeof runAITool === 'function') {
-        try {
-          if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', plan.explain || 'Kayıtlı sorgu çalıştırılıyor.');
-          const result = await runAITool(plan.tool, plan.params || {});
-          if (plan.tool === 'sorgu' && typeof aiConsoleShowQuery === 'function') {
-            aiConsoleShowQuery(plan.params || {});
-          }
-          const spoken = (typeof summarizeResultForSpeech === 'function')
-            ? summarizeResultForSpeech(plan.tool, result)
-            : 'Sorgu çalıştırıldı.';
-          if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', spoken, result);
-          if (typeof speak === 'function') speak(spoken);
-          if (typeof renderAll === 'function') renderAll();
-          return result;
-        } catch(e) {
-          if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İşlem başarısız: ' + e.message);
-          throw e;
-        }
+      userText = (userText || '').trim();
+      if (!userText) return await old.apply(this, arguments);
+
+      // Sistem komutları (kayıtlı sorgu sayısı/listesi) doğrudan plana gider
+      const direct = patchMakePlan(userText);
+      const isSystemDirect = direct && direct.tool && direct.tool !== 'sorgu';
+      if (isSystemDirect && typeof runAITool === 'function') {
+        if (typeof aiConsoleLog === 'function') aiConsoleLog('user', userText);
+        try { return await runPlan(direct); }
+        catch (e) { if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İşlem başarısız: ' + e.message); throw e; }
       }
-      return await old.apply(this, arguments);
+
+      // Sorgu eşleştirme: adayları skorla
+      const cands = patchTopCandidates(userText, 5);
+      const top = cands[0];
+      const second = cands[1];
+
+      // Hiç makul aday yok → eski akışa (interpretCommand vb.) bırak
+      if (!top || top.score < 45) {
+        return await old.apply(this, arguments);
+      }
+
+      if (typeof aiConsoleLog === 'function') aiConsoleLog('user', userText);
+
+      // 1) Çok net eşleşme → doğrudan çalıştır
+      const cokNet = top.score >= 90 && (!second || top.score - second.score >= 20);
+      if (cokNet) {
+        try { return await runPlan(candidateToPlan(top)); }
+        catch (e) { if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İşlem başarısız: ' + e.message); throw e; }
+      }
+
+      // 2) Belirsiz (düşük skor ya da yakın 2 aday) → kullanıcıya sor
+      if (typeof aiConsoleLog === 'function') {
+        aiConsoleLog('ai', 'Tam emin olamadım. Aşağıdakilerden hangisini kastettiniz?');
+      }
+      let secim;
+      try { secim = await askWhichIntent(userText, cands); }
+      catch (_) { secim = 'cancel'; }
+
+      if (secim === 'cancel') {
+        if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İptal edildi.');
+        return null;
+      }
+
+      if (secim === null) {
+        // Hiçbiri değil → öğrenme kuyruğuna ekle
+        await queueUnmatched(userText, cands);
+        if (typeof aiConsoleLog === 'function') {
+          aiConsoleLog('ai', 'Anladım, bunu "yazılacak sorgular" listesine (öğrenme kuyruğu) ekledim. Bir yönetici uygun sorguyu tanımlayabilir.');
+        }
+        return null;
+      }
+
+      // Bir aday seçildi → öğren + çalıştır
+      try {
+        await learnAlias(secim.q.name, userText);
+        if (typeof aiConsoleLog === 'function') {
+          aiConsoleLog('ai', '✓ Öğrendim: bundan sonra "' + userText + '" deyince doğrudan "' + secim.q.name + '" çalışacak.');
+        }
+        return await runPlan(candidateToPlan(secim));
+      } catch (e) {
+        if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İşlem başarısız: ' + e.message);
+        throw e;
+      }
     };
     patched.__fabrikaAliasPatched = true;
     patched.__old = old;
@@ -18525,6 +18829,7 @@ setInterval(() => {
   }
 
   function installAll() {
+    const learnedN = applyLearnedAliases();
     const a = installInterpretPatch();
     const b = installLocalPatch();
     const c = installRunAICommandFallbackPatch();
@@ -18534,6 +18839,7 @@ setInterval(() => {
       localInterpret: b,
       runAICommand: c,
       queryCount: patchGetQueries().length,
+      ogrenilenAlias: learnedN,
       test: patchMakePlan('rolü olmayan kullanıcılar')
     });
   }
