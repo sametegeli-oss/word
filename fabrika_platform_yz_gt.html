@@ -16564,6 +16564,129 @@ AI_TOOLS.izinliler = {
   }
 };
 
+
+// ---- Yerel çoklu-tablo analiz araçları (Gemini/OpenAI gerekmeden çalışır) ----
+function aiDayStart(ts) { const d = ts ? new Date(ts) : new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+function aiMonthStart(ts) { const d = ts ? new Date(ts) : new Date(); d.setDate(1); d.setHours(0,0,0,0); return d.getTime(); }
+function aiSafeDateMs(v) { if (!v) return 0; if (typeof v === 'number') return v; const d = new Date(v); return isNaN(d.getTime()) ? 0 : d.getTime(); }
+function aiUserName(uid) { return getUser(uid)?.name || uid || '-'; }
+function aiRoleName(rid) { return (state.roles || []).find(r => r.id === rid)?.name || rid || '-'; }
+function aiDefName(did) { return getDef(did)?.name || did || '-'; }
+function aiOpenTasks() { return (state.tasks || []).filter(t => t.status === 'open'); }
+function aiRunningInstances() { return (state.instances || []).filter(i => i.status === 'running'); }
+
+AI_TOOLS.kullanilmayanRoller = { desc:'Kullanıcısı olmayan rolleri bulur.', risk:'safe', perm:'admin_roles_view', run: () => {
+  const used = new Set(); (state.users || []).forEach(u => (u.roles || []).forEach(r => used.add(r)));
+  const items = (state.roles || []).filter(r => !used.has(r.id)).map(r => ({ rolId:r.id, rol:r.name || r.id, aciklama:r.description || '-' }));
+  return { count: items.length, items };
+}};
+
+AI_TOOLS.gorevsizKullanicilar = { desc:'Hiç açık görevi olmayan kullanıcıları listeler.', risk:'safe', perm:'admin_users_view', run: () => {
+  const assigned = new Set(aiOpenTasks().filter(t => t.assigneeId).map(t => t.assigneeId));
+  const items = (state.users || []).filter(u => !assigned.has(u.id)).map(u => ({ id:u.id, kisi:u.name, roller:(u.roles || []).map(aiRoleName).join(', ') || '-' }));
+  return { count: items.length, items: items.slice(0,200) };
+}};
+
+AI_TOOLS.talepAcmayanKullanicilar = { desc:'Hiç talep açmamış kullanıcıları listeler.', risk:'safe', perm:'admin_users_view', run: () => {
+  const owners = new Set((state.instances || []).filter(i => i.ownerId).map(i => i.ownerId));
+  const items = (state.users || []).filter(u => !owners.has(u.id)).map(u => ({ id:u.id, kisi:u.name, roller:(u.roles || []).map(aiRoleName).join(', ') || '-' }));
+  return { count: items.length, items: items.slice(0,200) };
+}};
+
+AI_TOOLS.gorevsizAmaTalebiOlanlar = { desc:'Açık görevi olmayan ama açık talebi bulunan kullanıcıları listeler.', risk:'safe', perm:'workflows_view', run: () => {
+  const assigned = new Set(aiOpenTasks().filter(t => t.assigneeId).map(t => t.assigneeId));
+  const openOwners = new Map(); aiRunningInstances().forEach(i => { if (i.ownerId) openOwners.set(i.ownerId, (openOwners.get(i.ownerId) || 0) + 1); });
+  const items = (state.users || []).filter(u => openOwners.has(u.id) && !assigned.has(u.id)).map(u => ({ id:u.id, kisi:u.name, acikTalep:openOwners.get(u.id), acikGorev:0 }));
+  return { count: items.length, items };
+}};
+
+AI_TOOLS.hangiRolTalepAcmamis = { desc:'Hangi rolün kullanıcıları hiç talep açmamış analiz eder.', risk:'safe', perm:'admin_roles_view', run: () => {
+  const owners = new Set((state.instances || []).filter(i => i.ownerId).map(i => i.ownerId)); const roleUsers = {}; const roleOwners = {};
+  (state.users || []).forEach(u => (u.roles || []).forEach(r => { roleUsers[r] = (roleUsers[r] || 0) + 1; if (owners.has(u.id)) roleOwners[r] = (roleOwners[r] || 0) + 1; }));
+  const items = (state.roles || []).map(r => ({ rolId:r.id, rol:r.name || r.id, kullanici:roleUsers[r.id] || 0, talepAcanKullanici:roleOwners[r.id] || 0 })).filter(x => x.kullanici > 0 && x.talepAcanKullanici === 0);
+  return { count: items.length, items };
+}};
+
+AI_TOOLS.isimCozucu = { desc:'Kullanıcı, rol, süreç, talep ve görev idlerini adlara çevirir. Parametre: id', risk:'safe', perm:null, run: ({ id }) => {
+  if (!id) throw new Error('Çözülecek id belirtilmedi'); const sid = String(id);
+  const user = (state.users || []).find(u => u.id === sid); const role = (state.roles || []).find(r => r.id === sid); const def = (state.definitions || []).find(d => d.id === sid); const inst = (state.instances || []).find(i => i.id === sid); const task = (state.tasks || []).find(t => t.id === sid);
+  return { id:sid, kullanici:user?.name || null, rol:role?.name || null, surec:def?.name || null, talep: inst ? { surec:aiDefName(inst.defId), sahip:aiUserName(inst.ownerId), durum:inst.status } : null, gorev: task ? { baslik:task.title || task.id, atanan:aiUserName(task.assigneeId), durum:task.status } : null };
+}};
+
+AI_TOOLS.enYukluKisilerDetayli = { desc:'En yüklü kişileri isimleriyle, açık/tamamlanan görev sayısıyla gösterir. Parametre: limit', risk:'safe', perm:'workflows_view', run: ({ limit = 5 }) => {
+  const map = {}; (state.users || []).forEach(u => { map[u.id] = { id:u.id, kisi:u.name, acikGorev:0, tamamlananGorev:0, toplamGorev:0 }; });
+  (state.tasks || []).forEach(t => { if (!t.assigneeId) return; if (!map[t.assigneeId]) map[t.assigneeId] = { id:t.assigneeId, kisi:aiUserName(t.assigneeId), acikGorev:0, tamamlananGorev:0, toplamGorev:0 }; map[t.assigneeId].toplamGorev++; if (t.status === 'open') map[t.assigneeId].acikGorev++; if (t.status === 'done' || t.status === 'completed') map[t.assigneeId].tamamlananGorev++; });
+  const items = Object.values(map).filter(x => x.toplamGorev || x.acikGorev).sort((a,b) => b.acikGorev - a.acikGorev || b.toplamGorev - a.toplamGorev).slice(0, Math.max(1, Number(limit) || 5));
+  return { count: items.length, items };
+}};
+
+AI_TOOLS.buHaftaAcilanlar = { desc:'Son 7 günde açılan talepleri listeler/sayar.', risk:'safe', perm:'workflows_view', run: () => {
+  const start = Date.now() - 7 * 86400000; const items = (state.instances || []).filter(i => aiSafeDateMs(i.createdAt) >= start).sort((a,b) => aiSafeDateMs(b.createdAt) - aiSafeDateMs(a.createdAt));
+  return { count: items.length, items: items.slice(0,100).map(i => ({ id:i.id, surec:aiDefName(i.defId), sahip:aiUserName(i.ownerId), durum:i.status, tarih:new Date(aiSafeDateMs(i.createdAt)).toLocaleString('tr-TR') })) };
+}};
+AI_TOOLS.buAyAcilanlar = { desc:'Bu ay açılan talepleri listeler/sayar.', risk:'safe', perm:'workflows_view', run: () => {
+  const start = aiMonthStart(); const items = (state.instances || []).filter(i => aiSafeDateMs(i.createdAt) >= start).sort((a,b) => aiSafeDateMs(b.createdAt) - aiSafeDateMs(a.createdAt));
+  return { count: items.length, items: items.slice(0,100).map(i => ({ id:i.id, surec:aiDefName(i.defId), sahip:aiUserName(i.ownerId), durum:i.status, tarih:new Date(aiSafeDateMs(i.createdAt)).toLocaleString('tr-TR') })) };
+}};
+AI_TOOLS.bugunAcilanlar = { desc:'Bugün açılan talepleri listeler/sayar.', risk:'safe', perm:'workflows_view', run: () => {
+  const start = aiDayStart(); const items = (state.instances || []).filter(i => aiSafeDateMs(i.createdAt) >= start).sort((a,b) => aiSafeDateMs(b.createdAt) - aiSafeDateMs(a.createdAt));
+  return { count: items.length, items: items.slice(0,100).map(i => ({ id:i.id, surec:aiDefName(i.defId), sahip:aiUserName(i.ownerId), durum:i.status, tarih:new Date(aiSafeDateMs(i.createdAt)).toLocaleString('tr-TR') })) };
+}};
+AI_TOOLS.son24SaatGorevleri = { desc:'Son 24 saatte oluşturulan görevleri listeler.', risk:'safe', perm:'workflows_view', run: () => {
+  const start = Date.now() - 86400000; const items = (state.tasks || []).filter(t => aiSafeDateMs(t.createdAt) >= start).sort((a,b) => aiSafeDateMs(b.createdAt) - aiSafeDateMs(a.createdAt));
+  return { count: items.length, items: items.slice(0,100).map(t => ({ id:t.id, baslik:t.title || t.id, durum:t.status, atanan:aiUserName(t.assigneeId), talep:t.instanceId || '-', tarih:t.createdAt ? new Date(aiSafeDateMs(t.createdAt)).toLocaleString('tr-TR') : '-' })) };
+}};
+
+AI_TOOLS.ortalamaTamamlanmaSuresi = { desc:'Tamamlanan taleplerin ortalama tamamlanma süresini hesaplar.', risk:'safe', perm:'reports_view', run: () => {
+  const rows = (state.instances || []).filter(i => i.status === 'completed'); const durations = rows.map(i => { const start = aiSafeDateMs(i.createdAt); const end = aiSafeDateMs(i.completedAt || i.finishedAt || i.endAt || i.updatedAt || i.closedAt); return start && end && end >= start ? end - start : null; }).filter(x => x !== null); const avg = durations.length ? durations.reduce((a,b)=>a+b,0) / durations.length : 0;
+  return { tamamlananTalep: rows.length, hesaplanabilen: durations.length, ortalamaGun: durations.length ? +(avg / 86400000).toFixed(2) : null, not: durations.length ? '' : 'Tamamlanma tarihi alanı bulunamadı. completedAt/finishedAt/endAt/updatedAt/closedAt alanlarından biri gerekir.' };
+}};
+AI_TOOLS.ortalamaBeklemeSuresi = { desc:'Açık taleplerin ortalama bekleme süresini gün olarak hesaplar.', risk:'safe', perm:'reports_view', run: () => {
+  const rows = aiRunningInstances().filter(i => aiSafeDateMs(i.createdAt)); const avg = rows.length ? rows.reduce((a,i) => a + (Date.now() - aiSafeDateMs(i.createdAt)), 0) / rows.length : 0;
+  return { acikTalep: rows.length, ortalamaBeklemeGun: rows.length ? +(avg / 86400000).toFixed(2) : 0 };
+}};
+AI_TOOLS.slaAsanlar = { desc:'Belirtilen gün eşiğini aşan açık talepleri SLA ihlali olarak listeler. Parametre: gun', risk:'safe', perm:'reports_view', run: ({ gun = 3 }) => {
+  const g = Number(gun) || 3; const esik = Date.now() - g * 86400000; const items = aiRunningInstances().filter(i => aiSafeDateMs(i.createdAt) && aiSafeDateMs(i.createdAt) < esik).sort((a,b)=>aiSafeDateMs(a.createdAt)-aiSafeDateMs(b.createdAt)).map(i => ({ id:i.id, surec:aiDefName(i.defId), sahip:aiUserName(i.ownerId), mevcutAdim:i.currentStep || '-', beklemeGun:Math.floor((Date.now()-aiSafeDateMs(i.createdAt))/86400000) }));
+  return { gun:g, count: items.length, items: items.slice(0,100) };
+}};
+AI_TOOLS.enAktifGunSaat = { desc:'Talep açılışlarına göre en aktif gün ve saat dağılımını çıkarır.', risk:'safe', perm:'reports_view', run: () => {
+  const gun = {}, saat = {}; (state.instances || []).forEach(i => { const ms = aiSafeDateMs(i.createdAt); if (!ms) return; const d = new Date(ms); const g = d.toLocaleDateString('tr-TR', { weekday:'long' }); const h = String(d.getHours()).padStart(2,'0') + ':00'; gun[g] = (gun[g] || 0) + 1; saat[h] = (saat[h] || 0) + 1; }); const sortObj = obj => Object.entries(obj).map(([deger,sayi]) => ({ deger, sayi })).sort((a,b)=>b.sayi-a.sayi); return { gunler:sortObj(gun), saatler:sortObj(saat) };
+}};
+AI_TOOLS.gecenAyaGoreTalepArtisi = { desc:'Bu ay açılan talepleri geçen ayla karşılaştırır.', risk:'safe', perm:'reports_view', run: () => {
+  const now = new Date(); const thisStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime(); const buAy = (state.instances || []).filter(i => aiSafeDateMs(i.createdAt) >= thisStart).length; const gecenAy = (state.instances || []).filter(i => aiSafeDateMs(i.createdAt) >= prevStart && aiSafeDateMs(i.createdAt) < thisStart).length; const fark = buAy - gecenAy; return { buAy, gecenAy, fark, artisYuzde: gecenAy ? +((fark / gecenAy) * 100).toFixed(1) : null };
+}};
+AI_TOOLS.gorevTamamlamaOrani = { desc:'Kişi bazlı görev tamamlama oranını hesaplar.', risk:'safe', perm:'reports_view', run: () => {
+  const map = {}; (state.tasks || []).forEach(t => { const uid = t.assigneeId || '(atanmamış)'; if (!map[uid]) map[uid] = { id:uid, kisi:aiUserName(uid), toplam:0, tamamlanan:0, acik:0 }; map[uid].toplam++; if (t.status === 'done' || t.status === 'completed') map[uid].tamamlanan++; if (t.status === 'open') map[uid].acik++; });
+  const items = Object.values(map).map(x => ({ ...x, tamamlanmaYuzde:x.toplam ? +((x.tamamlanan / x.toplam) * 100).toFixed(1) : 0 })).sort((a,b)=>b.toplam-a.toplam); return { count:items.length, items };
+}};
+AI_TOOLS.talepBasinaOrtalamaGorev = { desc:'Talep başına ortalama görev sayısını hesaplar.', risk:'safe', perm:'reports_view', run: () => {
+  const instCount = (state.instances || []).length; const taskCount = (state.tasks || []).length; const byInst = {}; (state.tasks || []).forEach(t => { if (t.instanceId) byInst[t.instanceId] = (byInst[t.instanceId] || 0) + 1; });
+  return { talepSayisi:instCount, gorevSayisi:taskCount, talepBasinaOrtalamaGorev:instCount ? +(taskCount / instCount).toFixed(2) : 0, enCokGorevliTalepler:Object.entries(byInst).map(([id,n]) => ({ talep:id, gorev:n })).sort((a,b)=>b.gorev-a.gorev).slice(0,10) };
+}};
+AI_TOOLS.departmanBazliIsYuku = { desc:'Rol/departman bazlı açık görev yükünü hesaplar.', risk:'safe', perm:'reports_view', run: () => {
+  const byRole = {}; aiOpenTasks().forEach(t => { const u = getUser(t.assigneeId); const roles = (u?.roles && u.roles.length) ? u.roles : ['(rolsüz)']; roles.forEach(r => { if (!byRole[r]) byRole[r] = { rolId:r, rol:aiRoleName(r), acikGorev:0, kisi:new Set() }; byRole[r].acikGorev++; if (u?.id) byRole[r].kisi.add(u.id); }); });
+  const items = Object.values(byRole).map(x => ({ rolId:x.rolId, rol:x.rol, acikGorev:x.acikGorev, gorevliKisi:x.kisi.size })).sort((a,b)=>b.acikGorev-a.acikGorev); return { count:items.length, items };
+}};
+AI_TOOLS.bosKapasiteAnalizi = { desc:'Boşta kapasitesi olan ekip/kullanıcı analizini yapar. Parametre: esik', risk:'safe', perm:'reports_view', run: ({ esik = 0 }) => {
+  const counts = {}; aiOpenTasks().forEach(t => { if (t.assigneeId) counts[t.assigneeId] = (counts[t.assigneeId] || 0) + 1; }); const threshold = Number(esik) || 0;
+  const users = (state.users || []).map(u => ({ id:u.id, kisi:u.name, acikGorev:counts[u.id] || 0, roller:(u.roles || []).map(aiRoleName).join(', ') || '-' })).filter(u => u.acikGorev <= threshold).sort((a,b)=>a.acikGorev-b.acikGorev || String(a.kisi).localeCompare(String(b.kisi),'tr'));
+  return { esik:threshold, bosKullanici:users.length, items:users.slice(0,100) };
+}};
+AI_TOOLS.isDagitimOnerisi = { desc:'Atanmamış açık görevleri boşta olan kişilere dağıtmak için öneri üretir.', risk:'safe', perm:'reports_view', run: () => {
+  const unassigned = aiOpenTasks().filter(t => !t.assigneeId); const load = {}; (state.users || []).forEach(u => load[u.id] = 0); aiOpenTasks().forEach(t => { if (t.assigneeId) load[t.assigneeId] = (load[t.assigneeId] || 0) + 1; }); const candidates = (state.users || []).map(u => ({ id:u.id, kisi:u.name, acikGorev:load[u.id] || 0 })).sort((a,b)=>a.acikGorev-b.acikGorev);
+  const oneriler = unassigned.slice(0,50).map((t, idx) => { const c = candidates[idx % Math.max(1, candidates.length)]; return { gorevId:t.id, gorev:t.title || t.id, onerilenKisi:c ? c.kisi : 'uygun kişi yok', mevcutYuk:c ? c.acikGorev : null, talep:t.instanceId || '-' }; }); return { atanmamisGorev:unassigned.length, adayKisi:candidates.length, oneriler };
+}};
+AI_TOOLS.kisiKarsilastir = { desc:'İki kişiyi görev sayılarına göre karşılaştırır. Parametre: kisi1, kisi2', risk:'safe', perm:'reports_view', run: ({ kisi1, kisi2 }) => {
+  const find = name => (state.users || []).find(u => u.id === name || String(u.name).toLocaleLowerCase('tr-TR').includes(String(name || '').toLocaleLowerCase('tr-TR')));
+  const calc = u => { if (!u) return null; const tasks = (state.tasks || []).filter(t => t.assigneeId === u.id); return { id:u.id, kisi:u.name, acik:tasks.filter(t=>t.status === 'open').length, tamamlanan:tasks.filter(t=>t.status === 'done' || t.status === 'completed').length, toplam:tasks.length }; };
+  return { kisi1:calc(find(kisi1)), kisi2:calc(find(kisi2)) };
+}};
+AI_TOOLS.surecTikaniklikAnalizi = { desc:'Tıkanan süreçleri yerel veriyle analiz eder.', risk:'safe', perm:'reports_view', run: () => {
+  const byDef = {}; aiRunningInstances().forEach(i => { const key = i.defId || '(süreç yok)'; if (!byDef[key]) byDef[key] = { defId:key, surec:aiDefName(key), acikTalep:0, toplamBeklemeMs:0, enEskiMs:Infinity, adimlar:{} }; const ms = aiSafeDateMs(i.createdAt) || Date.now(); byDef[key].acikTalep++; byDef[key].toplamBeklemeMs += Date.now() - ms; byDef[key].enEskiMs = Math.min(byDef[key].enEskiMs, ms); const step = i.currentStep || '(adım yok)'; byDef[key].adimlar[step] = (byDef[key].adimlar[step] || 0) + 1; });
+  const items = Object.values(byDef).map(x => { const avgDays = x.acikTalep ? x.toplamBeklemeMs / x.acikTalep / 86400000 : 0; const score = x.acikTalep * 2 + avgDays; const adimlar = Object.entries(x.adimlar).map(([adim,sayi]) => ({ adim, sayi })).sort((a,b)=>b.sayi-a.sayi); return { defId:x.defId, surec:x.surec, acikTalep:x.acikTalep, ortalamaBeklemeGun:+avgDays.toFixed(2), enEskiBeklemeGun:x.enEskiMs === Infinity ? 0 : Math.floor((Date.now()-x.enEskiMs)/86400000), tikaniklikPuani:+score.toFixed(2), enKalabalikAdim:adimlar[0]?.adim || '-', adimlar }; }).sort((a,b)=>b.tikaniklikPuani-a.tikaniklikPuani);
+  return { count:items.length, items };
+}};
+
 // ---- Serbest sorgu aracı: YZ kendi sorgusunu yazar (SALT-OKUMA, güvenli) ----
 // İzinli koleksiyonlar ve gerektirdikleri yetki. Buraya olmayan koleksiyon sorgulanamaz.
 const QUERY_COLLECTIONS = {
@@ -16878,7 +17001,10 @@ function resolveToolAlias(name) {
     usertasks: 'kisininGorevleri', persontasks: 'kisininGorevleri',
     busiest: 'enYukluKisiler', topworkload: 'enYukluKisiler',
     onleave: 'izinliler', absent: 'izinliler',
-    analyze: 'analizYap', bottleneck: 'analizYap', analysis: 'analizYap'
+    analyze: 'analizYap', bottleneck: 'surecTikaniklikAnalizi', analysis: 'analizYap',
+    unusedroles: 'kullanilmayanRoller', userswithouttasks: 'gorevsizKullanicilar', userswithoutrequests: 'talepAcmayanKullanicilar',
+    workload: 'enYukluKisilerDetayli', capacity: 'bosKapasiteAnalizi', distribute: 'isDagitimOnerisi', sla: 'slaAsanlar',
+    thisweek: 'buHaftaAcilanlar', thismonth: 'buAyAcilanlar', today: 'bugunAcilanlar'
   };
   if (ALIASES[n]) return ALIASES[n];
   // Tam ada büyük/küçük harf duyarsız eşleşme (model sadece harf farkı yaptıysa)
@@ -17055,9 +17181,31 @@ function localInterpret(t) {
   if (gm && gm[1] && gm[1].length > 2 && !/kim|hangi|tüm|bütün|atanmam|sahipsiz|bo[şs]ta/.test(gm[1])) {
     return { tool: 'kisininGorevleri', params: { ad: gm[1].trim() }, explain: `"${gm[1].trim()}" kişisinin görevleri listeleniyor.` };
   }
-  if (/en yük[lü]ü|en çok görev|kim yoğun|en meşgul|iş yükü/.test(s)) return { tool: 'enYukluKisiler', params: {}, explain: 'En yüklü kişiler sıralanıyor.' };
+  if (/en yük[lü]ü|en çok görev|kim yoğun|en meşgul|iş yükü/.test(s)) return { tool: 'enYukluKisilerDetayli', params: {}, explain: 'En yüklü kişiler detaylı olarak sıralanıyor.' };
 
-  // Kayıtlı sorgular: "kayıtlı sorgular", "<ad> sorgusunu çalıştır"
+  // Çoklu tablo / yerel analiz araçları
+  if (/(kullan[ıi]c[ıi]s[ıi] olmayan rol|bo[şs] rol|kullan[ıi]lmayan rol)/.test(s)) return { tool: 'kullanilmayanRoller', params: {}, explain: 'Kullanıcısı olmayan roller bulunuyor.' };
+  if (/(hi[çc] görev[iı] olmayan kullan[ıi]c[ıi]|görevsiz kullan[ıi]c[ıi]|üzerinde görev olmayan)/.test(s)) return { tool: 'gorevsizKullanicilar', params: {}, explain: 'Hiç açık görevi olmayan kullanıcılar listeleniyor.' };
+  if (/(hi[çc] talep açmam[ıi][şs]|talep açmayan kullan[ıi]c[ıi])/.test(s)) return { tool: 'talepAcmayanKullanicilar', params: {}, explain: 'Hiç talep açmamış kullanıcılar listeleniyor.' };
+  if (/(görevi olmayan ama açık talebi olan|aç[ıi]k talebi olup görevi olmayan)/.test(s)) return { tool: 'gorevsizAmaTalebiOlanlar', params: {}, explain: 'Açık talebi olup açık görevi olmayan kullanıcılar bulunuyor.' };
+  if (/(hangi rol hi[çc] talep açmam[ıi][şs]|rol.*talep açmam)/.test(s)) return { tool: 'hangiRolTalepAcmamis', params: {}, explain: 'Talep açmamış roller analiz ediliyor.' };
+  if (/(bu hafta aç[ıi]lan talep|son 7 gün.*talep)/.test(s)) return { tool: 'buHaftaAcilanlar', params: {}, explain: 'Bu hafta açılan talepler listeleniyor.' };
+  if (/(bu ay aç[ıi]lan talep|ayl[ıi]k talep)/.test(s)) return { tool: 'buAyAcilanlar', params: {}, explain: 'Bu ay açılan talepler listeleniyor.' };
+  if (/(bug[üu]n aç[ıi]lan talep|günlük talep)/.test(s)) return { tool: 'bugunAcilanlar', params: {}, explain: 'Bugün açılan talepler listeleniyor.' };
+  if (/(son 24 saat.*görev|24 saatteki görev)/.test(s)) return { tool: 'son24SaatGorevleri', params: {}, explain: 'Son 24 saatteki görevler listeleniyor.' };
+  if (/(ortalama tamamlanma süresi|talep.*kaç günde tamamlan)/.test(s)) return { tool: 'ortalamaTamamlanmaSuresi', params: {}, explain: 'Ortalama talep tamamlanma süresi hesaplanıyor.' };
+  if (/(ortalama bekleme süresi|ortalama.*bekliyor)/.test(s)) return { tool: 'ortalamaBeklemeSuresi', params: {}, explain: 'Ortalama bekleme süresi hesaplanıyor.' };
+  if (/(sla|süre a[şs][ıi]m|süreyi aşan|geç kalan)/.test(s)) return { tool: 'slaAsanlar', params: {}, explain: 'SLA/süre aşımı olan talepler listeleniyor.' };
+  if (/(en aktif gün|en aktif saat|hangi saat.*yoğun)/.test(s)) return { tool: 'enAktifGunSaat', params: {}, explain: 'En aktif gün ve saat dağılımı çıkarılıyor.' };
+  if (/(geçen aya göre|geçen ay.*art[ıi][şs]|talep art[ıi][şs][ıi])/.test(s)) return { tool: 'gecenAyaGoreTalepArtisi', params: {}, explain: 'Geçen aya göre talep artışı hesaplanıyor.' };
+  if (/(tamamlama oran[ıi]|görev tamamlama)/.test(s)) return { tool: 'gorevTamamlamaOrani', params: {}, explain: 'Kişi bazlı görev tamamlama oranı hesaplanıyor.' };
+  if (/(talep ba[şs][ıi]na.*görev|ortalama görev say[ıi]s[ıi])/.test(s)) return { tool: 'talepBasinaOrtalamaGorev', params: {}, explain: 'Talep başına ortalama görev sayısı hesaplanıyor.' };
+  if (/(departman.*iş yükü|rol bazl[ıi].*iş yükü|ekip yükü)/.test(s)) return { tool: 'departmanBazliIsYuku', params: {}, explain: 'Departman/rol bazlı iş yükü hesaplanıyor.' };
+  if (/(bo[şs] kapasite|bo[şs]ta kapasite|bo[şs]ta olan ekip|kapasitesi olan)/.test(s)) return { tool: 'bosKapasiteAnalizi', params: {}, explain: 'Boş kapasite analizi yapılıyor.' };
+  if (/(iş da[ğg][ıi]t[ıi]m öner|görevleri kime ver|atanmam[ıi][şs].*da[ğg][ıi]t)/.test(s)) return { tool: 'isDagitimOnerisi', params: {}, explain: 'İş dağıtım önerisi hazırlanıyor.' };
+  if (/(tıkan|tikan|darbo[ğg]az|hangi süreç.*sorun|hangi süreç.*bekliyor)/.test(s)) return { tool: 'surecTikaniklikAnalizi', params: {}, explain: 'Süreç tıkanıklığı yerel veriyle analiz ediliyor.' };
+
+  // Kayıtlı sorgular: "kayıtlı sorgular", "<ad> sorgusunu çalıştır""
   if (/(kay[ıi]tl[ıi] sorgu(lar)?|kaydedilmi[şs] sorgu)/.test(s) && !/çal[ıi][şs]t[ıi]r|aç/.test(s)) {
     return { tool: 'kayitliSorgular', params: {}, explain: 'Kayıtlı sorgular listeleniyor.' };
   }
