@@ -9201,7 +9201,9 @@ function openQueryWizardForNewQuery() {
     infoHtml: '<div style="font-size:12px;color:var(--text-dim);">Yeni kayıtlı sorgu oluşturun. Kaydetmeden önce Test Et ile deneyin.</div>',
     name: '',
     desc: '',
-    params: { koleksiyon: 'users', limit: 50 }
+    params: { koleksiyon: 'users', limit: 50 },
+    responseTemplate: '',
+    speechTemplate: ''
   });
 }
 
@@ -9218,11 +9220,13 @@ function openQueryWizardForSavedQuery(id) {
     infoHtml: `<div style="font-size:11px;color:var(--text-mute);margin-bottom:3px;">Düzenlenen sorgu</div><div style="font-weight:600;">${escapeHtml(q.name || '')}</div>${sourceNote}`,
     name: q.name || '',
     desc: q.aciklama || '',
-    params: q.params || { koleksiyon: 'users', limit: 50 }
+    params: q.params || { koleksiyon: 'users', limit: 50 },
+    responseTemplate: q.responseTemplate || '',
+    speechTemplate: q.speechTemplate || ''
   });
 }
 
-function openQueryWizardModal({title, infoHtml, name, desc, params}) {
+function openQueryWizardModal({title, infoHtml, name, desc, params, responseTemplate, speechTemplate}) {
   const collections = Object.keys(QUERY_COLLECTIONS || {});
   const overlay = document.createElement('div');
   overlay.id = 'query-wizard-modal';
@@ -9255,7 +9259,9 @@ function openQueryWizardModal({title, infoHtml, name, desc, params}) {
           </div>
           <div>
             <div class="form-field"><label>Oluşan sorgu JSON</label><textarea id="qw-json" style="min-height:260px;font-family:var(--mono);font-size:12px;" oninput=""></textarea></div>
-            <div id="qw-test-result" style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:120px;max-height:220px;overflow:auto;">Önce “Test Et” ile sorguyu deneyin.</div>
+            <div class="form-field"><label>Kullanıcıya gösterilecek metin şablonu</label><textarea id="qw-response-template" style="min-height:110px;font-family:var(--mono);font-size:12px;" oninput="qWizardRefreshPreview()" placeholder="Boş kalırsa sistem otomatik anlaşılır metin üretir."></textarea><div class="field-hint">Kullanılabilir: {{queryName}}, {{collection}}, {{count}}, {{#rows}}...{{/rows}}, {{#groups}}...{{/groups}}</div></div>
+            <div class="form-field"><label>Sesli cevap şablonu</label><textarea id="qw-speech-template" style="min-height:70px;font-family:var(--mono);font-size:12px;" oninput="qWizardRefreshPreview()" placeholder="Boş kalırsa kullanıcı metni veya otomatik kısa özet okunur."></textarea></div>
+            <div class="form-field"><label>Test sonucu / kullanıcı metni</label><div id="qw-test-result" style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:120px;max-height:220px;overflow:auto;">Önce “Test Et” ile sorguyu deneyin.</div></div>
           </div>
         </div>
       </div>
@@ -9267,10 +9273,15 @@ function openQueryWizardModal({title, infoHtml, name, desc, params}) {
     </div>`;
   document.body.appendChild(overlay);
   qWizardApplyParams(params || { koleksiyon: 'users', limit: 50 });
+  const rt = document.getElementById('qw-response-template');
+  const st = document.getElementById('qw-speech-template');
+  if (rt) rt.value = responseTemplate || qWizardDefaultResponseTemplate(params || {}, name || '');
+  if (st) st.value = speechTemplate || '';
 }
 
 function openQueryWizardForLearning(id) {
   _queryWizardLearningId = id;
+  _queryWizardEditId = null;
   const item = (state.aiLearningQueue || []).find(x => x.id === id);
   if (!item) { notify('Kuyruk kaydı bulunamadı', 'error'); return; }
   const collections = Object.keys(QUERY_COLLECTIONS || {});
@@ -9308,7 +9319,9 @@ function openQueryWizardForLearning(id) {
           </div>
           <div>
             <div class="form-field"><label>Oluşan sorgu JSON</label><textarea id="qw-json" style="min-height:260px;font-family:var(--mono);font-size:12px;" oninput=""></textarea></div>
-            <div id="qw-test-result" style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:120px;max-height:220px;overflow:auto;">Önce “Test Et” ile sorguyu deneyin.</div>
+            <div class="form-field"><label>Kullanıcıya gösterilecek metin şablonu</label><textarea id="qw-response-template" style="min-height:110px;font-family:var(--mono);font-size:12px;" oninput="qWizardRefreshPreview()" placeholder="Boş kalırsa sistem otomatik anlaşılır metin üretir."></textarea><div class="field-hint">Kullanılabilir: {{queryName}}, {{collection}}, {{count}}, {{#rows}}...{{/rows}}, {{#groups}}...{{/groups}}</div></div>
+            <div class="form-field"><label>Sesli cevap şablonu</label><textarea id="qw-speech-template" style="min-height:70px;font-family:var(--mono);font-size:12px;" oninput="qWizardRefreshPreview()" placeholder="Boş kalırsa kullanıcı metni veya otomatik kısa özet okunur."></textarea></div>
+            <div class="form-field"><label>Test sonucu / kullanıcı metni</label><div id="qw-test-result" style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:120px;max-height:220px;overflow:auto;">Önce “Test Et” ile sorguyu deneyin.</div></div>
           </div>
         </div>
       </div>
@@ -9321,6 +9334,10 @@ function openQueryWizardForLearning(id) {
   document.body.appendChild(overlay);
   qWizardRefreshFields();
   qWizardUsePreset('auto');
+  const rt = document.getElementById('qw-response-template');
+  const st = document.getElementById('qw-speech-template');
+  if (rt) rt.value = qWizardDefaultResponseTemplate(JSON.parse(document.getElementById('qw-json')?.value || '{}'), suggestedName);
+  if (st) st.value = '';
 }
 
 function closeQueryWizard() {
@@ -9328,6 +9345,108 @@ function closeQueryWizard() {
   _queryWizardLearningId = null;
   _queryWizardEditId = null;
 }
+
+
+function qWizardGetTemplates() {
+  return {
+    responseTemplate: (document.getElementById('qw-response-template')?.value || '').trim(),
+    speechTemplate: (document.getElementById('qw-speech-template')?.value || '').trim()
+  };
+}
+
+function qWizardDefaultResponseTemplate(params, name) {
+  params = params || {};
+  if (params.grupla) {
+    return 'Toplam {{count}} kayıt bulundu.\n\n{{#groups}}• {{deger}} : {{sayi}} adet\n{{/groups}}';
+  }
+  const col = params.koleksiyon || 'kayıt';
+  if (col === 'users') return 'Toplam {{count}} kullanıcı bulundu.\n\n{{#rows}}{{no}}. {{name}} {{email}} {{roles}}\n{{/rows}}';
+  if (col === 'tasks') return 'Toplam {{count}} görev bulundu.\n\n{{#rows}}{{no}}. {{title}} - {{assigneeId}}\n{{/rows}}';
+  if (col === 'instances') return 'Toplam {{count}} talep bulundu.\n\n{{#rows}}{{no}}. {{id}} - {{defId}} - {{status}}\n{{/rows}}';
+  return 'Toplam {{count}} kayıt bulundu.\n\n{{#rows}}{{no}}. {{id}} {{name}} {{title}}\n{{/rows}}';
+}
+
+function humanizeQueryValue(field, value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (Array.isArray(value)) return value.map(v => humanizeQueryValue(field, v)).filter(Boolean).join(', ');
+  if (field === 'roles') {
+    const r = (state.roles || []).find(x => x.id === value || x.name === value);
+    return r ? r.name : String(value);
+  }
+  if (field === 'defId') return (typeof getDef === 'function' ? (getDef(value)?.name || value) : value);
+  if (field === 'ownerId' || field === 'assigneeId' || field === 'manager') return (typeof getUser === 'function' ? (getUser(value)?.name || value) : value);
+  if (field === 'status') {
+    const m = { running:'Açık', completed:'Tamamlandı', rejected:'Reddedildi', open:'Açık', done:'Tamamlandı' };
+    return m[value] || String(value);
+  }
+  if (/date|createdAt|updatedAt|hireDate/i.test(field)) {
+    try {
+      if (typeof value === 'number') return new Date(value).toLocaleDateString('tr-TR');
+      if (/^\d{4}-\d{2}-\d{2}/.test(String(value))) return new Date(value).toLocaleDateString('tr-TR');
+    } catch(_) {}
+  }
+  return String(value);
+}
+
+function applyQueryTextTemplate(template, result, meta = {}) {
+  if (!template) return '';
+  const rows = Array.isArray(result.items) ? result.items : [];
+  const groups = Array.isArray(result.gruplar) ? result.gruplar : [];
+  const count = result.gruplandi ? (result.toplamKayit || 0) : (result.toplam ?? rows.length);
+  const base = {
+    queryName: meta.queryName || result.kayitliSorgu || '',
+    collection: result.koleksiyon || meta.collection || '',
+    count,
+    shown: result.donen ?? rows.length,
+    groupField: result.gruplandi || ''
+  };
+  const fill = (txt, obj) => String(txt).replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => {
+    if (key === 'count') return String(base.count);
+    if (key === 'queryName') return base.queryName;
+    if (key === 'collection') return base.collection;
+    if (key === 'shown') return String(base.shown);
+    if (key === 'groupField') return base.groupField;
+    if (key === 'no') return String(obj.__no || '');
+    if (key === 'deger' || key === 'sayi') return obj[key] === undefined ? '' : String(obj[key]);
+    return humanizeQueryValue(key, obj[key]);
+  });
+  let out = template;
+  out = out.replace(/{{#groups}}([\s\S]*?){{\/groups}}/g, (_, inner) => groups.map((g, i) => fill(inner, {...g, __no:i+1})).join(''));
+  out = out.replace(/{{#rows}}([\s\S]*?){{\/rows}}/g, (_, inner) => rows.slice(0, 50).map((r, i) => fill(inner, {...r, __no:i+1})).join(''));
+  out = fill(out, {});
+  return out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function formatQueryResultAsUserText(result, meta = {}) {
+  if (!result) return 'Sonuç üretilemedi.';
+  const templateText = meta.responseTemplate || result.responseTemplate || '';
+  const templated = applyQueryTextTemplate(templateText, result, meta);
+  if (templated) return templated;
+
+  if (Array.isArray(result.gruplar)) {
+    const toplam = result.toplamKayit || 0;
+    if (!result.gruplar.length) return 'Bu sorguya uygun kayıt bulunamadı.';
+    const lines = result.gruplar.slice(0, 25).map(g => `• ${g.deger || '(boş)'} : ${g.sayi} adet`);
+    return `Toplam ${toplam} kayıt bulundu.\n\n${lines.join('\n')}`;
+  }
+
+  if (Array.isArray(result.items)) {
+    const col = result.koleksiyon || 'kayıt';
+    const label = col === 'users' ? 'kullanıcı' : col === 'tasks' ? 'görev' : col === 'instances' ? 'talep' : 'kayıt';
+    const total = result.toplam ?? result.items.length;
+    if (!result.items.length) return `Bu sorguya uygun ${label} bulunamadı.`;
+    const lines = result.items.slice(0, 25).map((r, i) => {
+      const main = humanizeQueryValue('name', r.name) || humanizeQueryValue('title', r.title) || humanizeQueryValue('id', r.id) || `${label} ${i+1}`;
+      const details = Object.keys(r).filter(k => !['id','name','title'].includes(k)).map(k => humanizeQueryValue(k, r[k])).filter(Boolean).slice(0, 4).join(' - ');
+      return `${i+1}. ${main}${details ? ' - ' + details : ''}`;
+    });
+    const more = total > result.items.length ? `\n\n${result.items.length} / ${total} kayıt gösteriliyor.` : '';
+    return `Toplam ${total} ${label} bulundu.\n\n${lines.join('\n')}${more}`;
+  }
+  if (typeof result.count === 'number') return `${result.count} sonuç bulundu.`;
+  return 'İşlem tamamlandı.';
+}
+window.formatQueryResultAsUserText = formatQueryResultAsUserText;
 
 async function testQueryWizard() {
   const box = document.getElementById('qw-test-result');
@@ -9348,6 +9467,7 @@ async function saveQueryWizard() {
     const name = (document.getElementById('qw-name')?.value || '').trim();
     const desc = (document.getElementById('qw-desc')?.value || '').trim();
     const params = JSON.parse(document.getElementById('qw-json')?.value || '{}');
+    const templates = qWizardGetTemplates();
     await AI_TOOLS.sorgu.run(params); // kaydetmeden önce doğrula
 
     if (_queryWizardEditId) {
@@ -9360,6 +9480,8 @@ async function saveQueryWizard() {
         name,
         aciklama: desc,
         params,
+        responseTemplate: templates.responseTemplate,
+        speechTemplate: templates.speechTemplate,
         source: 'local',
         updatedBy: state.currentUser,
         updatedAt: Date.now()
@@ -9368,7 +9490,7 @@ async function saveQueryWizard() {
       await persistSavedQuery(updated);
       notify('Sorgu güncellendi', 'success');
     } else {
-      await saveNamedQuery(name, params, desc);
+      await saveNamedQuery(name, params, desc, templates.responseTemplate, templates.speechTemplate);
       notify('Sorgu kaydedildi', 'success');
     }
 
@@ -9387,6 +9509,8 @@ window.qWizardRefreshPreview = qWizardRefreshPreview;
 window.qWizardUsePreset = qWizardUsePreset;
 window.testQueryWizard = testQueryWizard;
 window.saveQueryWizard = saveQueryWizard;
+window.qWizardGetTemplates = qWizardGetTemplates;
+window.qWizardDefaultResponseTemplate = qWizardDefaultResponseTemplate;
 
 function renderAIFormBuilder(c) {
   const canEdit = hasPermission(state.currentUser, 'admin_processes_edit');
@@ -17181,7 +17305,7 @@ async function loadQueryCatalogFromGitHub(showNotif = false) {
       const id = 'gh_' + (typeof slugifyTR === 'function' ? slugifyTR(item.name) : item.name.toLowerCase()).replace(/-/g, '_').replace(/[^a-z0-9_]/g, '');
       state.savedQueries.push({
         id, name: item.name, aciklama: item.aciklama || item.description || '',
-        params: item.params, source: 'github', createdAt: item.createdAt || Date.now()
+        params: item.params, responseTemplate: item.responseTemplate || '', speechTemplate: item.speechTemplate || '', source: 'github', createdAt: item.createdAt || Date.now()
       });
       n++;
     });
@@ -17265,7 +17389,7 @@ async function persistSavedQuery(q) {
 }
 
 // Yeni kayıtlı sorgu oluştur (params = sorgu aracının parametreleri)
-async function saveNamedQuery(name, params, aciklama = '') {
+async function saveNamedQuery(name, params, aciklama = '', responseTemplate = '', speechTemplate = '') {
   if (!hasPermission(state.currentUser, SAVED_QUERY_EDIT_PERM)) throw new Error('Sorgu kaydetme yetkiniz yok');
   if (!name || !name.trim()) throw new Error('Sorguya bir isim verin');
   if (!params || !params.koleksiyon) throw new Error('Geçersiz sorgu: koleksiyon belirtilmemiş');
@@ -17275,6 +17399,8 @@ async function saveNamedQuery(name, params, aciklama = '') {
     name: name.trim(),
     aciklama: (aciklama || '').trim(),
     params,
+    responseTemplate: (responseTemplate || '').trim(),
+    speechTemplate: (speechTemplate || '').trim(),
     source: 'local',
     createdBy: state.currentUser,
     createdAt: Date.now()
@@ -17327,7 +17453,9 @@ AI_TOOLS.kayitliSorguCalistir = {
       throw new Error(`"${ad}" adında kayıtlı sorgu bulunamadı. Mevcut: ${liste}`);
     }
     const result = await AI_TOOLS.sorgu.run(q.params || {});
-    return { kayitliSorgu: q.name, ...result };
+    const userText = formatQueryResultAsUserText(result, { queryName: q.name, responseTemplate: q.responseTemplate || '' });
+    const speechText = applyQueryTextTemplate(q.speechTemplate || '', result, { queryName: q.name }) || userText;
+    return { kayitliSorgu: q.name, userText, speechText, responseTemplate: q.responseTemplate || '', ...result };
   }
 };
 
@@ -17874,6 +18002,8 @@ async function _runAICommandInner(userText) {
 // Sonuçtan kısa, sesli okunabilir bir özet üret
 function summarizeResultForSpeech(tool, r) {
   if (!r) return 'İşlem tamamlandı.';
+  if (r.speechText) return r.speechText;
+  if (r.userText) return r.userText;
   if (r.analiz) return r.analiz;
   if (tool === 'kayitliSorgular') return r.count ? `${r.count} kayıtlı sorgu var.` : 'Henüz kayıtlı sorgu yok.';
   if (tool === 'sorguKaydet') return r.kaydedildi ? `"${r.ad}" adıyla kaydedildi.` : 'Kaydedilemedi.';
@@ -17882,8 +18012,7 @@ function summarizeResultForSpeech(tool, r) {
     return `"${r.kayitliSorgu}": ${r.toplam} kayıt eşleşti.`;
   }
   if (tool === 'sorgu') {
-    if (r.gruplandi) return r.enYuksek ? `En fazla "${r.enYuksek.deger}" (${r.enYuksek.sayi} kayıt). Toplam ${r.toplamKayit} kayıt gruplandı.` : 'Gruplanacak kayıt bulunamadı.';
-    return `${r.koleksiyon} tablosunda ${r.toplam} kayıt eşleşti, ${r.donen} tanesi gösteriliyor.`;
+    return formatQueryResultAsUserText(r);
   }
   if (tool === 'kullaniciDetay') return `${r.ad}, ${r.roller} rolünde, ${r.acikGorev} açık görevi var.`;
   if (tool === 'talepDetay') return `${r.surec} talebi ${r.durum} durumunda, ${r.suandakiAdim} adımında, ${r.gunSayisi} gündür açık.`;
