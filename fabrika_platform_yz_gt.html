@@ -16721,68 +16721,6 @@ const QUERY_COLLECTIONS = {
 };
 
 // Tek bir filtre koşulunu uygula. op: eq, ne, gt, gte, lt, lte, contains, in, exists
-// Katalog Türkçe slug'ını (mudur, uretim, satis...) gerçek rol ID'lerine çevirir.
-// Veri tabanında rol ID'leri karışık olabilir: bazıları İngilizce (manager, worker, hr),
-// bazıları Türkçe (konfeksiyon_uretim, pazarlama_satis). Bu fonksiyon köprü kurar.
-function resolveRoleSlugToIds(needleSlug) {
-  const out = new Set();
-  if (!needleSlug) return out;
-
-  const slug = x => String(x ?? '').toLocaleLowerCase('tr-TR')
-    .replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u')
-    .replace(/[_\s-]+/g,' ').trim();
-
-  const n = slug(needleSlug);
-
-  // Bilinen Türkçe slug → olası rol adı/ID parçaları köprüsü.
-  // (rol ID veya adı bu parçalardan birini içeriyorsa eşleşir)
-  const KOPRU = {
-    'mudur': ['mudur', 'manager'],
-    'isci': ['isci', 'worker', 'calisan'],
-    'yonetici': ['yonetici', 'yonetim', 'manager', 'admin'],
-    'uretim': ['uretim', 'konfeksiyon uretim', 'konfeksiyon', 'production'],
-    'satis': ['satis', 'pazarlama satis', 'sales'],
-    'pazarlama': ['pazarlama', 'pazarlama satis', 'marketing'],
-    'insan kaynaklari': ['insan kaynaklari', 'hr'],
-    'satin alma': ['satin alma', 'satinalma', 'purchasing'],
-    'muhasebe': ['muhasebe', 'mali isler', 'accounting', 'finans'],
-    'finans': ['finans', 'mali isler', 'finance'],
-    'bakim': ['bakim', 'bakim teknik', 'maintenance'],
-    'kalite': ['kalite', 'kalite sefi', 'quality'],
-    'admin': ['admin', 'sistem yoneticisi'],
-    'planlama': ['planlama', 'planning'],
-    'depo': ['depo', 'warehouse'],
-    'sevkiyat': ['sevkiyat', 'shipping'],
-    'operator': ['operator'],
-    'isg': ['isg', 'guvenlik', 'is guvenligi'],
-    'bilgi islem': ['bilgi islem', 'it']
-  };
-
-  const parcalar = new Set([n, ...((KOPRU[n] || []))]);
-
-  const roller = (typeof state !== 'undefined' && Array.isArray(state.roles)) ? state.roles : [];
-  for (const r of roller) {
-    if (!r) continue;
-    const rid = slug(r.id);
-    const rname = slug(r.name);
-    for (const p of parcalar) {
-      if (!p) continue;
-      // ID veya ad, aranan parçaya eşit ya da onu içeriyorsa bu rolü hedefe ekle
-      if (rid === p || rname === p || rid.includes(p) || rname.includes(p) || p.includes(rid)) {
-        out.add(slug(r.id));
-        out.add(String(r.id));
-        break;
-      }
-    }
-  }
-
-  // Hiç rol tanımı eşleşmediyse, en azından slug'ın kendisini hedef kabul et
-  // (ör. "kalite" gibi ID'si zaten eşleşenler için yukarıda yakalanır; buraya nadiren düşer)
-  if (!out.size) { out.add(n); for (const p of parcalar) out.add(p); }
-
-  return out;
-}
-
 function applyQueryFilter(row, f) {
   const v = row ? row[f.field] : undefined;
   const t = f.value;
@@ -16793,28 +16731,9 @@ function applyQueryFilter(row, f) {
     case 'gte': return v >= t;
     case 'lt':  return v < t;
     case 'lte': return v <= t;
-    case 'contains': {
-      const slug = x => String(x ?? '').toLocaleLowerCase('tr-TR')
-        .replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u')
-        .replace(/[_\s-]+/g,' ').trim();
-      const needle = slug(t);
-
-      // 'roles' alanı için akıllı çözümleme: katalogdaki Türkçe slug (mudur, uretim, satis...)
-      // gerçek rol ID'lerine (manager, konfeksiyon_uretim, pazarlama_satis...) çevrilir.
-      if (f.field === 'roles' && Array.isArray(v)) {
-        const hedefIdler = resolveRoleSlugToIds(needle);
-        if (hedefIdler.size) {
-          return v.some(el => hedefIdler.has(slug(el)) || hedefIdler.has(String(el)));
-        }
-        // Çözümlenemezse normalize + kısmi eşleşmeye düş
-        return v.some(el => slug(el).includes(needle));
-      }
-
-      if (Array.isArray(v)) {
-        return v.some(el => slug(el).includes(needle));
-      }
-      return slug(v).includes(needle);
-    }
+    case 'contains':
+      if (Array.isArray(v)) return v.includes(t);
+      return String(v ?? '').toLocaleLowerCase('tr-TR').includes(String(t).toLocaleLowerCase('tr-TR'));
     case 'in':  return Array.isArray(t) && t.includes(v);
     case 'exists': return (v !== undefined && v !== null && v !== '');
     default: throw new Error('Bilinmeyen operatör: ' + f.op);
@@ -17266,10 +17185,7 @@ function localInterpret(t) {
   if (m && m[1] && m[1].trim()) return { tool: 'rolOlustur', params: { ad: m[1].trim() }, explain: `"${m[1].trim()}" rolü oluşturulacak.` };
   if (/(rol olu[şs]tur|yeni rol|rol ekle)/.test(s)) return { tool: 'rolOlustur', params: { ad: t.replace(/.*rol/i,'').replace(/(olu[şs]tur|a[çc]|ekle)/gi,'').trim() }, explain: 'Rol oluşturulacak.' };
   // Kullanıcı oluştur — "tanımla", "kaydet", "ekle", "aç", "oluştur" + araya sıfat (ör. pazarlamacı) girebilir
-  // ÖNEMLİ: Listeleme/sorgulama niyeti taşıyan cümleler (listele, göster, hangi, kim,
-  // "kullanıcılar" çoğulu, en yeni/eski/aktif... vb.) oluşturma sanılmamalı.
-  const _kullaniciOlusturmaListeleme = /listele|göster|gö/.test(s) || /\bkullan[ıi]c[ıi]lar\b|\bpersoneller\b|\bçalışanlar\b|\belemanlar\b/.test(s) || /\bhangi\b|\bkim(ler)?\b|\bne kadar\b|\bka[çc]\b|\bsay[ıi]s[ıi]\b|\bgiri[şs]li\b|\bgirenler\b|\bgiren\b|\bdağ[ıi]l[ıi]m|\bsiral|\bsırala|\bs[üu]z|\bfiltrele|\blistesi\b/.test(s);
-  if (!_kullaniciOlusturmaListeleme && /(kullanıcı|personel|çalışan|eleman)[^.]*\b(olu[şs]tur|tanımla|kaydet|ekle)\b|\b(olu[şs]tur|tanımla|kaydet)[^.]*\b(kullanıcı|personel|çalışan|eleman)\b|\b(yeni|bir)\b[^.]*\b(kullanıcı|personel|çalışan|eleman)\b[^.]*\b(olu[şs]tur|tanımla|kaydet|ekle)\b/.test(s)) {
+  if (/(kullanıcı|personel|çalışan|eleman)[^.]*\b(olu[şs]tur|a[çc]|ekle|tanımla|kaydet|gir)|\b(olu[şs]tur|tanımla|ekle|kaydet)[^.]*\b(kullanıcı|personel|çalışan|eleman)|(yeni|bir)\b[^.]*\b(kullanıcı|personel|çalışan|eleman)/.test(s)) {
     // İsim çıkarımı: "ahmet yavuz adında", "adı ahmet yavuz olan", "ahmet yavuz isimli" gibi kalıplar
     let ad = '';
     let am = t.match(/([a-zçğıöşüA-ZÇĞİÖŞÜ]+(?:\s+[a-zçğıöşüA-ZÇĞİÖŞÜ]+)?)\s*(?:adında|adıyla|isminde|isimli|ismiyle)/);
@@ -18416,36 +18332,6 @@ setInterval(() => {
       if (name.includes('en yeni ise giren')) best += 40;
     }
 
-    // "en yeni girişli/giren kullanıcılar", "son giren kullanıcılar" → işe giriş sorgusu;
-    // "kullanicilar" kelimesi yüzünden "Tüm kullanıcılar"a kaymasın.
-    if (/(giris|girisli|giren|girenler|girdi|baslayan)/.test(s) && /(yeni|son)/.test(s)) {
-      if (name.includes('en yeni ise giren')) best += 45;
-      if (name.includes('en yeni ise girenler')) best += 45;
-      if (name === 'tum kullanicilar') best -= 60;
-    }
-    if (/(giris|girisli|giren|girenler|girdi|baslayan)/.test(s) && /(eski|kidemli|ilk)/.test(s)) {
-      if (name.includes('ise giris tarihine gore') || name.includes('en eski ise giren')) best += 45;
-      if (name === 'tum kullanicilar') best -= 60;
-    }
-
-    // Rol adı + kullanıcı/personel: rol-filtreli sorgu, filtresiz "Tüm kullanıcılar"ı ezmeli.
-    // ör. "müdür kullanıcılar", "üretim personeli", "satış ekibi"
-    if (/\b(kullanic|personel|calisan|eleman|ekip|ekibi)/.test(s)) {
-      const ROL_SLUG = ['insan_kaynaklari','satin_alma','uretim','pazarlama','muhasebe','mudur','planlama','kalite','depo','sevkiyat','bakim','satis','admin','isci','operator','yonetici','isg','finans'];
-      // metinde geçen rol slug'ı (insan kaynaklari / satin alma gibi iki kelimeliler için boşluklu da kontrol)
-      const rolGecen = ROL_SLUG.find(slug => {
-        const sp = slug.replace(/_/g, ' ');
-        return s.includes(slug) || s.includes(sp);
-      });
-      if (rolGecen) {
-        const filtreSlug = (q.params && Array.isArray(q.params.filtreler))
-          ? q.params.filtreler.find(f => f && f.field === 'roles' && f.op === 'contains')?.value
-          : null;
-        if (filtreSlug === rolGecen) best += 50;       // doğru rol-filtreli sorgu
-        if (name === 'tum kullanicilar') best -= 60;    // filtresiz liste geri planda
-      }
-    }
-
     return best;
   }
 
@@ -18557,195 +18443,6 @@ setInterval(() => {
     return true;
   }
 
-  // ===================================================================
-  // ÖĞRENME DÖNGÜSÜ
-  // Düşük/belirsiz skorda kullanıcıya "hangisi?" sorulur.
-  // Seçilen → o sorguya alias olarak öğrenilir (localStorage + Firestore).
-  // Hiçbiri → öğrenme kuyruğuna (yazılacak sorgular) eklenir.
-  // ===================================================================
-  const LEARN_LS_KEY = 'FABRIKA_LEARNED_ALIASES';   // { "Sorgu Adı": ["alias1","alias2"] }
-  const QUEUE_LS_KEY = 'FABRIKA_LEARNING_QUEUE';     // [ {text, candidates, at, status} ]
-
-  function lsGet(key, def) {
-    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch (_) { return def; }
-  }
-  function lsSet(key, val) {
-    try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (_) { return false; }
-  }
-
-  // Öğrenilen alias'ları katalog sorgularının aliases dizisine enjekte et (kalıcı etki).
-  function applyLearnedAliases() {
-    const learned = lsGet(LEARN_LS_KEY, {});
-    const list = patchGetQueries();
-    let n = 0;
-    for (const q of list) {
-      const arr = learned[q.name];
-      if (Array.isArray(arr) && arr.length) {
-        q.aliases = Array.isArray(q.aliases) ? q.aliases : [];
-        for (const a of arr) {
-          if (a && !q.aliases.some(x => patchNormTR(x) === patchNormTR(a))) { q.aliases.push(a); n++; }
-        }
-      }
-    }
-    return n;
-  }
-
-  // Bir alias'ı kalıcı olarak öğren: localStorage + (yetki varsa) Firestore.
-  async function learnAlias(queryName, aliasText) {
-    if (!queryName || !aliasText) return;
-    const learned = lsGet(LEARN_LS_KEY, {});
-    learned[queryName] = Array.isArray(learned[queryName]) ? learned[queryName] : [];
-    if (!learned[queryName].some(x => patchNormTR(x) === patchNormTR(aliasText))) {
-      learned[queryName].push(aliasText);
-    }
-    lsSet(LEARN_LS_KEY, learned);
-
-    // Katalogdaki sorguya da hemen ekle ki bu oturumda da geçerli olsun
-    const q = patchGetQueries().find(x => x.name === queryName);
-    if (q) {
-      q.aliases = Array.isArray(q.aliases) ? q.aliases : [];
-      if (!q.aliases.some(x => patchNormTR(x) === patchNormTR(aliasText))) q.aliases.push(aliasText);
-    }
-
-    // Firestore'a yaz (yetki yoksa sessizce geç)
-    await firestoreSaveLearned(queryName, aliasText).catch(() => {});
-  }
-
-  // Firestore'a öğrenilen alias yazma (varsa global db/firestore yardımcıları üzerinden).
-  async function firestoreSaveLearned(queryName, aliasText) {
-    try {
-      const fs = window.fbDb || window.db || window.firestoreDb || null;
-      // Proje kendi yardımcı fonksiyonunu sağlıyorsa onu tercih et
-      if (typeof window.saveLearnedAliasToFirestore === 'function') {
-        return await window.saveLearnedAliasToFirestore(queryName, aliasText);
-      }
-      // Modüler Firebase v9 API'si window'a açılmış olabilir
-      if (fs && window.fbCollection && window.fbAddDoc) {
-        await window.fbAddDoc(window.fbCollection(fs, 'aiLearnedAliases'), {
-          queryName, alias: aliasText, at: Date.now(),
-          user: (window.state && state.currentUser && (state.currentUser.email || state.currentUser.id)) || null
-        });
-        return true;
-      }
-    } catch (_) {}
-    return false;
-  }
-
-  // Öğrenme kuyruğuna ekle (hiçbiri seçilmedi → yazılacak sorgu).
-  async function queueUnmatched(userText, candidates) {
-    const q = lsGet(QUEUE_LS_KEY, []);
-    q.push({
-      text: userText,
-      candidates: (candidates || []).map(c => ({ name: c.q.name, score: c.score })),
-      at: Date.now(),
-      status: 'open'
-    });
-    lsSet(QUEUE_LS_KEY, q);
-
-    // Projenin kendi kuyruk fonksiyonu varsa onu da çağır (Firestore'a yazar)
-    try {
-      if (typeof window.logUnansweredCommand === 'function') {
-        await window.logUnansweredCommand(userText, 'kullanıcı hiçbirini seçmedi');
-      }
-    } catch (_) {}
-  }
-
-  // Skorlu aday listesi (en iyi N).
-  function patchTopCandidates(userText, n) {
-    n = n || 5;
-    const list = patchGetQueries();
-    const scored = [];
-    for (const q of list) {
-      const sc = patchScore(userText, q);
-      if (sc > 0) scored.push({ q, score: sc });
-    }
-    scored.sort((a, b) => b.score - a.score);
-    // Aynı params'a sahip kopya sorguları (ör. "Müdür Kullanıcıları" + "Mudur rolündeki...")
-    // tek adaya indir — kullanıcıya aynı şeyi iki kez sormayalım.
-    // Anahtar sırasından bağımsız karşılaştırma için params'ı normalize et.
-    const normKey = (obj) => {
-      const seen2 = (o) => {
-        if (Array.isArray(o)) return o.map(seen2);
-        if (o && typeof o === 'object') {
-          const out = {};
-          for (const k of Object.keys(o).sort()) out[k] = seen2(o[k]);
-          return out;
-        }
-        return o;
-      };
-      try { return JSON.stringify(seen2(obj || {})); } catch (_) { return Math.random().toString(); }
-    };
-    const seen = new Set();
-    const uniq = [];
-    for (const c of scored) {
-      const key = normKey(c.q.params);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      uniq.push(c);
-      if (uniq.length >= n) break;
-    }
-    return uniq;
-  }
-
-  // "Hangisini demek istediniz?" panelini gösterir; seçilen adayı (ya da null) döndürür.
-  function askWhichIntent(userText, candidates) {
-    return new Promise(resolve => {
-      const box = document.createElement('div');
-      box.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;';
-      const panel = document.createElement('div');
-      panel.style.cssText = 'background:#1a2028;color:#e4e8ee;width:520px;max-width:92vw;border:1px solid #3d4854;border-radius:10px;padding:18px;font-family:system-ui,sans-serif;';
-      panel.innerHTML =
-        '<h3 style="margin:0 0 10px;font-size:16px;">Bunlardan hangisini demek istediniz?</h3>' +
-        '<div style="font-size:13px;color:#8a95a3;margin-bottom:12px;">Sorduğunuz: <b></b></div>';
-      panel.querySelector('b').textContent = userText;
-
-      const done = (val) => { try { document.body.removeChild(box); } catch (_) {} resolve(val); };
-
-      candidates.forEach((c, i) => {
-        const btn = document.createElement('button');
-        btn.textContent = (i + 1) + ') ' + (c.q.name) + '  (%' + c.score + ')';
-        btn.style.cssText = 'display:block;width:100%;text-align:left;margin:6px 0;padding:10px;background:#232a34;color:#e4e8ee;border:1px solid #3d4854;border-radius:6px;cursor:pointer;font-size:14px;';
-        btn.onmouseover = () => btn.style.background = '#2c3540';
-        btn.onmouseout = () => btn.style.background = '#232a34';
-        btn.onclick = () => done(c);
-        panel.appendChild(btn);
-      });
-
-      const none = document.createElement('button');
-      none.textContent = 'Hiçbiri değil (öğrenme kuyruğuna ekle)';
-      none.style.cssText = 'display:block;width:100%;text-align:left;margin-top:12px;padding:10px;background:#3a1f1f;color:#f87171;border:1px solid #f87171;border-radius:6px;cursor:pointer;font-size:14px;';
-      none.onclick = () => done(null);
-      panel.appendChild(none);
-
-      box.appendChild(panel);
-      box.addEventListener('click', e => { if (e.target === box) done('cancel'); });
-      document.body.appendChild(box);
-    });
-  }
-
-  // Bir adayı plana çevir.
-  function candidateToPlan(c) {
-    if (!c || !c.q || !c.q.params) return null;
-    return {
-      tool: 'sorgu',
-      params: JSON.parse(JSON.stringify(c.q.params)),
-      explain: '"' + (c.q.name || 'Sorgu') + '" çalıştırılıyor.'
-    };
-  }
-
-  // Bir planı çalıştırıp konsola yazan ortak yardımcı.
-  async function runPlan(plan) {
-    if (!plan || !plan.tool || typeof runAITool !== 'function') return null;
-    if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', plan.explain || 'Çalıştırılıyor.');
-    const result = await runAITool(plan.tool, plan.params || {});
-    if (plan.tool === 'sorgu' && typeof aiConsoleShowQuery === 'function') aiConsoleShowQuery(plan.params || {});
-    const spoken = (typeof summarizeResultForSpeech === 'function') ? summarizeResultForSpeech(plan.tool, result) : 'Tamamlandı.';
-    if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', spoken, result);
-    if (typeof speak === 'function') speak(spoken);
-    if (typeof renderAll === 'function') renderAll();
-    return result;
-  }
-
   function installRunAICommandFallbackPatch() {
     const old =
       (typeof window.runAICommand === 'function') ? window.runAICommand :
@@ -18755,70 +18452,27 @@ setInterval(() => {
     if (!old || old.__fabrikaAliasPatched) return false;
 
     const patched = async function(userText) {
-      userText = (userText || '').trim();
-      if (!userText) return await old.apply(this, arguments);
-
-      // Sistem komutları (kayıtlı sorgu sayısı/listesi) doğrudan plana gider
-      const direct = patchMakePlan(userText);
-      const isSystemDirect = direct && direct.tool && direct.tool !== 'sorgu';
-      if (isSystemDirect && typeof runAITool === 'function') {
-        if (typeof aiConsoleLog === 'function') aiConsoleLog('user', userText);
-        try { return await runPlan(direct); }
-        catch (e) { if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İşlem başarısız: ' + e.message); throw e; }
-      }
-
-      // Sorgu eşleştirme: adayları skorla
-      const cands = patchTopCandidates(userText, 5);
-      const top = cands[0];
-      const second = cands[1];
-
-      // Hiç makul aday yok → eski akışa (interpretCommand vb.) bırak
-      if (!top || top.score < 45) {
-        return await old.apply(this, arguments);
-      }
-
-      if (typeof aiConsoleLog === 'function') aiConsoleLog('user', userText);
-
-      // 1) Çok net eşleşme → doğrudan çalıştır
-      const cokNet = top.score >= 90 && (!second || top.score - second.score >= 20);
-      if (cokNet) {
-        try { return await runPlan(candidateToPlan(top)); }
-        catch (e) { if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İşlem başarısız: ' + e.message); throw e; }
-      }
-
-      // 2) Belirsiz (düşük skor ya da yakın 2 aday) → kullanıcıya sor
-      if (typeof aiConsoleLog === 'function') {
-        aiConsoleLog('ai', 'Tam emin olamadım. Aşağıdakilerden hangisini kastettiniz?');
-      }
-      let secim;
-      try { secim = await askWhichIntent(userText, cands); }
-      catch (_) { secim = 'cancel'; }
-
-      if (secim === 'cancel') {
-        if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İptal edildi.');
-        return null;
-      }
-
-      if (secim === null) {
-        // Hiçbiri değil → öğrenme kuyruğuna ekle
-        await queueUnmatched(userText, cands);
-        if (typeof aiConsoleLog === 'function') {
-          aiConsoleLog('ai', 'Anladım, bunu "yazılacak sorgular" listesine (öğrenme kuyruğu) ekledim. Bir yönetici uygun sorguyu tanımlayabilir.');
+      const plan = patchMakePlan(userText);
+      if (plan && plan.tool && typeof runAITool === 'function') {
+        try {
+          if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', plan.explain || 'Kayıtlı sorgu çalıştırılıyor.');
+          const result = await runAITool(plan.tool, plan.params || {});
+          if (plan.tool === 'sorgu' && typeof aiConsoleShowQuery === 'function') {
+            aiConsoleShowQuery(plan.params || {});
+          }
+          const spoken = (typeof summarizeResultForSpeech === 'function')
+            ? summarizeResultForSpeech(plan.tool, result)
+            : 'Sorgu çalıştırıldı.';
+          if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', spoken, result);
+          if (typeof speak === 'function') speak(spoken);
+          if (typeof renderAll === 'function') renderAll();
+          return result;
+        } catch(e) {
+          if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İşlem başarısız: ' + e.message);
+          throw e;
         }
-        return null;
       }
-
-      // Bir aday seçildi → öğren + çalıştır
-      try {
-        await learnAlias(secim.q.name, userText);
-        if (typeof aiConsoleLog === 'function') {
-          aiConsoleLog('ai', '✓ Öğrendim: bundan sonra "' + userText + '" deyince doğrudan "' + secim.q.name + '" çalışacak.');
-        }
-        return await runPlan(candidateToPlan(secim));
-      } catch (e) {
-        if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'İşlem başarısız: ' + e.message);
-        throw e;
-      }
+      return await old.apply(this, arguments);
     };
     patched.__fabrikaAliasPatched = true;
     patched.__old = old;
@@ -18829,7 +18483,6 @@ setInterval(() => {
   }
 
   function installAll() {
-    const learnedN = applyLearnedAliases();
     const a = installInterpretPatch();
     const b = installLocalPatch();
     const c = installRunAICommandFallbackPatch();
@@ -18839,7 +18492,6 @@ setInterval(() => {
       localInterpret: b,
       runAICommand: c,
       queryCount: patchGetQueries().length,
-      ogrenilenAlias: learnedN,
       test: patchMakePlan('rolü olmayan kullanıcılar')
     });
   }
@@ -18854,3 +18506,314 @@ setInterval(() => {
 })();
 </script>
 
+
+
+<script>
+/* ============================================================
+   FABRİKA SMART INTENT + INTENT.JSON ŞİMDİ ÇEK PATCH v1
+   - AI komutunda önce kayıtlı sorgu / intent eşleşmesi aranır.
+   - Emin değilse en yakın 5 seçenek gösterilir.
+   - Seçileni çalıştırır ve kullanıcının cümlesini yerel alias olarak öğrenir.
+   - Hiçbiri seçilirse öğrenme kuyruğuna yerel olarak yazar; Firestore yetki hatası uygulamayı bozmaz.
+   - Yönetim > Kayıtlı Sorgular ekranına intent.json için URL + Şimdi Çek alanı ekler.
+   ============================================================ */
+(function(){
+  const INTENT_URL_KEY = 'fabrika_intent_catalog_url';
+  const LOCAL_ALIAS_KEY = 'FABRIKA_LOCAL_LEARNED_ALIASES';
+  const LOCAL_QUEUE_KEY = 'FABRIKA_LEARNING_QUEUE_LOCAL';
+
+  function normTR(s){
+    return String(s||'').trim().toLocaleLowerCase('tr-TR')
+      .replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u')
+      .replace(/[âîû]/g,'').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function notifySafe(msg,type){
+    if (typeof notify === 'function') notify(msg,type||'info'); else console.log('[FABRİKA]', msg);
+  }
+  function getIntentCatalogUrl(){ try { return localStorage.getItem(INTENT_URL_KEY) || ''; } catch(_){ return ''; } }
+  function setIntentCatalogUrl(url){ try { localStorage.setItem(INTENT_URL_KEY, (url||'').trim()); } catch(_){} }
+  window.getIntentCatalogUrl = getIntentCatalogUrl;
+  window.setIntentCatalogUrl = setIntentCatalogUrl;
+
+  function loadLocalAliases(){
+    try { return JSON.parse(localStorage.getItem(LOCAL_ALIAS_KEY) || '{}') || {}; } catch(_){ return {}; }
+  }
+  function saveLocalAliases(map){ try { localStorage.setItem(LOCAL_ALIAS_KEY, JSON.stringify(map, null, 2)); } catch(_){} }
+
+  function getQueries(){
+    const a = [];
+    try { if (typeof state !== 'undefined' && state && Array.isArray(state.savedQueries)) a.push(...state.savedQueries); } catch(_){}
+    try { if (window.state && Array.isArray(window.state.savedQueries)) a.push(...window.state.savedQueries); } catch(_){}
+    try { if (Array.isArray(window.FABRIKA_QUERIES)) a.push(...window.FABRIKA_QUERIES); } catch(_){}
+    // Tekilleştir
+    const seen = new Set();
+    return a.filter(q => {
+      if (!q || !q.name || !q.params) return false;
+      const k = (q.id || q.name) + '|' + (q.params.koleksiyon || q.params.tool || '');
+      if (seen.has(k)) return false; seen.add(k); return true;
+    });
+  }
+
+  function applyLocalAliasesToQueries(){
+    const map = loadLocalAliases();
+    const qs = getQueries();
+    qs.forEach(q => {
+      const key = q.name;
+      const list = map[key] || [];
+      if (!list.length) return;
+      if (!Array.isArray(q.aliases)) q.aliases = [];
+      list.forEach(a => { if (!q.aliases.some(x => normTR(x) === normTR(a))) q.aliases.push(a); });
+    });
+  }
+
+  function learnAlias(queryName, text){
+    if (!queryName || !text) return;
+    const map = loadLocalAliases();
+    map[queryName] = Array.isArray(map[queryName]) ? map[queryName] : [];
+    if (!map[queryName].some(x => normTR(x) === normTR(text))) map[queryName].push(text);
+    saveLocalAliases(map);
+    applyLocalAliasesToQueries();
+  }
+
+  function queryCandidates(q){
+    const arr = [q.name, q.aciklama, q.description];
+    if (Array.isArray(q.aliases)) arr.push(...q.aliases);
+    const map = loadLocalAliases();
+    if (q.name && Array.isArray(map[q.name])) arr.push(...map[q.name]);
+    return arr.filter(Boolean);
+  }
+
+  function scoreQuery(text, q){
+    const s = normTR(text);
+    if (!s || !q) return 0;
+    let best = 0;
+    const sw = new Set(s.split(' ').filter(Boolean));
+
+    for (const c of queryCandidates(q)) {
+      const a = normTR(c);
+      if (!a) continue;
+      if (s === a) best = Math.max(best, 100);
+      else if (s.includes(a) || a.includes(s)) best = Math.max(best, a.length < 12 ? 35 : 86);
+      const aw = new Set(a.split(' ').filter(Boolean));
+      let hit = 0;
+      for (const w of sw) if (aw.has(w)) hit++;
+      best = Math.max(best, Math.round((hit / Math.max(sw.size, aw.size, 1)) * 75));
+    }
+
+    const n = normTR(q.name || '');
+    // Türkçe eş anlamlı kritik düzeltmeler
+    if (/(mudur|muduru|amir|amiri|yonetici|yoneticisi|manager).*(olmayan|bulunmayan|atanmamis|yok)/.test(s) || /(olmayan|bulunmayan|atanmamis).*(mudur|amir|yonetici|manager)/.test(s)) {
+      if (n.includes('yoneticisi atanmamis')) best += 60;
+      if (n === 'tum kullanicilar') best -= 55;
+    }
+    if (/rolu olmayan|yetkisiz|yetkisi olmayan|hic rolu olmayan|rol atanmamis|rol verilmemis/.test(s)) {
+      if (n.includes('yetkisi olmayan')) best += 45;
+      if (n === 'tum kullanicilar') best -= 50;
+    }
+    return Math.max(0, Math.min(100, best));
+  }
+
+  function topQueryMatches(text, limit){
+    applyLocalAliasesToQueries();
+    return getQueries().map(q => ({ query:q, score:scoreQuery(text,q) }))
+      .filter(x => x.score > 0)
+      .sort((a,b) => b.score - a.score)
+      .slice(0, limit || 5);
+  }
+
+  function addIntentAliasesToQueries(intentData){
+    const intents = Array.isArray(intentData) ? intentData : (Array.isArray(intentData && intentData.intents) ? intentData.intents : []);
+    if (!intents.length) return 0;
+    const qs = getQueries();
+    let n = 0;
+    intents.forEach(it => {
+      if (!it || !it.queryName) return;
+      const q = qs.find(x => x.name === it.queryName);
+      if (!q) return;
+      if (!Array.isArray(q.aliases)) q.aliases = [];
+      const vals = [];
+      if (Array.isArray(it.aliases)) vals.push(...it.aliases);
+      if (Array.isArray(it.keywords)) vals.push(...it.keywords);
+      vals.forEach(a => {
+        if (a && !q.aliases.some(x => normTR(x) === normTR(a))) { q.aliases.push(a); n++; }
+      });
+    });
+    return n;
+  }
+
+  async function loadIntentCatalogFromGitHub(showNotif){
+    const url = getIntentCatalogUrl();
+    if (!url) { if (showNotif) notifySafe('Önce intent.json URL\'i ayarlayın','info'); return 0; }
+    try {
+      const bust = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+      const res = await fetch(bust, { cache:'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      window.FABRIKA_INTENT_DATA = data;
+      window.FABRIKA_INTENTS = Array.isArray(data.intents) ? data.intents : (Array.isArray(data) ? data : []);
+      try { localStorage.setItem('FABRIKA_INTENT_DATA_LAST', JSON.stringify(data)); } catch(_){}
+      const aliasCount = addIntentAliasesToQueries(data);
+      if (typeof renderAdminContent === 'function' && typeof state !== 'undefined' && state.adminTab === 'saved-queries') renderAdminContent();
+      if (showNotif) notifySafe('✓ intent.json çekildi. ' + window.FABRIKA_INTENTS.length + ' intent, ' + aliasCount + ' alias sorgulara bağlandı.','success');
+      return window.FABRIKA_INTENTS.length;
+    } catch(e) {
+      console.warn('[loadIntentCatalogFromGitHub]', e);
+      if (showNotif) notifySafe('intent.json yüklenemedi: ' + e.message, 'error');
+      return 0;
+    }
+  }
+  window.loadIntentCatalogFromGitHub = loadIntentCatalogFromGitHub;
+
+  function saveIntentCatalogUrlFromUI(){
+    const el = document.getElementById('intent-cat-url');
+    setIntentCatalogUrl(el ? el.value : '');
+    notifySafe('intent.json URL kaydedildi','success');
+  }
+  window.saveIntentCatalogUrlFromUI = saveIntentCatalogUrlFromUI;
+
+  function injectIntentFetchPanel(){
+    const input = document.getElementById('cat-url');
+    if (!input || document.getElementById('intent-catalog-panel')) return;
+    const outer = input.closest('div[style*="background"]') || input.parentElement;
+    if (!outer) return;
+    const box = document.createElement('div');
+    box.id = 'intent-catalog-panel';
+    box.style.cssText = 'background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin:-6px 0 16px 0;';
+    box.innerHTML = `
+      <div style="font-weight:600;margin-bottom:8px;">🧠 GitHub Intent Kataloğu</div>
+      <p style="color:var(--text-dim);font-size:12px;margin-bottom:8px;">
+        intent.json dosyasını GitHub raw URL\'inden çeker. Böylece YZ kullanıcı cümlelerini sorgularla daha doğru eşler.
+      </p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <input id="intent-cat-url" value="${(typeof escapeHtml==='function'?escapeHtml(getIntentCatalogUrl()):getIntentCatalogUrl())}" placeholder="GitHub raw intent.json URL" style="flex:1;min-width:280px;background:var(--bg);border:1px solid var(--border-hi);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;">
+        <button class="primary-btn" style="font-size:12px;" onclick="saveIntentCatalogUrlFromUI()">💾 Kaydet</button>
+        <button class="ghost-btn" style="font-size:12px;" onclick="loadIntentCatalogFromGitHub(true)">⟳ Şimdi Çek</button>
+      </div>`;
+    outer.insertAdjacentElement('afterend', box);
+  }
+
+  function installRenderPatch(){
+    const old = (typeof window.renderSavedQueriesAdmin === 'function') ? window.renderSavedQueriesAdmin : (typeof renderSavedQueriesAdmin === 'function' ? renderSavedQueriesAdmin : null);
+    if (old && !old.__intentFetchPatched) {
+      const patched = function(){ const r = old.apply(this, arguments); setTimeout(injectIntentFetchPanel, 0); return r; };
+      patched.__intentFetchPatched = true;
+      try { window.renderSavedQueriesAdmin = patched; } catch(_){}
+      try { renderSavedQueriesAdmin = patched; } catch(_){}
+    }
+    setTimeout(injectIntentFetchPanel, 50);
+  }
+
+  function logQueueLocal(text, reason, candidates){
+    const rec = { id:'lq_'+Date.now()+'_'+Math.floor(Math.random()*1000), text:String(text||'').trim(), reason:reason||'eşleşmedi', at:Date.now(), status:'open', candidates:(candidates||[]).map(x=>({name:x.query&&x.query.name, score:x.score})) };
+    if (!rec.text) return rec;
+    try {
+      if (typeof state !== 'undefined') {
+        state.aiLearningQueue = Array.isArray(state.aiLearningQueue) ? state.aiLearningQueue : [];
+        if (!state.aiLearningQueue.some(q => q.status === 'open' && normTR(q.text) === normTR(rec.text))) state.aiLearningQueue.push(rec);
+      }
+      const list = JSON.parse(localStorage.getItem(LOCAL_QUEUE_KEY) || '[]');
+      if (!list.some(q => q.status === 'open' && normTR(q.text) === normTR(rec.text))) list.push(rec);
+      localStorage.setItem(LOCAL_QUEUE_KEY, JSON.stringify(list, null, 2));
+    } catch(_){}
+    return rec;
+  }
+
+  function installLearningQueuePatch(){
+    const old = (typeof window.logUnansweredCommand === 'function') ? window.logUnansweredCommand : null;
+    if (old && old.__localSafePatched) return;
+    const patched = async function(userText, reason){
+      logQueueLocal(userText, reason || 'eşleşmedi', []);
+      try { if (old) return await old.apply(this, arguments); } catch(e) { console.warn('[logUnansweredCommand safe]', e.message); }
+    };
+    patched.__localSafePatched = true;
+    window.logUnansweredCommand = patched;
+    try { logUnansweredCommand = patched; } catch(_){}
+  }
+
+  function chooseIntentDialog(userText, matches){
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:18px;';
+      const panel = document.createElement('div');
+      panel.style.cssText = 'background:#1a2028;color:#e4e8ee;width:560px;max-width:96vw;border:1px solid #3d4854;border-radius:12px;padding:18px;font-family:system-ui,sans-serif;box-shadow:0 16px 40px rgba(0,0,0,.45);';
+      panel.innerHTML = `<h3 style="margin:0 0 8px;font-size:17px;">Ne demek istediğinizi seçin</h3>
+        <div style="font-size:13px;color:#8a95a3;margin-bottom:12px;">Sorduğunuz: <b>${(typeof escapeHtml==='function'?escapeHtml(userText):userText)}</b></div>`;
+      matches.forEach((m,i) => {
+        const b = document.createElement('button');
+        b.textContent = (i+1) + ') ' + (m.query.name || 'Kayıtlı sorgu') + ' — %' + m.score;
+        b.style.cssText = 'display:block;width:100%;text-align:left;margin:6px 0;padding:10px;background:#232a34;color:#e4e8ee;border:1px solid #3d4854;border-radius:7px;cursor:pointer;';
+        b.onclick = () => { overlay.remove(); resolve(m); };
+        panel.appendChild(b);
+      });
+      const none = document.createElement('button');
+      none.textContent = 'Bunlardan hiçbiri';
+      none.style.cssText = 'display:block;width:100%;text-align:left;margin-top:12px;padding:10px;background:#3a1f1f;color:#f87171;border:1px solid #f87171;border-radius:7px;cursor:pointer;';
+      none.onclick = () => { overlay.remove(); resolve(null); };
+      panel.appendChild(none);
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+    });
+  }
+
+  async function runMatchedQuery(match, userText){
+    const q = match.query;
+    learnAlias(q.name, userText);
+    const tool = (q.params && q.params.tool && !q.params.koleksiyon) ? q.params.tool : 'sorgu';
+    const params = tool === 'sorgu' ? JSON.parse(JSON.stringify(q.params || {})) : (q.params || {});
+    if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'Şu kayıtlı sorguyu çalıştırıyorum: ' + q.name + ' (%' + match.score + ')');
+    const result = await runAITool(tool, params);
+    if (tool === 'sorgu' && typeof aiConsoleShowQuery === 'function') aiConsoleShowQuery(params);
+    const spoken = (typeof summarizeResultForSpeech === 'function') ? summarizeResultForSpeech(tool, result) : 'Sorgu çalıştırıldı.';
+    if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', spoken, result);
+    if (typeof speak === 'function') speak(spoken);
+    if (typeof renderAll === 'function') renderAll();
+    return result;
+  }
+
+  function installRunPatch(){
+    const old = (typeof window.runAICommand === 'function') ? window.runAICommand : (typeof runAICommand === 'function' ? runAICommand : null);
+    if (!old || old.__smartIntentV1) return false;
+    const patched = async function(userText){
+      try {
+        if (typeof runAITool === 'function') {
+          const matches = topQueryMatches(userText, 5);
+          const best = matches[0];
+          if (best && best.score >= 72) return await runMatchedQuery(best, userText);
+          if (best && best.score >= 28) {
+            if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'Tam emin olamadım. Aşağıdakilerden hangisini kastettiniz?');
+            const chosen = await chooseIntentDialog(userText, matches);
+            if (chosen) return await runMatchedQuery(chosen, userText);
+            logQueueLocal(userText, 'bunlardan hiçbiri seçildi', matches);
+            if (typeof window.logUnansweredCommand === 'function') await window.logUnansweredCommand(userText, 'bunlardan hiçbiri seçildi');
+            if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', 'Anladım, bunu yazılacak sorgular listesine ekledim. Yönetici uygun sorguyu tanımlayabilir.');
+            return null;
+          }
+        }
+      } catch(e) {
+        console.warn('[SmartIntent run patch]', e);
+      }
+      return await old.apply(this, arguments);
+    };
+    patched.__smartIntentV1 = true;
+    patched.__old = old;
+    try { window.runAICommand = patched; } catch(_){}
+    try { runAICommand = patched; } catch(_){}
+    return true;
+  }
+
+  function installAll(){
+    applyLocalAliasesToQueries();
+    installRenderPatch();
+    installLearningQueuePatch();
+    installRunPatch();
+    // Önceki çekilmiş intent varsa tekrar uygula
+    try { const old = JSON.parse(localStorage.getItem('FABRIKA_INTENT_DATA_LAST') || 'null'); if (old) addIntentAliasesToQueries(old); } catch(_){}
+  }
+
+  window.FabrikaSmartIntent = { normTR, topQueryMatches, learnAlias, loadIntentCatalogFromGitHub, logQueueLocal };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installAll); else installAll();
+  setTimeout(installAll, 500);
+  setTimeout(installAll, 1500);
+  setTimeout(installAll, 3500);
+})();
+</script>

@@ -876,7 +876,18 @@
         "Yöneticisi atanmamış kullanıcılar göster",
         "Yöneticisi atanmamış kullanıcılar listele",
         "Yöneticisi atanmamış kullanıcılar nelerdir",
-        "Yöneticisi atanmamış kullanıcılar listesini ver"
+        "Yöneticisi atanmamış kullanıcılar listesini ver",
+        "müdürü olmayan kullanıcılar",
+        "müdürü olmayanlar",
+        "müdürü bulunmayan kullanıcılar",
+        "amiri olmayan kullanıcılar",
+        "amiri olmayanlar",
+        "yöneticisi olmayan kullanıcılar",
+        "yöneticisi bulunmayan kullanıcılar",
+        "manager olmayan kullanıcılar",
+        "manager atanmamış kullanıcılar",
+        "müdürü atanmamış kullanıcılar",
+        "yönetici atanmamış kişiler"
       ],
       "keywords": [
         "atanmamis",
@@ -891,7 +902,11 @@
         "nelerdir",
         "personel",
         "ver",
-        "yoneticisi"
+        "yoneticisi",
+        "muduru",
+        "olmayan",
+        "amiri",
+        "manager"
       ],
       "priority": 50
     },
