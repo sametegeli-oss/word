@@ -5144,7 +5144,12 @@ async function loadStateFromFirestore() {
       state.savedQueries = sqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     } catch (e) {
       console.warn('[Firestore] Kayıtlı sorgular yüklenemedi:', e.message);
-      state.savedQueries = [];
+      try {
+        state.savedQueries = JSON.parse(localStorage.getItem('FABRIKA_SAVED_QUERIES_LOCAL') || '[]');
+        console.log('[Local] Kayıtlı sorgular localStorage üzerinden yüklendi:', state.savedQueries.length);
+      } catch (_) {
+        state.savedQueries = [];
+      }
     }
 
     // YZ öğrenme kuyruğu — ayrı ve hataya dayanıklı yükle
@@ -8988,8 +8993,10 @@ async function resolveLearningItem(id) {
   const q = (state.aiLearningQueue || []).find(x => x.id === id);
   if (!q) return;
   q.status = 'resolved';
+  try { localStorage.setItem('FABRIKA_LEARNING_QUEUE', JSON.stringify(state.aiLearningQueue || [], null, 2)); } catch (_) {}
   if (window.fb && window.fb.db) {
-    try { await window.fb.setDoc(window.fb.doc(window.fb.db, 'aiLearningQueue', id), (typeof sanitize === 'function' ? sanitize(q) : q)); } catch (_) {}
+    try { await window.fb.setDoc(window.fb.doc(window.fb.db, 'aiLearningQueue', id), (typeof sanitize === 'function' ? sanitize(q) : q)); }
+    catch (e) { console.warn('[Firestore] Öğrenme kuyruğu güncellenemedi, yerel durum kullanılacak:', e.message); }
   }
   renderAdminContent();
 }
@@ -16937,7 +16944,13 @@ function applyQueryFilter(row, f) {
       if (Array.isArray(v)) return v.includes(t);
       return String(v ?? '').toLocaleLowerCase('tr-TR').includes(String(t).toLocaleLowerCase('tr-TR'));
     case 'in':  return Array.isArray(t) && t.includes(v);
-    case 'exists': return (v !== undefined && v !== null && v !== '');
+    case 'exists': {
+      const hasValue = (v !== undefined && v !== null && v !== '');
+      // Sihirbazdan gelen value=false / "false" alanın boş/eksik olmasını arar.
+      // Eski kod value değerini dikkate almıyordu; bu yüzden manager exists false çalışmıyordu.
+      const wantExists = !(t === false || t === 'false' || t === 0 || t === '0' || String(t).toLocaleLowerCase('tr-TR') === 'hayir' || String(t).toLocaleLowerCase('tr-TR') === 'hayır');
+      return wantExists ? hasValue : !hasValue;
+    }
     default: throw new Error('Bilinmeyen operatör: ' + f.op);
   }
 }
@@ -17103,9 +17116,24 @@ function slugQueryId(name) {
 
 // Kayıtlı sorguyu Firestore'a yaz (ortak koleksiyon)
 async function persistSavedQuery(q) {
+  // Önce her zaman tarayıcıya kaydet. Böylece Firestore izni olmasa bile düğme çalışır.
+  try {
+    const local = JSON.parse(localStorage.getItem('FABRIKA_SAVED_QUERIES_LOCAL') || '[]');
+    const idx = local.findIndex(x => x.id === q.id);
+    if (idx >= 0) local[idx] = q; else local.push(q);
+    localStorage.setItem('FABRIKA_SAVED_QUERIES_LOCAL', JSON.stringify(local, null, 2));
+  } catch (e) {
+    console.warn('[Local] Sorgu yerel kaydedilemedi:', e.message);
+  }
+
+  // Firestore varsa dene; izin hatası düğmeyi bozmasın.
   if (window.fb && window.fb.db) {
-    const payload = typeof sanitize === 'function' ? sanitize(q) : q;
-    await window.fb.setDoc(window.fb.doc(window.fb.db, 'savedQueries', q.id), payload);
+    try {
+      const payload = typeof sanitize === 'function' ? sanitize(q) : q;
+      await window.fb.setDoc(window.fb.doc(window.fb.db, 'savedQueries', q.id), payload);
+    } catch (e) {
+      console.warn('[Firestore] Sorgu Firestore’a yazılamadı, yerel kayıt kullanılacak:', e.message);
+    }
   }
 }
 
@@ -17120,6 +17148,7 @@ async function saveNamedQuery(name, params, aciklama = '') {
     name: name.trim(),
     aciklama: (aciklama || '').trim(),
     params,
+    source: 'local',
     createdBy: state.currentUser,
     createdAt: Date.now()
   };
