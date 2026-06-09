@@ -17185,7 +17185,10 @@ function localInterpret(t) {
   if (m && m[1] && m[1].trim()) return { tool: 'rolOlustur', params: { ad: m[1].trim() }, explain: `"${m[1].trim()}" rolü oluşturulacak.` };
   if (/(rol olu[şs]tur|yeni rol|rol ekle)/.test(s)) return { tool: 'rolOlustur', params: { ad: t.replace(/.*rol/i,'').replace(/(olu[şs]tur|a[çc]|ekle)/gi,'').trim() }, explain: 'Rol oluşturulacak.' };
   // Kullanıcı oluştur — "tanımla", "kaydet", "ekle", "aç", "oluştur" + araya sıfat (ör. pazarlamacı) girebilir
-  if (/(kullanıcı|personel|çalışan|eleman)[^.]*\b(olu[şs]tur|a[çc]|ekle|tanımla|kaydet|gir)|\b(olu[şs]tur|tanımla|ekle|kaydet)[^.]*\b(kullanıcı|personel|çalışan|eleman)|(yeni|bir)\b[^.]*\b(kullanıcı|personel|çalışan|eleman)/.test(s)) {
+  // ÖNEMLİ: Listeleme/sorgulama niyeti taşıyan cümleler (listele, göster, hangi, kim,
+  // "kullanıcılar" çoğulu, en yeni/eski/aktif... vb.) oluşturma sanılmamalı.
+  const _kullaniciOlusturmaListeleme = /listele|göster|gö/.test(s) || /\bkullan[ıi]c[ıi]lar\b|\bpersoneller\b|\bçalışanlar\b|\belemanlar\b/.test(s) || /\bhangi\b|\bkim(ler)?\b|\bne kadar\b|\bka[çc]\b|\bsay[ıi]s[ıi]\b|\bgiri[şs]li\b|\bgirenler\b|\bgiren\b|\bdağ[ıi]l[ıi]m|\bsiral|\bsırala|\bs[üu]z|\bfiltrele|\blistesi\b/.test(s);
+  if (!_kullaniciOlusturmaListeleme && /(kullanıcı|personel|çalışan|eleman)[^.]*\b(olu[şs]tur|tanımla|kaydet|ekle)\b|\b(olu[şs]tur|tanımla|kaydet)[^.]*\b(kullanıcı|personel|çalışan|eleman)\b|\b(yeni|bir)\b[^.]*\b(kullanıcı|personel|çalışan|eleman)\b[^.]*\b(olu[şs]tur|tanımla|kaydet|ekle)\b/.test(s)) {
     // İsim çıkarımı: "ahmet yavuz adında", "adı ahmet yavuz olan", "ahmet yavuz isimli" gibi kalıplar
     let ad = '';
     let am = t.match(/([a-zçğıöşüA-ZÇĞİÖŞÜ]+(?:\s+[a-zçğıöşüA-ZÇĞİÖŞÜ]+)?)\s*(?:adında|adıyla|isminde|isimli|ismiyle)/);
@@ -18330,6 +18333,18 @@ setInterval(() => {
 
     if (/en son ise giren|son ise baslayan|en yeni calisan|en yeni personel/.test(s)) {
       if (name.includes('en yeni ise giren')) best += 40;
+    }
+
+    // "en yeni girişli/giren kullanıcılar", "son giren kullanıcılar" → işe giriş sorgusu;
+    // "kullanicilar" kelimesi yüzünden "Tüm kullanıcılar"a kaymasın.
+    if (/(giris|girisli|giren|girenler|girdi|baslayan)/.test(s) && /(yeni|son)/.test(s)) {
+      if (name.includes('en yeni ise giren')) best += 45;
+      if (name.includes('en yeni ise girenler')) best += 45;
+      if (name === 'tum kullanicilar') best -= 60;
+    }
+    if (/(giris|girisli|giren|girenler|girdi|baslayan)/.test(s) && /(eski|kidemli|ilk)/.test(s)) {
+      if (name.includes('ise giris tarihine gore') || name.includes('en eski ise giren')) best += 45;
+      if (name === 'tum kullanicilar') best -= 60;
     }
 
     return best;
