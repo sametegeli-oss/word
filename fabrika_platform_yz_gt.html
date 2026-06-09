@@ -16581,6 +16581,28 @@ AI_TOOLS.kullanilmayanRoller = { desc:'Kullanıcısı olmayan rolleri bulur.', r
   return { count: items.length, items };
 }};
 
+
+AI_TOOLS.kullanilmayanSurecler = { desc:'Hiç talep açılmamış/boş süreçleri bulur.', risk:'safe', perm:'workflows_view', run: () => {
+  const used = new Set((state.instances || []).filter(i => i.defId).map(i => i.defId));
+  const items = (state.definitions || []).filter(d => !used.has(d.id)).map(d => ({ surecId:d.id, surec:d.name || d.id, aktif:!!d.active, aciklama:d.description || '-' }));
+  return { count: items.length, items };
+}};
+
+AI_TOOLS.rolBazliKullanicilar = { desc:'Rollere göre kullanıcıları isimleriyle listeler.', risk:'safe', perm:'admin_users_view', run: () => {
+  const byRole = {};
+  (state.roles || []).forEach(r => { byRole[r.id] = { rolId:r.id, rol:r.name || r.id, kullaniciSayisi:0, kullanicilar:[] }; });
+  (state.users || []).forEach(u => {
+    const roles = Array.isArray(u.roles) && u.roles.length ? u.roles : ['__rol_yok__'];
+    roles.forEach(rid => {
+      if (!byRole[rid]) byRole[rid] = { rolId:rid, rol: rid === '__rol_yok__' ? 'Rolü yok' : aiRoleName(rid), kullaniciSayisi:0, kullanicilar:[] };
+      byRole[rid].kullaniciSayisi++;
+      byRole[rid].kullanicilar.push(u.name || u.id);
+    });
+  });
+  const items = Object.values(byRole).map(x => ({ rol:x.rol, kullaniciSayisi:x.kullaniciSayisi, kullanicilar:x.kullanicilar.join(', ') || '-' })).sort((a,b)=>b.kullaniciSayisi-a.kullaniciSayisi || String(a.rol).localeCompare(String(b.rol),'tr'));
+  return { count: items.length, items };
+}};
+
 AI_TOOLS.gorevsizKullanicilar = { desc:'Hiç açık görevi olmayan kullanıcıları listeler.', risk:'safe', perm:'admin_users_view', run: () => {
   const assigned = new Set(aiOpenTasks().filter(t => t.assigneeId).map(t => t.assigneeId));
   const items = (state.users || []).filter(u => !assigned.has(u.id)).map(u => ({ id:u.id, kisi:u.name, roller:(u.roles || []).map(aiRoleName).join(', ') || '-' }));
@@ -17185,6 +17207,8 @@ function localInterpret(t) {
 
   // Çoklu tablo / yerel analiz araçları
   if (/(kullan[ıi]c[ıi]s[ıi] olmayan rol|bo[şs] rol|kullan[ıi]lmayan rol)/.test(s)) return { tool: 'kullanilmayanRoller', params: {}, explain: 'Kullanıcısı olmayan roller bulunuyor.' };
+  if (/(bo[şs]|kullan[ıi]lmayan|hi[çc] talep aç[ıi]lmam[ıi][şs]|talebi olmayan)\s+(s[üu]re[çc]|form)|s[üu]re[çc].*(bo[şs]|kullan[ıi]lmayan|talep yok)/.test(s)) return { tool: 'kullanilmayanSurecler', params: {}, explain: 'Hiç talep açılmamış/boş süreçler bulunuyor.' };
+  if (/(rollere göre kullan[ıi]c[ıi]|rol bazl[ıi] kullan[ıi]c[ıi]|kullan[ıi]c[ıi]lar[ıi]? rollere göre|hangi rolde kim)/.test(s)) return { tool: 'rolBazliKullanicilar', params: {}, explain: 'Kullanıcılar rollere göre listeleniyor.' };
   if (/(hi[çc] görev[iı] olmayan kullan[ıi]c[ıi]|görevsiz kullan[ıi]c[ıi]|üzerinde görev olmayan)/.test(s)) return { tool: 'gorevsizKullanicilar', params: {}, explain: 'Hiç açık görevi olmayan kullanıcılar listeleniyor.' };
   if (/(hi[çc] talep açmam[ıi][şs]|talep açmayan kullan[ıi]c[ıi])/.test(s)) return { tool: 'talepAcmayanKullanicilar', params: {}, explain: 'Hiç talep açmamış kullanıcılar listeleniyor.' };
   if (/(görevi olmayan ama açık talebi olan|aç[ıi]k talebi olup görevi olmayan)/.test(s)) return { tool: 'gorevsizAmaTalebiOlanlar', params: {}, explain: 'Açık talebi olup açık görevi olmayan kullanıcılar bulunuyor.' };
@@ -17226,7 +17250,7 @@ function localInterpret(t) {
   }
 
   // Kullanıcı listeleme (opsiyonel rol filtresi)
-  if (/kullanıcı.*listele|kim var|çalışanlar|kullanıcıları göster|personel listesi|personelleri göster/.test(s)) {
+  if (/^(kullan[ıi]c[ıi]lar|kullan[ıi]c[ıi]lar[ıi]?|personeller|çalışanlar)$/i.test(s.trim()) || /kullan[ıi]c[ıi].*(liste|ver|söyle|göster)|kim var|çalışanlar|personel listesi|personelleri göster|t[üu]m kullan[ıi]c[ıi]/.test(s)) {
     const rolMatch = s.match(/(?:rol[üu]?|rolünde|rolündeki|olan)\s*([a-zçğıöşü_]+)/);
     let role = null;
     if (rolMatch && rolMatch[1]) {
@@ -17237,7 +17261,7 @@ function localInterpret(t) {
     return { tool: 'listeKullanicilar', params: role ? { role } : {}, explain: 'Kullanıcılar listeleniyor.' };
   }
 
-  if (/süreç.*listele|form.*listele|hangi süreç|süreçleri göster|form tipleri|tanımlı form/.test(s)) return { tool: 'listeSurecler', params: {}, explain: 'Süreçler listeleniyor.' };
+  if (/^(s[üu]re[çc]ler|formlar)$/i.test(s.trim()) || /s[üu]re[çc].*(liste|ver|söyle|göster)|form.*(liste|ver|söyle|göster)|hangi s[üu]re[çc]|form tipleri|tanımlı form/.test(s)) return { tool: 'listeSurecler', params: {}, explain: 'Süreçler listeleniyor.' };
 
   // Talep durumu (tamamlanan / reddedilen / açık / hepsi)
   if (/tamamlanan.*talep|biten.*talep|talepleri.*tamamlan/.test(s)) return { tool: 'listeTalepler', params: { status: 'completed' }, explain: 'Tamamlanan talepler listeleniyor.' };
