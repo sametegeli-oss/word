@@ -16715,7 +16715,7 @@ const QUERY_COLLECTIONS = {
   users:        { perm: 'admin_users_view', alanlar: ['id','name','email','roles','dahili','cep','manager','hireDate'] },
   instances:    { perm: 'workflows_view',   alanlar: ['id','defId','status','ownerId','currentStep','createdAt','data'] },
   tasks:        { perm: 'workflows_view',   alanlar: ['id','instanceId','title','status','assigneeId','createdAt'] },
-  definitions:  { perm: 'workflows_view',   alanlar: ['id','name','active','description'] },
+  definitions:  { perm: 'workflows_view',   alanlar: ['id','name','active','description','fields','steps','transitions','startStep','uniqueBy'] },
   roles:        { perm: 'admin_roles_view', alanlar: ['id','name','description'] },
   orders:       { perm: 'production_view',  alanlar: ['id','status','createdAt'] }
 };
@@ -16735,7 +16735,7 @@ function applyQueryFilter(row, f) {
       if (Array.isArray(v)) return v.includes(t);
       return String(v ?? '').toLocaleLowerCase('tr-TR').includes(String(t).toLocaleLowerCase('tr-TR'));
     case 'in':  return Array.isArray(t) && t.includes(v);
-    case 'exists': return (v !== undefined && v !== null && v !== '');
+    case 'exists': { const ok = (v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0)); return f.value === false ? !ok : ok; }
     default: throw new Error('Bilinmeyen operatör: ' + f.op);
   }
 }
@@ -16835,6 +16835,7 @@ async function loadQueryCatalogFromGitHub(showNotif = false) {
     let n = 0;
     list.forEach(item => {
       if (!item || !item.name || !item.params || !item.params.koleksiyon) return;
+      if (item.params && item.params.fields && !item.params.alanlar) { item.params.alanlar = item.params.fields; delete item.params.fields; }
       if (!QUERY_COLLECTIONS[item.params.koleksiyon]) return; // bilinmeyen tabloyu atla
       const id = 'gh_' + (typeof slugifyTR === 'function' ? slugifyTR(item.name) : item.name.toLowerCase()).replace(/-/g, '_').replace(/[^a-z0-9_]/g, '');
       state.savedQueries.push({
@@ -17248,6 +17249,25 @@ function aiHelpText() {
 
 function localInterpret(t) {
   const s = t.toLocaleLowerCase('tr-TR');
+
+  // === v6: İnsan dilinden kayıtlı/yerel sorguya doğrudan düşen kritik niyetler ===
+  // Bu blok AI kapalıyken de çalışır. Sorgular.json içindeki aliaslar yüklense bile
+  // en sık sorulan kısa ifadeleri burada garantiye alıyoruz.
+  if (/(en\s+k[ıi]demli|k[ıi]demi\s+en\s+(fazla|yüksek)|ilk\s+i[şs]e\s+giren|en\s+eski\s+(çalışan|personel|kullan[ıi]c[ıi])|i[şs]e\s+ilk\s+giren).*(kim|kullan[ıi]c[ıi]|personel|çalışan)?/.test(s)) {
+    return { tool: 'sorgu', params: { koleksiyon: 'users', filtreler: [{ field: 'hireDate', op: 'exists', value: true }], siralaAlan: 'hireDate', siralaYon: 'asc', limit: 1, alanlar: ['id','name','hireDate','roles'] }, explain: 'En kıdemli kullanıcı bulunuyor.' };
+  }
+  if (/(en\s+son\s+i[şs]e\s+giren|son\s+i[şs]e\s+ba[şs]layan|en\s+yeni\s+(çalışan|personel|kullan[ıi]c[ıi])|i[şs]e\s+en\s+son\s+giren).*(kim|kullan[ıi]c[ıi]|personel|çalışan)?/.test(s)) {
+    return { tool: 'sorgu', params: { koleksiyon: 'users', filtreler: [{ field: 'hireDate', op: 'exists', value: true }], siralaAlan: 'hireDate', siralaYon: 'desc', limit: 1, alanlar: ['id','name','hireDate','roles'] }, explain: 'En son işe giren kullanıcı bulunuyor.' };
+  }
+  if (/^(kay[ıi]tl[ıi]\s+)?(roller|rolleri|rol listesi|roller neler|rolleri listele|rolleri göster|rolleri s[öo]yle|hangi roller var)$/i.test(s.trim()) || /(?:kay[ıi]tl[ıi]\s+)?rol.*(liste|ver|göster|söyle|neler|var)/.test(s)) {
+    return { tool: 'sorgu', params: { koleksiyon: 'roles', siralaAlan: 'name', siralaYon: 'asc', limit: 200, alanlar: ['id','name','description'] }, explain: 'Kayıtlı roller listeleniyor.' };
+  }
+  if (/(form|s[üu]re[çc]).*(alan[ıi]\s+olmayan|alan yok|alans[ıi]z|form alan[ıi] yok)|(alan[ıi]\s+olmayan|alans[ıi]z).*s[üu]re[çc]/.test(s)) {
+    return { tool: 'sorgu', params: { koleksiyon: 'definitions', filtreler: [{ field: 'fields', op: 'exists', value: false }], alanlar: ['id','name','active','description','fields'], siralaAlan: 'name', siralaYon: 'asc', limit: 200 }, explain: 'Form alanı olmayan süreçler listeleniyor.' };
+  }
+  if (/(form|s[üu]re[çc]).*(alan[ıi]\s+olan|alanl[ıi]|form alan[ıi] var)|(alan[ıi]\s+olan|alanl[ıi]).*s[üu]re[çc]/.test(s)) {
+    return { tool: 'sorgu', params: { koleksiyon: 'definitions', filtreler: [{ field: 'fields', op: 'exists', value: true }], alanlar: ['id','name','active','description','fields'], siralaAlan: 'name', siralaYon: 'asc', limit: 200 }, explain: 'Form alanı olan süreçler listeleniyor.' };
+  }
   // Rol oluştur: "... rolü aç/oluştur/ekle"
   let m = s.match(/([a-zçğıöşü0-9 ]+?)\s*(?:rol[üu]?|rol)\s*(?:olu[şs]tur|a[çc]|ekle)/);
   if (m && m[1] && m[1].trim()) return { tool: 'rolOlustur', params: { ad: m[1].trim() }, explain: `"${m[1].trim()}" rolü oluşturulacak.` };
