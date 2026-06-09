@@ -1,70 +1,738 @@
 {
-  "_aciklama": "FABRİKA platformu YZ sorgu kataloğu. Bu dosyayı GitHub'a yükleyin, raw URL'ini uygulamada Yönetim > Kayıtlı Sorgular ekranına girin. Geliştirici (Claude) yeni talepler geldikçe bu listeyi günceller.",
-  "_surum": 1,
+  "_aciklama": "FABRİKA platformu YZ sorgu kataloğu. raw URL'ini Yönetim > Kayıtlı Sorgular ekranına girin.",
+  "_surum": 2,
   "_guncelleme": "2026-06-09",
-  "_sema": {
-    "name": "Sorgunun çağrılacağı isim (kullanıcı 'X sorgusunu çalıştır' der)",
-    "aciklama": "Kısa açıklama",
-    "params": {
-      "koleksiyon": "users | instances | tasks | definitions | roles | orders",
-      "filtreler": "[{field, op, value}] op=eq|ne|gt|gte|lt|lte|contains|in|exists",
-      "grupla": "sayım için alan adı (opsiyonel)",
-      "alanlar": "döndürülecek alanlar (opsiyonel)",
-      "siralaAlan": "sıralama alanı (opsiyonel)",
-      "siralaYon": "asc | desc",
-      "limit": "max kayıt (opsiyonel)"
-    }
-  },
+  "_not": "v2: kendi kendine üretilen 100 soruluk analizden çıkan hazır sorgular eklendi.",
   "queries": [
     {
-      "name": "Rol dağılımı",
-      "aciklama": "Her rolde kaç kullanıcı olduğunu sayar (en fazladan aza).",
-      "params": { "koleksiyon": "users", "grupla": "roles" }
-    },
-    {
-      "name": "Açık talepler",
-      "aciklama": "Devam eden (running) tüm talepler.",
-      "params": { "koleksiyon": "instances", "filtreler": [{ "field": "status", "op": "eq", "value": "running" }], "alanlar": ["id", "defId", "ownerId", "createdAt"], "siralaAlan": "createdAt", "siralaYon": "asc" }
+      "name": "Açık talepler hangileri",
+      "aciklama": "Açık talepler hangileri",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "running"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "defId",
+          "ownerId",
+          "createdAt"
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "asc"
+      }
     },
     {
       "name": "Tamamlanan talepler",
-      "aciklama": "Bitmiş (completed) talepler.",
-      "params": { "koleksiyon": "instances", "filtreler": [{ "field": "status", "op": "eq", "value": "completed" }], "alanlar": ["id", "defId", "ownerId"] }
+      "aciklama": "Tamamlanan talepler",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "completed"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "defId",
+          "ownerId"
+        ]
+      }
     },
     {
       "name": "Reddedilen talepler",
-      "aciklama": "Reddedilmiş talepler.",
-      "params": { "koleksiyon": "instances", "filtreler": [{ "field": "status", "op": "eq", "value": "rejected" }], "alanlar": ["id", "defId", "ownerId"] }
+      "aciklama": "Reddedilen talepler",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "rejected"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "defId",
+          "ownerId"
+        ]
+      }
     },
     {
       "name": "Talep durum dağılımı",
-      "aciklama": "Taleplerin duruma göre sayısı (açık/tamamlanan/reddedilen).",
-      "params": { "koleksiyon": "instances", "grupla": "status" }
+      "aciklama": "Talep durum dağılımı",
+      "params": {
+        "koleksiyon": "instances",
+        "grupla": "status"
+      }
+    },
+    {
+      "name": "Hangi süreçte kaç talep var",
+      "aciklama": "Hangi süreçte kaç talep var",
+      "params": {
+        "koleksiyon": "instances",
+        "grupla": "defId"
+      }
+    },
+    {
+      "name": "Hangi kişi en çok talep açmış",
+      "aciklama": "Hangi kişi en çok talep açmış",
+      "params": {
+        "koleksiyon": "instances",
+        "grupla": "ownerId"
+      }
+    },
+    {
+      "name": "En eski açık talep",
+      "aciklama": "En eski açık talep",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "running"
+          }
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "asc",
+        "limit": 1
+      }
+    },
+    {
+      "name": "En yeni açık talep",
+      "aciklama": "En yeni açık talep",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "running"
+          }
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "desc",
+        "limit": 1
+      }
+    },
+    {
+      "name": "En son açılan 10 talep",
+      "aciklama": "En son açılan 10 talep",
+      "params": {
+        "koleksiyon": "instances",
+        "siralaAlan": "createdAt",
+        "siralaYon": "desc",
+        "limit": 10,
+        "alanlar": [
+          "id",
+          "defId",
+          "ownerId",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "Hangi süreç en çok reddediliyor",
+      "aciklama": "Hangi süreç en çok reddediliyor",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "rejected"
+          }
+        ],
+        "grupla": "defId"
+      }
+    },
+    {
+      "name": "Hangi süreç en çok tamamlanıyor",
+      "aciklama": "Hangi süreç en çok tamamlanıyor",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "completed"
+          }
+        ],
+        "grupla": "defId"
+      }
+    },
+    {
+      "name": "Reddedilen taleplerin sahip dağılımı",
+      "aciklama": "Reddedilen taleplerin sahip dağılımı",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "rejected"
+          }
+        ],
+        "grupla": "ownerId"
+      }
+    },
+    {
+      "name": "Hangi adımda kaç talep bekliyor",
+      "aciklama": "Hangi adımda kaç talep bekliyor",
+      "params": {
+        "koleksiyon": "instances",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "running"
+          }
+        ],
+        "grupla": "currentStep"
+      }
     },
     {
       "name": "Açık görevler",
-      "aciklama": "Henüz tamamlanmamış (open) tüm görevler.",
-      "params": { "koleksiyon": "tasks", "filtreler": [{ "field": "status", "op": "eq", "value": "open" }], "alanlar": ["id", "title", "assigneeId", "instanceId"] }
+      "aciklama": "Açık görevler",
+      "params": {
+        "koleksiyon": "tasks",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "open"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "title",
+          "assigneeId",
+          "instanceId"
+        ]
+      }
     },
     {
-      "name": "Görev yükü dağılımı",
-      "aciklama": "Hangi kişide kaç görev olduğunu sayar.",
-      "params": { "koleksiyon": "tasks", "filtreler": [{ "field": "status", "op": "eq", "value": "open" }], "grupla": "assigneeId" }
+      "name": "Tamamlanmış görevler",
+      "aciklama": "Tamamlanmış görevler",
+      "params": {
+        "koleksiyon": "tasks",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "done"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "title",
+          "assigneeId"
+        ]
+      }
     },
     {
-      "name": "Süreç dağılımı",
-      "aciklama": "Hangi süreçte kaç talep açılmış (defId'ye göre).",
-      "params": { "koleksiyon": "instances", "grupla": "defId" }
+      "name": "Kişi başına açık görev sayısı",
+      "aciklama": "Kişi başına açık görev sayısı",
+      "params": {
+        "koleksiyon": "tasks",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "open"
+          }
+        ],
+        "grupla": "assigneeId"
+      }
+    },
+    {
+      "name": "Görev durum dağılımı",
+      "aciklama": "Görev durum dağılımı",
+      "params": {
+        "koleksiyon": "tasks",
+        "grupla": "status"
+      }
+    },
+    {
+      "name": "Atanmamış görevler",
+      "aciklama": "Atanmamış görevler",
+      "params": {
+        "koleksiyon": "tasks",
+        "filtreler": [
+          {
+            "field": "assigneeId",
+            "op": "exists",
+            "value": false
+          }
+        ],
+        "alanlar": [
+          "id",
+          "title",
+          "instanceId"
+        ]
+      }
+    },
+    {
+      "name": "En son oluşturulan görevler",
+      "aciklama": "En son oluşturulan görevler",
+      "params": {
+        "koleksiyon": "tasks",
+        "siralaAlan": "createdAt",
+        "siralaYon": "desc",
+        "limit": 10,
+        "alanlar": [
+          "id",
+          "title",
+          "assigneeId"
+        ]
+      }
+    },
+    {
+      "name": "Hangi talebe en çok görev bağlı",
+      "aciklama": "Hangi talebe en çok görev bağlı",
+      "params": {
+        "koleksiyon": "tasks",
+        "grupla": "instanceId"
+      }
+    },
+    {
+      "name": "Rol dağılımı",
+      "aciklama": "Rol dağılımı (en az/en çok kullanıcı)",
+      "params": {
+        "koleksiyon": "users",
+        "grupla": "roles"
+      }
+    },
+    {
+      "name": "Tüm kullanıcılar",
+      "aciklama": "Tüm kullanıcılar",
+      "params": {
+        "koleksiyon": "users",
+        "alanlar": [
+          "id",
+          "name",
+          "roles"
+        ]
+      }
+    },
+    {
+      "name": "Telefonu olmayan kullanıcılar",
+      "aciklama": "Telefonu olmayan kullanıcılar",
+      "params": {
+        "koleksiyon": "users",
+        "filtreler": [
+          {
+            "field": "cep",
+            "op": "exists",
+            "value": false
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "Dahilisi olmayan kullanıcılar",
+      "aciklama": "Dahilisi olmayan kullanıcılar",
+      "params": {
+        "koleksiyon": "users",
+        "filtreler": [
+          {
+            "field": "dahili",
+            "op": "exists",
+            "value": false
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "Yöneticisi atanmamış kullanıcılar",
+      "aciklama": "Yöneticisi atanmamış kullanıcılar",
+      "params": {
+        "koleksiyon": "users",
+        "filtreler": [
+          {
+            "field": "manager",
+            "op": "exists",
+            "value": false
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "Yönetici dağılımı",
+      "aciklama": "Yönetici dağılımı (kimde kaç kişi)",
+      "params": {
+        "koleksiyon": "users",
+        "grupla": "manager"
+      }
+    },
+    {
+      "name": "İşe giriş tarihi olan kullanıcılar",
+      "aciklama": "İşe giriş tarihi olan kullanıcılar",
+      "params": {
+        "koleksiyon": "users",
+        "filtreler": [
+          {
+            "field": "hireDate",
+            "op": "exists",
+            "value": true
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name",
+          "hireDate"
+        ]
+      }
+    },
+    {
+      "name": "İsme göre sıralı kullanıcı listesi",
+      "aciklama": "İsme göre sıralı kullanıcı listesi",
+      "params": {
+        "koleksiyon": "users",
+        "siralaAlan": "name",
+        "siralaYon": "asc",
+        "alanlar": [
+          "id",
+          "name",
+          "roles"
+        ]
+      }
+    },
+    {
+      "name": "Çok rollü kullanıcılar (ham liste)",
+      "aciklama": "Birden çok rolü olan kişiler (ham liste)",
+      "params": {
+        "koleksiyon": "users",
+        "alanlar": [
+          "id",
+          "name",
+          "roles"
+        ]
+      }
     },
     {
       "name": "Aktif süreçler",
-      "aciklama": "Açık (active) süreç tanımları.",
-      "params": { "koleksiyon": "definitions", "filtreler": [{ "field": "active", "op": "eq", "value": true }], "alanlar": ["id", "name"] }
+      "aciklama": "Aktif süreçler",
+      "params": {
+        "koleksiyon": "definitions",
+        "filtreler": [
+          {
+            "field": "active",
+            "op": "eq",
+            "value": true
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "Pasif süreçler",
+      "aciklama": "Pasif süreçler",
+      "params": {
+        "koleksiyon": "definitions",
+        "filtreler": [
+          {
+            "field": "active",
+            "op": "eq",
+            "value": false
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "Tüm süreçler",
+      "aciklama": "Tüm süreçler",
+      "params": {
+        "koleksiyon": "definitions",
+        "alanlar": [
+          "id",
+          "name",
+          "active"
+        ]
+      }
+    },
+    {
+      "name": "Aktif/pasif süreç dağılımı",
+      "aciklama": "Aktif/pasif süreç dağılımı",
+      "params": {
+        "koleksiyon": "definitions",
+        "grupla": "active"
+      }
     },
     {
       "name": "Tüm roller",
-      "aciklama": "Sistemdeki tüm roller.",
-      "params": { "koleksiyon": "roles", "alanlar": ["id", "name", "description"] }
+      "aciklama": "Tüm roller",
+      "params": {
+        "koleksiyon": "roles",
+        "alanlar": [
+          "id",
+          "name",
+          "description"
+        ]
+      }
+    },
+    {
+      "name": "Açıklaması olmayan roller",
+      "aciklama": "Açıklaması olmayan roller",
+      "params": {
+        "koleksiyon": "roles",
+        "filtreler": [
+          {
+            "field": "description",
+            "op": "exists",
+            "value": false
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "Tüm siparişler",
+      "aciklama": "Tüm siparişler",
+      "params": {
+        "koleksiyon": "orders",
+        "alanlar": [
+          "id",
+          "status",
+          "createdAt"
+        ]
+      }
+    },
+    {
+      "name": "Sipariş durum dağılımı",
+      "aciklama": "Sipariş durum dağılımı",
+      "params": {
+        "koleksiyon": "orders",
+        "grupla": "status"
+      }
+    },
+    {
+      "name": "Açık siparişler",
+      "aciklama": "Açık siparişler",
+      "params": {
+        "koleksiyon": "orders",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "open"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "createdAt"
+        ]
+      }
+    },
+    {
+      "name": "En son siparişler",
+      "aciklama": "En son siparişler",
+      "params": {
+        "koleksiyon": "orders",
+        "siralaAlan": "createdAt",
+        "siralaYon": "desc",
+        "limit": 10
+      }
+    },
+    {
+      "name": "İlk açılan 10 talep",
+      "aciklama": "İlk açılan 10 talep (en eski)",
+      "params": {
+        "koleksiyon": "instances",
+        "siralaAlan": "createdAt",
+        "siralaYon": "asc",
+        "limit": 10,
+        "alanlar": [
+          "id",
+          "defId",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "En eski açık görevler",
+      "aciklama": "En eski açık görevler",
+      "params": {
+        "koleksiyon": "tasks",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "open"
+          }
+        ],
+        "siralaAlan": "createdAt",
+        "siralaYon": "asc",
+        "limit": 10,
+        "alanlar": [
+          "id",
+          "title",
+          "assigneeId"
+        ]
+      }
+    },
+    {
+      "name": "E-postası olmayan kullanıcılar",
+      "aciklama": "E-postası olmayan kullanıcılar",
+      "params": {
+        "koleksiyon": "users",
+        "filtreler": [
+          {
+            "field": "email",
+            "op": "exists",
+            "value": false
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "İşe giriş tarihine göre sıralı",
+      "aciklama": "İşe giriş tarihine göre sıralı",
+      "params": {
+        "koleksiyon": "users",
+        "filtreler": [
+          {
+            "field": "hireDate",
+            "op": "exists",
+            "value": true
+          }
+        ],
+        "siralaAlan": "hireDate",
+        "siralaYon": "asc",
+        "alanlar": [
+          "id",
+          "name",
+          "hireDate"
+        ]
+      }
+    },
+    {
+      "name": "En yeni işe girenler",
+      "aciklama": "En yeni işe girenler",
+      "params": {
+        "koleksiyon": "users",
+        "filtreler": [
+          {
+            "field": "hireDate",
+            "op": "exists",
+            "value": true
+          }
+        ],
+        "siralaAlan": "hireDate",
+        "siralaYon": "desc",
+        "limit": 5,
+        "alanlar": [
+          "id",
+          "name",
+          "hireDate"
+        ]
+      }
+    },
+    {
+      "name": "Açıklaması olan süreçler",
+      "aciklama": "Açıklaması olan süreçler",
+      "params": {
+        "koleksiyon": "definitions",
+        "filtreler": [
+          {
+            "field": "description",
+            "op": "exists",
+            "value": true
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "Süreçleri isme göre sırala",
+      "aciklama": "Süreçleri isme göre sırala",
+      "params": {
+        "koleksiyon": "definitions",
+        "siralaAlan": "name",
+        "siralaYon": "asc",
+        "alanlar": [
+          "id",
+          "name",
+          "active"
+        ]
+      }
+    },
+    {
+      "name": "En eski siparişler",
+      "aciklama": "En eski siparişler",
+      "params": {
+        "koleksiyon": "orders",
+        "siralaAlan": "createdAt",
+        "siralaYon": "asc",
+        "limit": 10
+      }
+    },
+    {
+      "name": "Tamamlanan siparişler",
+      "aciklama": "Tamamlanan siparişler",
+      "params": {
+        "koleksiyon": "orders",
+        "filtreler": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "completed"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "createdAt"
+        ]
+      }
+    },
+    {
+      "name": "Rolleri isme göre sırala",
+      "aciklama": "Rolleri isme göre sırala",
+      "params": {
+        "koleksiyon": "roles",
+        "siralaAlan": "name",
+        "siralaYon": "asc",
+        "alanlar": [
+          "id",
+          "name"
+        ]
+      }
     }
   ]
 }
