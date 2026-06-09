@@ -9407,7 +9407,12 @@ function applyQueryTextTemplate(template, result, meta = {}) {
     if (key === 'shown') return String(base.shown);
     if (key === 'groupField') return base.groupField;
     if (key === 'no') return String(obj.__no || '');
-    if (key === 'deger' || key === 'sayi') return obj[key] === undefined ? '' : String(obj[key]);
+    if (key === 'sayi') return obj[key] === undefined ? '' : String(obj[key]);
+    if (key === 'deger') {
+      const raw = obj[key];
+      const hv = humanizeQueryValue(base.groupField || 'deger', raw);
+      return hv || 'Belirtilmemiş / boş';
+    }
     return humanizeQueryValue(key, obj[key]);
   });
   let out = template;
@@ -9453,10 +9458,14 @@ async function testQueryWizard() {
   try {
     const params = JSON.parse(document.getElementById('qw-json')?.value || '{}');
     const result = await AI_TOOLS.sorgu.run(params);
-    const summary = result.gruplandi
-      ? `Gruplama: ${result.gruplandi}\nToplam kayıt: ${result.toplamKayit}\nEn yüksek: ${result.enYuksek ? result.enYuksek.deger + ' (' + result.enYuksek.sayi + ')' : '-'}\n\n` + JSON.stringify(result.gruplar || [], null, 2).slice(0, 2500)
-      : `Eşleşen kayıt: ${result.toplam}\nDönen kayıt: ${result.donen}\n\n` + JSON.stringify(result.items || [], null, 2).slice(0, 2500);
-    if (box) { box.style.color = 'var(--text)'; box.textContent = summary; }
+    const templates = qWizardGetTemplates();
+    const queryName = (document.getElementById('qw-name')?.value || '').trim();
+    const userText = formatQueryResultAsUserText(result, {
+      queryName,
+      collection: params.koleksiyon || '',
+      responseTemplate: templates.responseTemplate || ''
+    });
+    if (box) { box.style.color = 'var(--text)'; box.textContent = userText; }
   } catch (e) {
     if (box) { box.style.color = 'var(--red)'; box.textContent = 'Hata: ' + e.message; }
   }
