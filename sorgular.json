@@ -1,8 +1,8 @@
 {
   "_aciklama": "FABRİKA platformu profesyonel YZ sorgu kataloğu. v5: kayıtlı sorgular + aliases + AI_TOOL yönlendirme kayıtları.",
-  "_surum": "5.1",
+  "_surum": "5.2",
   "_guncelleme": "2026-06-09",
-  "_not": "v5.1: Yeni öğrenme kuyruğu kayıtlarına göre avans talepleri sorguları eklendi. Kayıtlı sorgu sayısı/listeleme talepleri _sistem_komutlari altında AI_TOOLS yönlendirmesi olarak tanımlandı.",
+  "_not": "v5.1: Yeni öğrenme kuyruğu kayıtlarına göre avans talepleri sorguları eklendi. Kayıtlı sorgu sayısı/listeleme talepleri _sistem_komutlari altında AI_TOOLS yönlendirmesi olarak tanımlandı. v5.2: AI konsol eşleşmesi için kıdemli/çalışan/yönetici aliasları eklendi.",
   "_kullanim": "Yönetim > Kayıtlı Sorgular ekranına yüklenir. Program aliases alanını desteklemiyorsa sorgular yine name/aciklama ile çalışır; aliases için intent motoruna destek eklenmelidir.",
   "queries": [
     {
@@ -736,7 +736,17 @@
           "hireDate"
         ]
       },
-      "aliases": []
+      "aliases": [
+        "en kıdemli kullanıcı",
+        "en kıdemli kullanıcılar",
+        "en eski çalışan",
+        "en eski çalışanlar",
+        "ilk işe giren kullanıcı",
+        "ilk işe giren çalışan",
+        "en uzun süredir çalışan kullanıcı",
+        "kıdemli kullanıcılar",
+        "kıdemli personel"
+      ]
     },
     {
       "name": "En yeni işe girenler",
@@ -765,7 +775,11 @@
         "en yeni çalışan kim",
         "en yeni personel kim",
         "kim en son işe girdi",
-        "işe en son giren kişi"
+        "işe en son giren kişi",
+        "en yeni kullanıcı",
+        "son işe giren kullanıcı",
+        "en son işe giren kullanıcı",
+        "son başlayan kullanıcı"
       ]
     },
     {
@@ -11098,6 +11112,37 @@
       "aliases": [
         "avans talepleri hangi durumda",
         "avans durum dağılımı"
+      ]
+    },
+    {
+      "name": "Çalışan rolündeki kullanıcılar",
+      "aciklama": "roles alanında çalışan/calisan rolü geçen kullanıcıları listeler",
+      "params": {
+        "koleksiyon": "users",
+        "filtreler": [
+          {
+            "field": "roles",
+            "op": "contains",
+            "value": "calisan"
+          }
+        ],
+        "alanlar": [
+          "id",
+          "name",
+          "roles",
+          "email"
+        ],
+        "siralaAlan": "name",
+        "siralaYon": "asc",
+        "limit": 200
+      },
+      "aliases": [
+        "çalışan pozisyonunda olan kullanıcılar",
+        "sadece çalışan pozisyonunda olan kullanıcılar",
+        "çalışan rolündeki kullanıcılar",
+        "çalışan kullanıcılar",
+        "çalışan personeller",
+        "pozisyonu çalışan olanlar"
       ]
     }
   ],

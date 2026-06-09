@@ -1,9 +1,9 @@
 {
   "_aciklama": "FABRİKA intent sözlüğü. Kullanıcı doğal dil ifadesini sorgular.json içindeki queryName veya sistem aracına bağlar.",
-  "_surum": "1.0",
+  "_surum": "1.1-ai-v2",
   "_kaynak": "sorgular(3).json dosyasındaki gerçek queries listesi üzerinden üretildi.",
   "_query_count": 530,
-  "_intent_count": 532,
+  "_intent_count": 533,
   "intents": [
     {
       "intent": "instances.acik.talepler.hangileri",
@@ -1526,7 +1526,12 @@
         "İşe giriş tarihine göre sıralı göster",
         "İşe giriş tarihine göre sıralı listele",
         "İşe giriş tarihine göre sıralı nelerdir",
-        "İşe giriş tarihine göre sıralı listesini ver"
+        "İşe giriş tarihine göre sıralı listesini ver",
+        "en kıdemli kullanıcı",
+        "en kıdemli kullanıcılar",
+        "en eski çalışan",
+        "ilk işe giren kullanıcı",
+        "kıdemli personel"
       ],
       "keywords": [
         "giris",
@@ -18099,6 +18104,24 @@
         "goster"
       ],
       "priority": 90
+    },
+    {
+      "intent": "users.calisan.rolundeki.kullanicilar",
+      "type": "query",
+      "queryName": "Çalışan rolündeki kullanıcılar",
+      "collection": "users",
+      "aliases": [
+        "çalışan pozisyonunda olan kullanıcılar",
+        "sadece çalışan pozisyonunda olan kullanıcılar",
+        "çalışan rolündeki kullanıcılar",
+        "çalışan kullanıcılar"
+      ],
+      "keywords": [
+        "calisan",
+        "pozisyon",
+        "kullanici"
+      ],
+      "priority": 60
     }
   ]
 }
