@@ -16731,9 +16731,18 @@ function applyQueryFilter(row, f) {
     case 'gte': return v >= t;
     case 'lt':  return v < t;
     case 'lte': return v <= t;
-    case 'contains':
-      if (Array.isArray(v)) return v.includes(t);
-      return String(v ?? '').toLocaleLowerCase('tr-TR').includes(String(t).toLocaleLowerCase('tr-TR'));
+    case 'contains': {
+      const slug = x => String(x ?? '').toLocaleLowerCase('tr-TR')
+        .replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u')
+        .replace(/[_\s]+/g,' ').trim();
+      const needle = slug(t);
+      if (Array.isArray(v)) {
+        // Dizi alanlar (ör. roles): tam eşleşme yerine Türkçe-normalize + kısmi eşleşme.
+        // "mudur" → "Müdür", "mudur_uretim", "MUDUR" gibi varyantları yakalar.
+        return v.some(el => slug(el).includes(needle));
+      }
+      return slug(v).includes(needle);
+    }
     case 'in':  return Array.isArray(t) && t.includes(v);
     case 'exists': return (v !== undefined && v !== null && v !== '');
     default: throw new Error('Bilinmeyen operatör: ' + f.op);
@@ -18345,6 +18354,24 @@ setInterval(() => {
     if (/(giris|girisli|giren|girenler|girdi|baslayan)/.test(s) && /(eski|kidemli|ilk)/.test(s)) {
       if (name.includes('ise giris tarihine gore') || name.includes('en eski ise giren')) best += 45;
       if (name === 'tum kullanicilar') best -= 60;
+    }
+
+    // Rol adı + kullanıcı/personel: rol-filtreli sorgu, filtresiz "Tüm kullanıcılar"ı ezmeli.
+    // ör. "müdür kullanıcılar", "üretim personeli", "satış ekibi"
+    if (/\b(kullanic|personel|calisan|eleman|ekip|ekibi)/.test(s)) {
+      const ROL_SLUG = ['insan_kaynaklari','satin_alma','uretim','pazarlama','muhasebe','mudur','planlama','kalite','depo','sevkiyat','bakim','satis','admin','isci','operator','yonetici','isg','finans'];
+      // metinde geçen rol slug'ı (insan kaynaklari / satin alma gibi iki kelimeliler için boşluklu da kontrol)
+      const rolGecen = ROL_SLUG.find(slug => {
+        const sp = slug.replace(/_/g, ' ');
+        return s.includes(slug) || s.includes(sp);
+      });
+      if (rolGecen) {
+        const filtreSlug = (q.params && Array.isArray(q.params.filtreler))
+          ? q.params.filtreler.find(f => f && f.field === 'roles' && f.op === 'contains')?.value
+          : null;
+        if (filtreSlug === rolGecen) best += 50;       // doğru rol-filtreli sorgu
+        if (name === 'tum kullanicilar') best -= 60;    // filtresiz liste geri planda
+      }
     }
 
     return best;
