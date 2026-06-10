@@ -20008,3 +20008,304 @@ setInterval(() => {
   console.log('[FABRİKA AI v8] Yerel sorgu kalıcılığı aktif');
 })();
 </script>
+
+<script>
+/* ============================================================
+   FABRİKA v19 — YZ Demo Veri Oluşturucu
+   - Yönetim menüsüne Demo Veri ekranı ekler.
+   - YZ komutuyla veya butonlarla bol kayıt üretir.
+   - Üretilen kayıtlar isDemo:true ile işaretlenir.
+   - Firestore izni yoksa yerel state/localStorage üzerinde çalışır.
+   ============================================================ */
+(function(){
+  'use strict';
+  const root = window;
+  const DEMO_BACKUP_KEY = 'FABRIKA_DEMO_DATA_LOCAL_V1';
+
+  function getSt(){
+    try { if (typeof state !== 'undefined') return state; } catch(_) {}
+    return root.state || null;
+  }
+  function uid(prefix){ return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+  function daysAgo(n){ const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0,10); }
+  function daysFromNow(n){ const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0,10); }
+  function nowMs(){ return Date.now(); }
+  function pick(arr, i){ return arr[i % arr.length]; }
+  function notifySafe(msg, type){ try { if (typeof notify === 'function') notify(msg, type || 'success'); else console.log(msg); } catch(_) { console.log(msg); } }
+  function escapeHtml(s){ return String(s == null ? '' : s).replace(/[&<>'"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m])); }
+
+  function ensureArrays(st){
+    ['users','definitions','instances','tasks','orders','notifications','comments','roles','history','productionLog','stationAssignments'].forEach(k => { if (!Array.isArray(st[k])) st[k] = []; });
+  }
+  function addOrReplace(arr, item){ const i = arr.findIndex(x => String(x.id) === String(item.id)); if (i >= 0) arr[i] = item; else arr.push(item); }
+
+  const roleIds = ['worker','operator','manager','hr','admin','kalite','planlama','satinalma','pazarlama_satis','depo','bakim'];
+  function demoRoles(){
+    const existingDefaults = (typeof defaultRoles === 'function') ? defaultRoles() : [];
+    const base = existingDefaults.map(r => ({...r, isDemo:false}));
+    const extra = [
+      { id:'kalite', name:'Kalite', icon:'✅', color:'#22c55e', description:'Kalite kontrol kullanıcıları', isDemo:true, permissions:{} },
+      { id:'planlama', name:'Planlama', icon:'📅', color:'#38bdf8', description:'Planlama ekibi', isDemo:true, permissions:{} },
+      { id:'satinalma', name:'Satınalma', icon:'🛒', color:'#f97316', description:'Satınalma ekibi', isDemo:true, permissions:{} },
+      { id:'pazarlama_satis', name:'Pazarlama Satış', icon:'📣', color:'#a855f7', description:'Pazarlama ve satış ekibi', isDemo:true, permissions:{} },
+      { id:'depo', name:'Depo', icon:'📦', color:'#eab308', description:'Depo ekibi', isDemo:true, permissions:{} },
+      { id:'bakim', name:'Bakım', icon:'🔧', color:'#64748b', description:'Bakım ekibi', isDemo:true, permissions:{} }
+    ];
+    return [...base, ...extra];
+  }
+
+  const departments = ['insan_kaynaklari','planlama','satinalma','pazarlama_satis','konfeksiyon_uretim','depo','kalite','bakim','yonetim'];
+  const firstNames = ['Ahmet','Mehmet','Ayşe','Fatma','Hasan','Veli','Zeynep','Emre','Dilek','Turan','Türkay','Tuğba','Bekir','Bestami','Cemile','Adem','Ali','Aysel','Murat','Selin','Can','Elif','Ömer','Buse','Kemal','Nazlı','Serkan','Gizem','Yusuf','Deniz'];
+  const lastNames = ['Yılmaz','Kaya','Demir','Şahin','Çetin','Arslan','Mutlubaş','Tasarı','Karataş','Aydın','Özbay','Yünek','Kara','Keçe','Aksoy','Koç','Avcı','Aslan','Kurt','Polat'];
+
+  function makeUsers(count){
+    const out = [];
+    const managers = [];
+    for (let i=0;i<count;i++){
+      const id = 'demo_user_' + String(i+1).padStart(3,'0');
+      const dept = pick(departments, i);
+      let roles = ['worker'];
+      if (i % 10 === 0) roles = ['manager', dept === 'yonetim' ? 'admin' : dept];
+      else if (i % 7 === 0) roles = ['operator'];
+      else if (['kalite','planlama','satinalma','pazarlama_satis','depo','bakim'].includes(dept)) roles.push(dept);
+      if (roles.includes('manager')) managers.push(id);
+      const name = pick(firstNames, i) + ' ' + pick(lastNames, i*3);
+      out.push({
+        id, username:id, name, email:id + '@fabrika.com', roles,
+        manager: null,
+        department: dept,
+        title: roles.includes('manager') ? 'Birim Müdürü' : (roles.includes('operator') ? 'Operatör' : 'Uzman'),
+        dahili: String(1000 + i), cep: '05' + String(300000000 + i).padStart(9,'0'),
+        hireDate: daysAgo(365 + (i*47)%4200), absences: [],
+        active:true, isDemo:true, createdAt: nowMs() - i*100000
+      });
+    }
+    out.forEach((u,i) => { if (!u.roles.includes('manager')) u.manager = managers.length ? pick(managers, i) : null; });
+    // Özellikle manager null olan birkaç kayıt bırakalım.
+    out.slice(0,3).forEach(u => { u.manager = null; });
+    return out;
+  }
+
+  function makeDefinitions(){
+    return [
+      { id:'demo_avans', name:'Demo Avans Talebi', icon:'💰', description:'Personel avans talepleri; önce yönetici, sonra muhasebe onayı.', active:true, isDemo:true,
+        fields:[{id:'amount',label:'Tutar',type:'number',required:true},{id:'reason',label:'Açıklama',type:'textarea',required:true},{id:'paymentDate',label:'Ödeme tarihi',type:'date',required:false}],
+        startStep:'s_manager', steps:[{id:'s_manager',title:'Müdür Onayı',type:'human',assign:{mode:'requester_manager'}},{id:'s_accounting',title:'Muhasebe Kontrolü',type:'human',assign:{mode:'role',role:'satinalma'}},{id:'s_done',title:'Tamamlandı',type:'end-good'},{id:'s_rej',title:'Reddedildi',type:'end-bad'}],
+        transitions:[{from:'s_manager',when:'approve',to:'s_accounting'},{from:'s_manager',when:'reject',to:'s_rej'},{from:'s_accounting',when:'approve',to:'s_done'},{from:'s_accounting',when:'reject',to:'s_rej'}]},
+      { id:'demo_izin', name:'Demo İzin Talebi', icon:'🌴', description:'Yıllık izin talebi; müdür ve İK onayı.', active:true, isDemo:true,
+        fields:[{id:'startDate',label:'Başlangıç',type:'date',required:true},{id:'endDate',label:'Bitiş',type:'date',required:true},{id:'reason',label:'Açıklama',type:'textarea',required:false}],
+        startStep:'s_manager', steps:[{id:'s_manager',title:'Müdür Onayı',type:'human',assign:{mode:'requester_manager'}},{id:'s_hr',title:'İK Onayı',type:'human',assign:{mode:'role',role:'hr'}},{id:'s_done',title:'Tamamlandı',type:'end-good'},{id:'s_rej',title:'Reddedildi',type:'end-bad'}],
+        transitions:[{from:'s_manager',when:'approve',to:'s_hr'},{from:'s_manager',when:'reject',to:'s_rej'},{from:'s_hr',when:'approve',to:'s_done'},{from:'s_hr',when:'reject',to:'s_rej'}]},
+      { id:'demo_bakim', name:'Demo Bakım Talebi', icon:'🔧', description:'Makine arızası ve bakım talepleri.', active:true, isDemo:true,
+        fields:[{id:'machine',label:'Makine',type:'text',required:true},{id:'severity',label:'Aciliyet',type:'select',required:true,options:[{value:'low',label:'Düşük'},{value:'medium',label:'Orta'},{value:'high',label:'Yüksek'}]},{id:'problem',label:'Sorun',type:'textarea',required:true}],
+        startStep:'s_bakim', steps:[{id:'s_bakim',title:'Bakım İncelemesi',type:'human',assign:{mode:'role',role:'bakim'}},{id:'s_done',title:'İş Emri Oluşturuldu',type:'end-good'},{id:'s_rej',title:'Reddedildi',type:'end-bad'}], transitions:[{from:'s_bakim',when:'approve',to:'s_done'},{from:'s_bakim',when:'reject',to:'s_rej'}]},
+      { id:'demo_siparis_onay', name:'Demo Sipariş Onay Formu', icon:'🏭', description:'Yükleme tarihi, sipariş türü, açıklama ve vekil kişi alanlarıyla pazarlama, planlama ve müdür onayı.', active:true, isDemo:true,
+        fields:[{id:'loadingDate',label:'Yükleme Tarihi',type:'date',required:true},{id:'orderType',label:'Sipariş Türü',type:'select',required:true,options:[{value:'ihracat',label:'İhracat'},{value:'ic_piyasa',label:'İç Piyasa'}]},{id:'description',label:'Açıklama',type:'textarea',required:true},{id:'delegateUser',label:'Vekil Kişi',type:'user',required:false}],
+        startStep:'s_pazarlama', steps:[{id:'s_pazarlama',title:'Pazarlama Onayı',type:'human',assign:{mode:'role',role:'pazarlama_satis'}},{id:'s_planlama',title:'Planlama Onayı',type:'human',assign:{mode:'role',role:'planlama'}},{id:'s_mudur',title:'Müdür Onayı',type:'human',assign:{mode:'role',role:'manager'}},{id:'s_done',title:'Tamamlandı',type:'end-good'},{id:'s_rej',title:'Reddedildi',type:'end-bad'}],
+        transitions:[{from:'s_pazarlama',when:'approve',to:'s_planlama'},{from:'s_pazarlama',when:'reject',to:'s_rej'},{from:'s_planlama',when:'approve',to:'s_mudur'},{from:'s_planlama',when:'reject',to:'s_rej'},{from:'s_mudur',when:'approve',to:'s_done'},{from:'s_mudur',when:'reject',to:'s_rej'}]},
+      { id:'demo_kalite', name:'Demo Kalite Uygunsuzluk', icon:'✅', description:'Kalite uygunsuzluk kayıtları ve düzeltici faaliyet akışı.', active:true, isDemo:true,
+        fields:[{id:'lotNo',label:'Lot No',type:'text',required:true},{id:'defect',label:'Hata Tipi',type:'text',required:true},{id:'action',label:'Aksiyon',type:'textarea',required:true}],
+        startStep:'s_qc', steps:[{id:'s_qc',title:'Kalite İncelemesi',type:'human',assign:{mode:'role',role:'kalite'}},{id:'s_done',title:'Kapatıldı',type:'end-good'}], transitions:[{from:'s_qc',when:'approve',to:'s_done'}]}
+    ];
+  }
+
+  function makeInstancesAndTasks(st, instanceCount){
+    const defs = st.definitions.filter(d => d.isDemo);
+    const users = st.users.filter(u => u.isDemo);
+    const statuses = ['running','running','running','completed','rejected'];
+    const instances = [], tasks = [], comments = [], notifications = [];
+    for (let i=0;i<instanceCount;i++){
+      const def = pick(defs, i); const owner = pick(users, i*3); const status = pick(statuses, i);
+      const instId = 'DEMO-TR-' + String(i+1).padStart(4,'0');
+      const createdAt = nowMs() - (i+1) * 3600 * 1000 * 6;
+      const currentStep = status === 'running' ? pick((def.steps||[]).filter(s=>s.type==='human').map(s=>s.id), i) || def.startStep : (status === 'completed' ? 's_done' : 's_rej');
+      const data = demoFormData(def, i, users);
+      instances.push({ id:instId, defId:def.id, ownerId:owner.id, status, currentStep, data, createdAt, updatedAt:createdAt + 3600000, isDemo:true, priority: pick(['low','normal','high','urgent'], i) });
+      if (status === 'running'){
+        const assignee = resolveAssigneeForStep(st, owner, currentStep, def, i);
+        tasks.push({ id:'demo_task_' + String(i+1).padStart(4,'0'), title:def.name + ' - ' + instId, instanceId:instId, defId:def.id, stepId:currentStep, assigneeId:assignee, status:'open', createdAt, dueAt: daysFromNow((i%6)-2), priority: pick(['normal','high','urgent'], i), isDemo:true });
+        notifications.push({ id:'demo_notif_' + String(i+1).padStart(4,'0'), userId:assignee, title:'Demo görev atandı', text:def.name + ' için onay bekliyor: ' + instId, read:false, createdAt, isDemo:true });
+      }
+      if (i % 3 === 0) comments.push({ id:'demo_comment_' + String(i+1).padStart(4,'0'), instanceId:instId, userId:owner.id, text:'Demo yorum: süreç kontrol edildi.', createdAt:createdAt+5000, isDemo:true });
+    }
+    return {instances,tasks,comments,notifications};
+  }
+
+  function demoFormData(def, i, users){
+    if (def.id.includes('avans')) return { amount: 1000 + (i%12)*750, reason: pick(['Yol masrafı','Acil ihtiyaç','Proje harcaması','Numune alımı'], i), paymentDate: daysFromNow(2+i%8) };
+    if (def.id.includes('izin')) return { startDate: daysFromNow(i%20), endDate: daysFromNow((i%20)+3), reason: pick(['Yıllık izin','Aile ziyareti','Sağlık','Kişisel işler'], i) };
+    if (def.id.includes('bakim')) return { machine:'M-' + (100+i%35), severity: pick(['low','medium','high'], i), problem: pick(['Ses yapıyor','Yağ kaçağı','Sensör arızası','Motor ısınıyor'], i) };
+    if (def.id.includes('siparis')) return { loadingDate: daysFromNow(i%15), orderType: pick(['ihracat','ic_piyasa'], i), description:'Demo sipariş onayı #' + (i+1), delegateUser: pick(users, i+5).id };
+    return { lotNo:'LOT-' + (2026*1000+i), defect: pick(['Dikiş hatası','Renk farkı','Ölçü sapması','Leke'], i), action:'Düzeltici faaliyet başlatıldı.' };
+  }
+  function resolveAssigneeForStep(st, owner, stepId, def, i){
+    const users = st.users || [];
+    const step = (def.steps||[]).find(s=>s.id===stepId) || {};
+    const mode = step.assign && step.assign.mode;
+    if (mode === 'requester_manager' && owner.manager) return owner.manager;
+    if (mode === 'role') {
+      const role = step.assign.role;
+      const u = users.find(x => Array.isArray(x.roles) && x.roles.includes(role));
+      if (u) return u.id;
+    }
+    const mgr = users.find(x => Array.isArray(x.roles) && x.roles.includes('manager'));
+    return mgr ? mgr.id : (owner && owner.id) || 'demo_user_001';
+  }
+
+  function makeOrders(count, users){
+    const out = [];
+    for (let i=0;i<count;i++) out.push({
+      id:'DEMO-SIP-' + String(i+1).padStart(4,'0'), customer:pick(['Akhan Tekstil','Muteks','Ege Konfeksiyon','Denizli Export','İzmir Moda'], i), product:pick(['Tişört','Sweatshirt','Pantolon','Eşofman','Polo Yaka'], i), quantity:500 + (i%20)*125,
+      status:pick(['open','in_production','waiting_quality','completed','shipped'], i), ownerId:pick(users, i).id, currentStation:1+(i%9), createdAt:nowMs()-i*86400000, dueDate:daysFromNow(5+i%25), isDemo:true
+    });
+    return out;
+  }
+
+  function backupLocal(st){
+    try { localStorage.setItem(DEMO_BACKUP_KEY, JSON.stringify({ at:Date.now(), users:st.users, definitions:st.definitions, instances:st.instances, tasks:st.tasks, orders:st.orders, notifications:st.notifications, comments:st.comments, roles:st.roles })); } catch(e){ console.warn('[Demo] local backup yazılamadı:', e); }
+  }
+  function removeDemo(st){
+    ensureArrays(st);
+    ['users','definitions','instances','tasks','orders','notifications','comments','history','productionLog'].forEach(k => { st[k] = (st[k]||[]).filter(x => !x || !x.isDemo); });
+    st.roles = (st.roles||[]).filter(x => !x || !x.isDemo);
+  }
+
+  async function writeDemoToFirestore(st){
+    if (!root.fb || !root.fb.db) return {ok:false, reason:'Firestore bağlantısı yok'};
+    const db = root.fb.db;
+    const cols = ['users','definitions','instances','tasks','orders','notifications','comments','roles'];
+    let written = 0, failed = 0;
+    for (const col of cols){
+      const items = (st[col] || []).filter(x => x && x.isDemo && x.id);
+      for (const item of items){
+        try { await root.fb.setDoc(root.fb.doc(db, col, String(item.id)), (typeof sanitize === 'function' ? sanitize(item) : item), { merge:true }); written++; }
+        catch(e){ failed++; if (failed < 5) console.warn('[Demo] Firestore yazılamadı:', col, item.id, e.code || e.message); }
+      }
+    }
+    return {ok:failed===0, written, failed};
+  }
+
+  async function createDemoData(opts){
+    const st = getSt(); if (!st) { alert('State bulunamadı.'); return null; }
+    opts = Object.assign({users:60, instances:160, orders:35, clearFirst:true, firestore:true}, opts||{});
+    ensureArrays(st); backupLocal(st);
+    if (opts.clearFirst) removeDemo(st);
+    demoRoles().forEach(r => addOrReplace(st.roles, r));
+    makeUsers(opts.users).forEach(u => addOrReplace(st.users, u));
+    makeDefinitions().forEach(d => addOrReplace(st.definitions, d));
+    const pack = makeInstancesAndTasks(st, opts.instances);
+    pack.instances.forEach(x => addOrReplace(st.instances, x));
+    pack.tasks.forEach(x => addOrReplace(st.tasks, x));
+    pack.comments.forEach(x => addOrReplace(st.comments, x));
+    pack.notifications.forEach(x => addOrReplace(st.notifications, x));
+    makeOrders(opts.orders, st.users.filter(u=>u.isDemo)).forEach(o => addOrReplace(st.orders, o));
+    try { localStorage.setItem('FABRIKA_DEMO_LAST_COUNTS', JSON.stringify(opts)); } catch(_) {}
+    try { if (typeof persist === 'function') persist(); } catch(e){ console.warn('[Demo] persist çağrılamadı:', e); }
+    let fs = null; if (opts.firestore) fs = await writeDemoToFirestore(st);
+    if (typeof renderAdminContent === 'function') { try { renderAdminContent(); } catch(_){} }
+    return { users:opts.users, definitions:makeDefinitions().length, instances:opts.instances, tasks:pack.tasks.length, orders:opts.orders, notifications:pack.notifications.length, comments:pack.comments.length, firestore:fs };
+  }
+
+  async function clearDemoData(){
+    const st = getSt(); if (!st) return;
+    if (!confirm('Demo veri temizlensin mi? Sadece isDemo:true kayıtlar kaldırılır.')) return;
+    backupLocal(st); removeDemo(st);
+    try { if (typeof persist === 'function') persist(); } catch(_) {}
+    if (typeof renderAdminContent === 'function') renderAdminContent();
+    notifySafe('Demo kayıtlar yerel ekrandan temizlendi. Firestore içindeki demo kayıtları silmek için Firebase kurallarında silme izni gerekir.', 'success');
+  }
+
+  function parsePrompt(text){
+    const s = String(text||'').toLowerCase();
+    const nums = s.match(/\d+/g) || [];
+    const getAfter = (word, def) => { const re = new RegExp('(\\d+)\\s*(adet\\s*)?' + word); const m = s.match(re); return m ? Number(m[1]) : def; };
+    return {
+      users: getAfter('kullanıcı|personel|çalışan', nums[0] ? Number(nums[0]) : 60),
+      instances: getAfter('talep|süreç kaydı|form', nums[1] ? Number(nums[1]) : 160),
+      orders: getAfter('sipariş', nums[2] ? Number(nums[2]) : 35),
+      clearFirst: !/üzerine ekle|temizleme|silmeden/.test(s),
+      firestore: !/sadece yerel|local/.test(s)
+    };
+  }
+
+  async function generateDemoFromPrompt(){
+    const text = (document.getElementById('demoAiPrompt') || {}).value || '';
+    const opts = parsePrompt(text);
+    const out = document.getElementById('demoOutput');
+    if (out) out.textContent = 'Demo kayıtlar oluşturuluyor...';
+    const res = await createDemoData(opts);
+    if (out) out.textContent = formatDemoResult(res);
+  }
+  function formatDemoResult(res){
+    if (!res) return 'Demo oluşturulamadı.';
+    const fs = res.firestore ? `\nFirestore: ${res.firestore.written || 0} yazıldı, ${res.firestore.failed || 0} hata.` : '\nFirestore: denenmedi.';
+    return `Demo veri oluşturuldu.\n\nKullanıcı: ${res.users}\nSüreç tanımı: ${res.definitions}\nTalep: ${res.instances}\nAçık görev: ${res.tasks}\nSipariş: ${res.orders}\nBildirim: ${res.notifications}\nYorum: ${res.comments}${fs}\n\nTüm demo kayıtlar isDemo:true olarak işaretlendi.`;
+  }
+
+  function demoCounts(){ const st=getSt()||{}; const names=['users','definitions','instances','tasks','orders','notifications','comments','roles']; return names.map(k=>`${k}: ${((st[k]||[]).filter(x=>x&&x.isDemo)).length}`).join(' · '); }
+
+  function renderDemoDataStudio(c){
+    const st = getSt();
+    if (!c) c = document.querySelector('.admin-content') || document.getElementById('admin-content');
+    if (!c) return;
+    c.innerHTML = `
+      <div class="admin-head"><div><h2>🎭 Demo Veri Oluşturucu</h2><p>YZ ile her aşamada bol kayıt üretin. Demo kayıtlar <b>isDemo:true</b> olarak ayrılır.</p></div><button class="ghost-btn" onclick="if(typeof renderAdminContent==='function')renderAdminContent()">↻ Yenile</button></div>
+      <div style="display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:16px;align-items:start;">
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;">
+          <h3 style="margin:0 0 12px;">🤖 YZ Demo Komutu</h3>
+          <textarea id="demoAiPrompt" style="width:100%;min-height:95px;background:var(--bg);border:1px solid var(--border-hi);color:var(--text);border-radius:6px;padding:10px;font-family:var(--sans);" placeholder="Örnek: 80 kullanıcı, 250 talep, 50 sipariş oluştur. Avans, izin, bakım ve sipariş süreçlerinde karışık kayıt üret."></textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <button class="primary-btn" onclick="FabrikaDemoData.generateFromPrompt()">✨ YZ Demo Oluştur</button>
+            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:60,instances:160,orders:35,clearFirst:true,firestore:true})">⚡ Standart Demo</button>
+            <button class="danger-btn" onclick="FabrikaDemoData.clear()">🧹 Demo Temizle</button>
+          </div>
+          <div style="margin-top:12px;color:var(--text-dim);font-size:12px;line-height:1.5;">Mevcut demo sayıları:<br><b style="color:var(--text);">${escapeHtml(demoCounts())}</b></div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;">
+          <h3 style="margin:0 0 12px;">📦 Hızlı Demo Setleri</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:25,instances:60,orders:12,clearFirst:true,firestore:true})">Küçük</button>
+            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:60,instances:160,orders:35,clearFirst:true,firestore:true})">Orta</button>
+            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:120,instances:400,orders:80,clearFirst:true,firestore:true})">Büyük</button>
+            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:40,instances:120,orders:25,clearFirst:false,firestore:true})">Üzerine Ekle</button>
+          </div>
+          <pre id="demoOutput" style="white-space:pre-wrap;min-height:190px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-family:var(--mono);font-size:12px;">Hazır. Bir demo seti seçin veya doğal dille tarif edin.</pre>
+        </div>
+      </div>
+      <div style="margin-top:16px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;">
+        <h3 style="margin:0 0 10px;">Oluşturulan demo kapsamı</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;">
+          ${['users','definitions','instances','tasks','orders','notifications','comments','roles'].map(k=>`<div style="background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:10px;"><b>${k}</b><br><span style="color:var(--text-dim)">${((st&&st[k])||[]).filter(x=>x&&x.isDemo).length} demo kayıt</span></div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  function addDemoNavButton(){
+    const nav = document.querySelector('.admin-nav'); if (!nav) return;
+    if (nav.querySelector('[data-demo-data-nav]')) return;
+    const btn = document.createElement('button');
+    btn.className = 'admin-nav-item'; btn.setAttribute('data-demo-data-nav','1'); btn.textContent = '🎭 Demo Veri';
+    btn.onclick = function(){ const st=getSt(); if(st) st.adminTab='demo-data'; renderDemoDataStudio(); document.querySelectorAll('.admin-nav-item').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); };
+    const db = Array.from(nav.querySelectorAll('button')).find(b => /Database/i.test(b.textContent||''));
+    if (db && db.parentNode) db.parentNode.insertBefore(btn, db.nextSibling); else nav.appendChild(btn);
+  }
+
+  function wrapRenderAdmin(){
+    const old = root.renderAdminContent || (typeof renderAdminContent === 'function' ? renderAdminContent : null);
+    if (old && !old.__demoDataWrapped){
+      root.renderAdminContent = function(){
+        const st = getSt();
+        if (st && st.adminTab === 'demo-data') { const c = document.querySelector('.admin-content') || document.getElementById('admin-content'); renderDemoDataStudio(c); addDemoNavButton(); return; }
+        const r = old.apply(this, arguments); setTimeout(addDemoNavButton, 0); return r;
+      };
+      root.renderAdminContent.__demoDataWrapped = true;
+      try { renderAdminContent = root.renderAdminContent; } catch(_) {}
+    }
+  }
+
+  root.FabrikaDemoData = { create: async function(opts){ const out=document.getElementById('demoOutput'); if(out) out.textContent='Demo kayıtlar oluşturuluyor...'; const res=await createDemoData(opts); if(out) out.textContent=formatDemoResult(res); notifySafe('Demo veri oluşturuldu', 'success'); return res; }, clear: clearDemoData, generateFromPrompt: generateDemoFromPrompt, render: renderDemoDataStudio };
+  function boot(){ wrapRenderAdmin(); addDemoNavButton(); const st=getSt(); if(st && st.adminTab==='demo-data') renderDemoDataStudio(); }
+  boot(); setInterval(boot, 1000);
+  console.log('[FABRİKA v19] Demo Veri Oluşturucu aktif');
+})();
+</script>
