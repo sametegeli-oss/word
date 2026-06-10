@@ -19101,6 +19101,159 @@ setInterval(() => {
 })();
 </script>
 
+
+<script>
+/* ============================================================
+   FABRİKA v16 — Database Studio kesin gösterim yaması
+   Sorun: Database menüsü tıklanınca state değişiyor ama içerik eski
+   Süreçler ekranında kalabiliyordu. Bu yama Database tıklamasını
+   doğrudan yakalar ve Studio ekranını .admin-content / #admin-content
+   alanına basar. Table/id bağımlılığı yoktur.
+   ============================================================ */
+(function(){
+  'use strict';
+  const root = window;
+
+  function esc(v){
+    return String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function normTR(s){
+    return String(s||'').toLocaleLowerCase('tr-TR')
+      .replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i')
+      .replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u')
+      .replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function getAdminContainer(){
+    return document.getElementById('admin-content') ||
+           document.querySelector('.admin-content') ||
+           document.querySelector('.view-admin .admin-content') ||
+           document.querySelector('.view-admin main') ||
+           document.querySelector('main');
+  }
+  function getRows(key){
+    try { return (root.state && Array.isArray(root.state[key]) ? root.state[key] : []).map((r,i)=>r&&typeof r==='object'?r:{value:r,_row:i}); }
+    catch(_){ return []; }
+  }
+  function flat(obj,prefix='',out={}){
+    if(!obj || typeof obj!=='object' || Array.isArray(obj)) return out;
+    Object.entries(obj).forEach(([k,v])=>{ const p=prefix?prefix+'.'+k:k; out[p]=v; if(v&&typeof v==='object'&&!Array.isArray(v)) flat(v,p,out); });
+    return out;
+  }
+  function type(v){
+    if(v===undefined||v===null||v==='') return 'empty';
+    if(Array.isArray(v)) return 'array';
+    if(typeof v==='boolean') return 'boolean';
+    if(typeof v==='number') return Number.isInteger(v)?'integer':'number';
+    if(typeof v==='object') return 'object';
+    if(typeof v==='string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return 'date/string';
+    if(typeof v==='string' && /^\d{13}$/.test(v)) return 'timestamp/string';
+    return typeof v;
+  }
+  function short(v,max=70){
+    let s = v===undefined?'undefined':v===null?'null':(typeof v==='object'?JSON.stringify(v):String(v));
+    return s.length>max?s.slice(0,max-1)+'…':s;
+  }
+  function byPath(o,p){ return String(p||'').split('.').reduce((a,k)=>a==null?undefined:a[k],o); }
+  const COLLECTIONS = [
+    ['users','👥','Kullanıcılar','Sistem kullanıcıları, roller, yönetici ilişkileri'],
+    ['definitions','📋','Süreç Tanımları','Form/süreç şemaları, alanlar, adımlar'],
+    ['instances','🧾','Talep Kayıtları','Açılmış süreç/talep kayıtları'],
+    ['tasks','✅','Görevler','Kişilere atanmış işler'],
+    ['orders','🏭','Siparişler','Üretim/sipariş kayıtları'],
+    ['notifications','🔔','Bildirimler','Kullanıcı bildirimleri'],
+    ['comments','💬','Yorumlar','Talep/görev yorumları'],
+    ['roles','🔐','Roller','Rol ve yetki kayıtları'],
+    ['savedQueries','🔖','Kayıtlı Sorgular','YZ/sorgu kataloğu'],
+    ['aiLearningQueue','🧠','YZ Öğrenme Kuyruğu','Cevaplanamayan komutlar'],
+    ['productionLog','🏗️','Üretim Logları','Üretim hareketleri'],
+    ['stationAssignments','📍','İstasyon Atamaları','Üretim istasyon atamaları']
+  ].map(x=>({key:x[0],icon:x[1],label:x[2],desc:x[3]}));
+  const RELS = [
+    ['tasks.assigneeId','users.id'], ['tasks.instanceId','instances.id'],
+    ['instances.ownerId','users.id'], ['instances.defId','definitions.id'],
+    ['comments.instanceId','instances.id'], ['comments.userId','users.id'],
+    ['notifications.userId','users.id'], ['users.manager','users.id']
+  ];
+  function st(){
+    root.__dbStudio = root.__dbStudio || {collection:'users', tab:'fields', search:'', selectedIndex:0};
+    if(!COLLECTIONS.some(c=>c.key===root.__dbStudio.collection)) root.__dbStudio.collection='users';
+    return root.__dbStudio;
+  }
+  function schema(rows){
+    const m={};
+    rows.forEach(r=>{ const f=flat(r); Object.keys(f).forEach(k=>{
+      const v=f[k], em=(v===undefined||v===null||v===''||(Array.isArray(v)&&v.length===0));
+      m[k]=m[k]||{name:k,types:{},filled:0,empty:0,examples:[]};
+      const t=type(v); m[k].types[t]=(m[k].types[t]||0)+1; em?m[k].empty++:m[k].filled++;
+      const sv=short(v,90); if(!em && m[k].examples.length<3 && !m[k].examples.includes(sv)) m[k].examples.push(sv);
+    }); });
+    return Object.values(m).map(f=>{ const seen=f.filled+f.empty; if(seen<rows.length) f.empty+=rows.length-seen; f.type=Object.entries(f.types).sort((a,b)=>b[1]-a[1])[0]?.[0]||'unknown'; f.nullable=f.empty>0; f.fillPct=rows.length?Math.round(f.filled*100/rows.length):0; return f; }).sort((a,b)=>a.name.localeCompare(b.name,'tr'));
+  }
+  function filter(rows,q){ const n=normTR(q); return n?rows.filter(r=>normTR(JSON.stringify(r)).includes(n)):rows; }
+  function fieldsHtml(sc, total){
+    if(!sc.length) return '<div class="table-empty">Alan/kayıt yok.</div>';
+    return `<table class="data-table" style="font-size:12px"><thead><tr><th>Alan</th><th>Tür</th><th>Nullable</th><th>Dolu</th><th>Boş</th><th>Doluluk</th><th>Örnekler</th></tr></thead><tbody>${sc.map(f=>`<tr><td><code>${esc(f.name)}</code></td><td><span class="badge-tag">${esc(f.type)}</span></td><td>${f.nullable?'Evet':'Hayır'}</td><td class="num">${f.filled}</td><td class="num">${f.empty}</td><td>${f.fillPct}%</td><td>${f.examples.map(e=>`<code>${esc(e)}</code>`).join(' ')||'—'}</td></tr>`).join('')}</tbody></table>`;
+  }
+  function recordsHtml(rows, sc){
+    if(!rows.length) return '<div class="table-empty">Kayıt bulunamadı.</div>';
+    const pref=['id','name','title','email','status','roles','manager','ownerId','assigneeId','defId','currentStep','createdAt','updatedAt'];
+    const keys=[...pref.filter(k=>sc.some(f=>f.name===k)),...sc.map(f=>f.name).filter(k=>!pref.includes(k))].slice(0,10);
+    return `<table class="data-table" style="font-size:12px"><thead><tr><th>#</th>${keys.map(k=>`<th>${esc(k)}</th>`).join('')}</tr></thead><tbody>${rows.slice(0,200).map((r,i)=>`<tr onclick="dbStudioSelectRow(${i})" style="cursor:pointer;${st().selectedIndex===i?'background:var(--panel-2)':''}"><td class="num">${i+1}</td>${keys.map(k=>`<td><code>${esc(short(byPath(r,k),70))}</code></td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  }
+  function relHtml(key){
+    const rel=RELS.filter(r=>r[0].startsWith(key+'.')||r[1].startsWith(key+'.'));
+    return rel.length?`<table class="data-table"><thead><tr><th>Kaynak</th><th></th><th>Hedef</th></tr></thead><tbody>${rel.map(r=>`<tr><td><code>${r[0]}</code></td><td>→</td><td><code>${r[1]}</code></td></tr>`).join('')}</tbody></table>`:'<div class="table-empty">Bu koleksiyon için ilişki tanımı yok.</div>';
+  }
+  function renderDbStudio(){
+    const c=getAdminContainer(); if(!c){ console.warn('[DB Studio v16] admin container bulunamadı'); return; }
+    const S=st(); const meta=COLLECTIONS.find(x=>x.key===S.collection)||COLLECTIONS[0];
+    const all=getRows(S.collection); const rows=filter(all,S.search); const sc=schema(all); const selected=rows[Math.min(S.selectedIndex, Math.max(rows.length-1,0))]||null;
+    c.innerHTML=`<div class="admin-head"><div><h2>🗄️ Database Studio</h2><p>Firebase/yerel state koleksiyon gezgini. SQL Studio mantığında alanlar, kayıtlar, ilişkiler ve JSON detayı.</p></div><button class="ghost-btn" onclick="dbStudioExport()">⬇️ JSON Dışa Aktar</button></div>
+    <div style="display:grid;grid-template-columns:250px minmax(420px,1fr) 360px;gap:14px;min-height:calc(100vh - 180px)">
+      <aside style="background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden"><div style="padding:12px;border-bottom:1px solid var(--border);font-weight:700">Koleksiyonlar</div><div style="max-height:calc(100vh - 245px);overflow:auto">${COLLECTIONS.map(col=>`<button class="admin-nav-item ${S.collection===col.key?'active':''}" style="display:flex;justify-content:space-between;gap:8px;border-radius:0;margin:0;padding:11px 12px" onclick="dbStudioSetCollection('${col.key}')"><span>${col.icon} <b>${col.key}</b><br><small style="color:var(--text-mute)">${col.label}</small></span><span class="badge-tag">${getRows(col.key).length}</span></button>`).join('')}</div></aside>
+      <main style="background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden"><div style="padding:14px 16px;border-bottom:1px solid var(--border)"><h3 style="margin:0 0 4px">${meta.icon} ${meta.key}</h3><div style="color:var(--text-dim);font-size:12px;margin-bottom:10px">${esc(meta.desc)}</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="badge-tag">Kayıt: ${all.length}</span><span class="badge-tag">Alan: ${sc.length}</span><input value="${esc(S.search)}" oninput="dbStudioSetSearch(this.value)" placeholder="Bu koleksiyonda ara..." style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border-hi);color:var(--text);padding:8px 10px;border-radius:5px"></div></div><div style="display:flex;gap:6px;padding:8px 12px;background:var(--panel-2);border-bottom:1px solid var(--border)"><button class="ghost-btn" onclick="dbStudioSetTab('fields')">Alanlar / Şema</button><button class="ghost-btn" onclick="dbStudioSetTab('records')">Kayıtlar</button><button class="ghost-btn" onclick="dbStudioSetTab('relations')">İlişkiler</button></div><div style="padding:12px;max-height:calc(100vh - 315px);overflow:auto">${S.tab==='relations'?relHtml(S.collection):S.tab==='records'?recordsHtml(rows,sc):fieldsHtml(sc,all.length)}</div></main>
+      <aside style="background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden"><div style="padding:12px;border-bottom:1px solid var(--border);font-weight:700">Seçili Kayıt JSON</div><pre style="margin:0;padding:12px;max-height:calc(100vh - 240px);overflow:auto;font-size:11px;white-space:pre-wrap">${esc(selected?JSON.stringify(selected,null,2):'Kayıt seçilmedi.')}</pre></aside>
+    </div>`;
+    markDbNavActive();
+  }
+  function markDbNavActive(){
+    document.querySelectorAll('.admin-nav-item').forEach(b=>{
+      const t=(b.textContent||'').toLowerCase();
+      if(t.includes('database')) b.classList.add('active');
+      else if(b.closest('.admin-nav')) b.classList.remove('active');
+    });
+  }
+  root.dbStudioRender = renderDbStudio;
+  root.dbStudioSetCollection = function(k){ st().collection=k; st().selectedIndex=0; renderDbStudio(); };
+  root.dbStudioSetTab = function(t){ st().tab=t; renderDbStudio(); };
+  root.dbStudioSetSearch = function(v){ st().search=v||''; st().selectedIndex=0; renderDbStudio(); };
+  root.dbStudioSelectRow = function(i){ st().selectedIndex=Number(i)||0; renderDbStudio(); };
+  root.dbStudioExport = function(){ const key=st().collection, data=getRows(key); const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='fabrika_'+key+'.json'; a.click(); URL.revokeObjectURL(a.href); };
+
+  function hookDatabaseButtons(){
+    document.querySelectorAll('.admin-nav-item, button').forEach(btn=>{
+      if(btn.__dbStudioV16) return;
+      const txt=normTR(btn.textContent||'');
+      if(txt==='database' || txt.endsWith(' database') || txt.includes('database')){
+        btn.__dbStudioV16=true;
+        btn.addEventListener('click', function(ev){
+          ev.preventDefault(); ev.stopImmediatePropagation();
+          try { if(root.state) state.adminTab='database-studio'; } catch(_){ }
+          renderDbStudio();
+        }, true);
+      }
+    });
+  }
+  function install(){ hookDatabaseButtons(); if(root.state && (state.adminTab==='database'||state.adminTab==='database-studio')) renderDbStudio(); }
+  setInterval(hookDatabaseButtons, 800);
+  new MutationObserver(hookDatabaseButtons).observe(document.documentElement,{childList:true,subtree:true});
+  setTimeout(install,300); setTimeout(install,1200); setTimeout(install,2500);
+  console.log('[FABRİKA DB Studio v16] Kesin Database ekranı yaması aktif');
+})();
+</script>
+
 </body>
 </html>
 <script>
