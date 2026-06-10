@@ -18792,6 +18792,378 @@ setInterval(() => {
 })();
 </script>
 
+
+
+<script>
+/* =========================================================
+   FABRİKA AI v12 — Intent çekme + Gemini eşleştirme + DB ekranı
+   İstekler:
+   1) intent.json için GitHub URL + Şimdi Çek
+   2) Alakasız eşleşmeleri seçenek göstermeden öğrenme kuyruğuna atma
+   3) Yerel motor kalsın; sorgu eşleştirmede Gemini'yi doğrudan kullanma
+   4) Sorgulara açıklama üretme/zenginleştirme
+   5) AI konsol cevaplarında noktadan sonra alt satır
+   6) Database ekranı: tablolar ve kayıtlar text görünümü
+   ========================================================= */
+(function(){
+  'use strict';
+
+  const INTENT_CATALOG_KEY = 'fabrika_intent_catalog_url';
+  const LOW_RELEVANCE_SCORE = 35;
+  const GEMINI_DIRECT_CONF = 0.82;
+  const GEMINI_CHOICE_CONF = 0.45;
+
+  function esc(s){
+    if (typeof escapeHtml === 'function') return escapeHtml(String(s ?? ''));
+    return String(s ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  }
+  function clone(o){ try { return JSON.parse(JSON.stringify(o)); } catch(_) { return o; } }
+  function normTR(s){
+    if (window.FabrikaIntentEngine && typeof window.FabrikaIntentEngine.normalizeTR === 'function') return window.FabrikaIntentEngine.normalizeTR(s);
+    return String(s||'').toLocaleLowerCase('tr-TR').replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u').replace(/[^a-z0-9]+/g,' ').trim();
+  }
+  function notifySafe(msg,type){ if (typeof notify === 'function') notify(msg,type||'info'); else console.log(msg); }
+
+  // ---------- 1) intent.json katalog URL + şimdi çek ----------
+  window.getIntentCatalogUrl = function(){
+    try { return localStorage.getItem(INTENT_CATALOG_KEY) || ''; } catch(_) { return ''; }
+  };
+  window.setIntentCatalogUrl = function(url){
+    try { localStorage.setItem(INTENT_CATALOG_KEY, String(url||'').trim()); } catch(_) {}
+  };
+  window.saveIntentCatalogUrlFromUI = function(){
+    const url = document.getElementById('intent-cat-url')?.value || '';
+    window.setIntentCatalogUrl(url);
+    notifySafe('intent.json URL kaydedildi', 'success');
+    if (url) window.loadIntentCatalogFromGitHub(true);
+  };
+  window.loadIntentCatalogFromGitHub = async function(showNotif){
+    const url = window.getIntentCatalogUrl();
+    if (!url) { if (showNotif) notifySafe('Önce intent.json raw URL girin', 'info'); return 0; }
+    try {
+      const bust = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+      const res = await fetch(bust, { cache:'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const intents = Array.isArray(data) ? data : (Array.isArray(data.intents) ? data.intents : []);
+      window.FABRIKA_INTENT_DATA = Array.isArray(data) ? { intents } : data;
+      window.FABRIKA_INTENTS = intents;
+      try { localStorage.setItem('FABRIKA_INTENT_DATA_LOCAL', JSON.stringify(window.FABRIKA_INTENT_DATA, null, 2)); } catch(_) {}
+      if (showNotif) notifySafe('✓ ' + intents.length + ' intent GitHub’dan çekildi', 'success');
+      console.log('[FABRİKA AI v12] intent.json yüklendi:', intents.length);
+      return intents.length;
+    } catch(e) {
+      console.warn('[FABRİKA AI v12] intent.json yüklenemedi:', e.message);
+      if (showNotif) notifySafe('intent.json yüklenemedi: ' + e.message, 'error');
+      return 0;
+    }
+  };
+  // Açılışta yerel intent yedeği varsa kullan
+  try {
+    if (!window.FABRIKA_INTENTS || !window.FABRIKA_INTENTS.length) {
+      const raw = localStorage.getItem('FABRIKA_INTENT_DATA_LOCAL');
+      if (raw) {
+        const data = JSON.parse(raw);
+        window.FABRIKA_INTENT_DATA = data;
+        window.FABRIKA_INTENTS = Array.isArray(data.intents) ? data.intents : [];
+      }
+    }
+  } catch(_) {}
+
+  function installIntentPanel(){
+    const c = document.getElementById('admin-content');
+    if (!c || (window.state && state.adminTab !== 'saved-queries')) return;
+    if (c.querySelector('#intent-json-fetch-panel')) return;
+    const canEdit = typeof hasPermission === 'function' ? hasPermission(state.currentUser, 'admin_processes_edit') : true;
+    if (!canEdit) return;
+    const url = window.getIntentCatalogUrl();
+    const n = (window.FABRIKA_INTENTS || []).length;
+    const html = `
+      <div id="intent-json-fetch-panel" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;">
+        <div style="font-weight:600;margin-bottom:8px;">🧭 GitHub Intent Kataloğu</div>
+        <p style="color:var(--text-dim);font-size:12px;margin-bottom:8px;line-height:1.45;">
+          Kullanıcı cümlelerini hazır sorgulara bağlayan <code>intent.json</code> dosyasını buradan çekin.
+          URL örneği: <code style="font-size:11px;">https://raw.githubusercontent.com/KULLANICI/REPO/main/intent.json</code>
+        </p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <input id="intent-cat-url" value="${esc(url)}" placeholder="GitHub raw intent.json URL" style="flex:1;min-width:280px;background:var(--bg);border:1px solid var(--border-hi);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;">
+          <button class="primary-btn" style="font-size:12px;" onclick="saveIntentCatalogUrlFromUI()">💾 Kaydet</button>
+          <button class="ghost-btn" style="font-size:12px;" onclick="loadIntentCatalogFromGitHub(true)">⟳ Intent Şimdi Çek</button>
+          <span style="font-size:12px;color:var(--text-dim);">Yüklü intent: <b style="color:var(--text);">${n}</b></span>
+        </div>
+      </div>`;
+    const localPanel = c.querySelector('#local-query-export-panel');
+    const h2 = Array.from(c.querySelectorAll('h2')).find(x => (x.textContent||'').includes('Kayıtlı Sorgular'));
+    if (localPanel) localPanel.insertAdjacentHTML('afterend', html);
+    else if (h2) h2.insertAdjacentHTML('beforebegin', html);
+    else c.insertAdjacentHTML('afterbegin', html);
+  }
+
+  // ---------- 4) Sorgu açıklaması zenginleştirme ----------
+  function fieldLabel(f){
+    const map = { users:'kullanıcılar', tasks:'görevler', instances:'talepler', definitions:'süreç tanımları', roles:'roller', orders:'siparişler', comments:'yorumlar', notifications:'bildirimler' };
+    return map[f] || f || 'kayıtlar';
+  }
+  function opText(op){
+    return ({ eq:'eşit', ne:'eşit değil', gt:'büyük', gte:'büyük/eşit', lt:'küçük', lte:'küçük/eşit', contains:'içerir', in:'içinde', exists:'var mı' })[op] || op || '';
+  }
+  window.fabrikaDescribeQuery = function(q){
+    const p = q && q.params ? q.params : (q || {});
+    const parts = [];
+    const col = fieldLabel(p.koleksiyon);
+    if (p.grupla) parts.push(`${col} ${p.grupla} alanına göre gruplanır/sayılır`);
+    else parts.push(`${col} listelenir`);
+    if (Array.isArray(p.filtreler) && p.filtreler.length) {
+      const fs = p.filtreler.map(f => `${f.field} ${opText(f.op)} ${f.value === false ? 'boş/yok' : f.value === true ? 'dolu/var' : JSON.stringify(f.value)}`).join(', ');
+      parts.push(`filtre: ${fs}`);
+    }
+    if (p.siralaAlan) parts.push(`${p.siralaAlan} alanına göre ${p.siralaYon === 'desc' ? 'azalan' : 'artan'} sıralanır`);
+    if (p.limit) parts.push(`en fazla ${p.limit} kayıt döner`);
+    return parts.join('; ') + '.';
+  };
+  function enrichQueryDescriptions(){
+    if (!window.state || !Array.isArray(state.savedQueries)) return;
+    state.savedQueries.forEach(q => {
+      if (!q) return;
+      const desc = String(q.aciklama || '').trim();
+      if (!desc || desc.length < 8 || desc === q.name) q.aciklama = window.fabrikaDescribeQuery(q);
+      q.descriptionForAI = `${q.name}. ${q.aciklama || window.fabrikaDescribeQuery(q)} Aliaslar: ${(q.aliases||[]).join(', ')}`;
+    });
+  }
+  const oldLoadCatalog = window.loadQueryCatalogFromGitHub;
+  if (typeof oldLoadCatalog === 'function' && !oldLoadCatalog.__v12DescWrapped) {
+    const wrapped = async function(){
+      const r = await oldLoadCatalog.apply(this, arguments);
+      enrichQueryDescriptions();
+      return r;
+    };
+    wrapped.__v12DescWrapped = true;
+    window.loadQueryCatalogFromGitHub = wrapped;
+    try { loadQueryCatalogFromGitHub = wrapped; } catch(_) {}
+  }
+
+  // ---------- 3) Gemini ile doğrudan sorgu eşleştirme ----------
+  function getAllQueries(){
+    enrichQueryDescriptions();
+    if (window.FabrikaIntentEngine && typeof window.FabrikaIntentEngine.getQueriesForAIConsole === 'function') {
+      try { return window.FabrikaIntentEngine.getQueriesForAIConsole() || []; } catch(_) {}
+    }
+    return (window.state && Array.isArray(state.savedQueries)) ? state.savedQueries : [];
+  }
+  function localAlternatives(text, limit){
+    if (window.FabrikaIntentEngine && typeof window.FabrikaIntentEngine.findQueryAlternatives === 'function') {
+      try { return window.FabrikaIntentEngine.findQueryAlternatives(text, limit || 5) || []; } catch(_) {}
+    }
+    return [];
+  }
+  async function geminiMatchQuery(userText){
+    const cfg = typeof getAISettings === 'function' ? getAISettings() : null;
+    const key = cfg && cfg.keys ? cfg.keys.gemini : '';
+    if (!key) return null;
+    const queries = getAllQueries().filter(q => q && q.params && q.params.koleksiyon).slice(0, 120);
+    if (!queries.length) return null;
+    const payload = queries.map((q, i) => ({
+      i, ad:q.name || '', aciklama:q.aciklama || window.fabrikaDescribeQuery(q), tablo:q.params?.koleksiyon || '', aliases:q.aliases || []
+    }));
+    const sys = 'Sen FABRİKA yönetim platformunda doğal dil sorgusunu kayıtlı sorgu kataloğuna eşleyen sınıflandırıcısın. Sadece JSON döndür.';
+    const prompt = `Kullanıcı sorusu: ${userText}\n\nKatalog:\n${JSON.stringify(payload)}\n\nGörev: En alakalı sorguyu seç. Hiç alakalı değilse index -1 ver. JSON şema: {"index":number,"confidence":0-1,"reason":"kısa Türkçe"}`;
+    const model = (cfg.models && cfg.models.gemini) || 'gemini-2.5-flash';
+    const remap = typeof remapGeminiModel === 'function' ? remapGeminiModel(model) : model;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(remap || 'gemini-2.5-flash')}:generateContent?key=${encodeURIComponent(key)}`;
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{parts:[{text: sys + '\n\n' + prompt}]}], generationConfig:{temperature:0.05, responseMimeType:'application/json'} }) });
+    if (!res.ok) throw new Error('Gemini eşleştirme hata: ' + res.status);
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('') || '{}';
+    const clean = text.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```$/,'').trim();
+    const parsed = JSON.parse(clean);
+    const idx = Number(parsed.index);
+    if (!Number.isFinite(idx) || idx < 0 || idx >= queries.length) return { none:true, confidence:Number(parsed.confidence)||0, reason:parsed.reason||'' };
+    const q = queries[idx];
+    return { query:q, confidence:Number(parsed.confidence)||0, reason:parsed.reason||'', params:clone(q.params||{}), name:q.name||'' };
+  }
+
+  function unrelatedPlan(userText, reason){
+    return { tool:null, explain:(reason || 'Bu ifade hazır sorgularla yeterince ilişkili görünmüyor. Öğrenme kuyruğuna ekliyorum.'), isUnrelated:true, originalText:userText };
+  }
+  function postProcessChoicePlan(plan, userText){
+    if (plan && plan.needsChoice) {
+      const cs = Array.isArray(plan.candidates) ? plan.candidates : [];
+      const top = cs.length ? Math.max(...cs.map(c => Number(c.score)||0)) : 0;
+      if (!cs.length || top < LOW_RELEVANCE_SCORE) return unrelatedPlan(userText, 'Buna yakın bir hazır sorgu bulamadım. Öğrenme kuyruğuna ekliyorum.');
+    }
+    return plan;
+  }
+  const prevInterpret = (typeof window.interpretCommand === 'function') ? window.interpretCommand : (typeof interpretCommand === 'function' ? interpretCommand : null);
+  if (prevInterpret && !prevInterpret.__v12GeminiWrapped) {
+    const patched = async function(userText){
+      // Veri/sorgu eşleştirmesinde provider local olsa bile Gemini denenir.
+      try {
+        const g = await geminiMatchQuery(userText);
+        if (g && g.query && g.confidence >= GEMINI_DIRECT_CONF) {
+          return { tool:'sorgu', params:g.params || {}, explain:`Gemini eşleştirme: "${g.name}". Güven: ${Math.round(g.confidence*100)}%. ${g.reason || ''}`, score:Math.round(g.confidence*100), queryName:g.name, geminiMatched:true };
+        }
+        if (g && g.query && g.confidence >= GEMINI_CHOICE_CONF) {
+          const alts = localAlternatives(userText, 5);
+          const main = { name:g.name, aciklama:g.query.aciklama || window.fabrikaDescribeQuery(g.query), collection:g.query.params?.koleksiyon || '', params:g.params || {}, score:Math.round(g.confidence*100), source:'gemini' };
+          const merged = [main].concat(alts.filter(a => a.name !== main.name)).slice(0,5);
+          return { needsChoice:true, originalText:userText, candidates:merged, explain:'Gemini tam emin olamadı. En yakın seçenekleri seçin.' };
+        }
+        if (g && g.none) return unrelatedPlan(userText, 'Gemini bu ifadeyi mevcut sorgularla ilişkili bulmadı. Öğrenme kuyruğuna ekliyorum.');
+      } catch(e) {
+        console.warn('[FABRİKA AI v12] Gemini eşleştirme kullanılamadı; yerel motora düşüldü:', e.message);
+      }
+      const p = await prevInterpret.apply(this, arguments);
+      return postProcessChoicePlan(p, userText);
+    };
+    patched.__v12GeminiWrapped = true;
+    patched.__old = prevInterpret;
+    try { window.interpretCommand = patched; } catch(_) {}
+    try { interpretCommand = patched; } catch(_) {}
+  }
+
+  // Alakasızlarda runAICommand tekrar alternatif üretmesin diye FE alternatiflerini filtrele.
+  if (window.FabrikaIntentEngine && typeof window.FabrikaIntentEngine.findQueryAlternatives === 'function') {
+    const oldAlt = window.FabrikaIntentEngine.findQueryAlternatives;
+    if (!oldAlt.__v12Filtered) {
+      const filtered = function(text, limit){
+        const arr = oldAlt.apply(this, arguments) || [];
+        const top = arr.length ? Math.max(...arr.map(c => Number(c.score)||0)) : 0;
+        if (top < LOW_RELEVANCE_SCORE) return [];
+        return arr;
+      };
+      filtered.__v12Filtered = true;
+      window.FabrikaIntentEngine.findQueryAlternatives = filtered;
+    }
+  }
+
+  // ---------- 5) AI komut konsolunda nokta sonrası alt satır ----------
+  function lineBreakAfterSentences(text){
+    return String(text ?? '')
+      .replace(/([.!?])\s+(?=[A-ZÇĞİÖŞÜ0-9"“])/g, '$1\n')
+      .replace(/\.\s+(?=[A-ZÇĞİÖŞÜ0-9])/g, '.\n')
+      .trim();
+  }
+  const oldLog = (typeof window.aiConsoleLog === 'function') ? window.aiConsoleLog : (typeof aiConsoleLog === 'function' ? aiConsoleLog : null);
+  if (oldLog && !oldLog.__v12LineBreaks) {
+    const patchedLog = function(role, text, data){
+      return oldLog.call(this, role, role === 'user' ? text : lineBreakAfterSentences(text), data);
+    };
+    patchedLog.__v12LineBreaks = true;
+    try { window.aiConsoleLog = patchedLog; } catch(_) {}
+    try { aiConsoleLog = patchedLog; } catch(_) {}
+  }
+
+  // runAICommand alakasız plan açıklamasını öğrenme kuyruğuna atsın; eski akış zaten tool yoksa logluyor.
+  const oldRunInner = (typeof window._runAICommandInner === 'function') ? window._runAICommandInner : null;
+  // _runAICommandInner global olmayabilir; interpret plan tool:null döndürdüğünde mevcut akış logUnansweredCommand yapar.
+
+  // ---------- 6) Database ekranı ----------
+  const TABLES = [
+    ['users','Kullanıcılar'], ['definitions','Süreçler'], ['instances','Talepler'], ['tasks','Görevler'],
+    ['orders','Siparişler'], ['notifications','Bildirimler'], ['comments','Yorumlar'], ['roles','Roller'], ['savedQueries','Kayıtlı Sorgular'], ['aiLearningQueue','YZ Öğrenme Kuyruğu']
+  ];
+  function tableData(key){ return (window.state && Array.isArray(state[key])) ? state[key] : []; }
+  function rowText(row, i){
+    const o = row || {};
+    const keys = Object.keys(o).filter(k => typeof o[k] !== 'object').slice(0, 12);
+    if (!keys.length) return `${i+1}. ${JSON.stringify(o)}`;
+    return `${i+1}. ` + keys.map(k => `${k}: ${o[k] ?? ''}`).join(' | ');
+  }
+  window.renderDatabaseAdmin = function(c){
+    const active = localStorage.getItem('FABRIKA_DB_ACTIVE_TABLE') || 'users';
+    const tabs = TABLES.map(([k,n]) => `<button class="ghost-btn" style="font-size:12px;${active===k?'border-color:var(--accent);color:var(--accent);':''}" onclick="localStorage.setItem('FABRIKA_DB_ACTIVE_TABLE','${k}'); renderDatabaseAdmin(document.getElementById('admin-content'))">${esc(n)} <span style="color:var(--text-mute);">${tableData(k).length}</span></button>`).join('');
+    const data = tableData(active);
+    const name = (TABLES.find(x=>x[0]===active)||[active,active])[1];
+    const text = data.length ? data.map(rowText).join('\n') : 'Bu tabloda kayıt yok.';
+    c.innerHTML = `
+      <div style="max-width:1100px;">
+        <h2 style="margin-bottom:6px;">🗄️ Database</h2>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:14px;">Sistemdeki tablolar ve içindeki kayıtlar metin olarak görünür. Bu ekran veriyi silmez/değiştirmez; sadece inceleme içindir.</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${tabs}</div>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;">
+            <div style="font-weight:700;">${esc(name)} <span style="color:var(--text-dim);font-weight:400;">(${data.length} kayıt)</span></div>
+            <div style="display:flex;gap:6px;">
+              <button class="ghost-btn" style="font-size:12px;" onclick="navigator.clipboard.writeText(document.getElementById('db-text-output').value); notify && notify('Database metni kopyalandı','success')">📋 Kopyala</button>
+              <button class="ghost-btn" style="font-size:12px;" onclick="downloadDatabaseTable('${active}')">⬇️ TXT İndir</button>
+            </div>
+          </div>
+          <textarea id="db-text-output" spellcheck="false" style="width:100%;height:520px;background:var(--bg);border:1px solid var(--border-hi);border-radius:6px;color:var(--text);font-family:var(--mono,monospace);font-size:12px;line-height:1.45;padding:10px;">${esc(text)}</textarea>
+        </div>
+      </div>`;
+  };
+  window.downloadDatabaseTable = function(key){
+    const data = tableData(key);
+    const txt = data.length ? data.map(rowText).join('\n') : 'Bu tabloda kayıt yok.';
+    const blob = new Blob([txt], { type:'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'fabrika_database_' + key + '_' + new Date().toISOString().slice(0,10) + '.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const oldRenderAdminView = (typeof window.renderAdminView === 'function') ? window.renderAdminView : (typeof renderAdminView === 'function' ? renderAdminView : null);
+  if (oldRenderAdminView && !oldRenderAdminView.__v12DatabaseWrapped) {
+    const wrappedView = function(v){
+      const r = oldRenderAdminView.apply(this, arguments);
+      try {
+        const nav = v && v.querySelector ? v.querySelector('.admin-nav') : document.querySelector('.admin-nav');
+        if (nav && !nav.querySelector('[data-admin-db]')) {
+          const active = window.state && state.adminTab === 'database' ? 'active' : '';
+          nav.insertAdjacentHTML('beforeend', `<button data-admin-db="1" class="admin-nav-item ${active}" onclick="setAdminTab('database')">🗄️ Database</button>`);
+        }
+      } catch(e) { console.warn('[FABRİKA AI v12] Database menüsü eklenemedi:', e.message); }
+      return r;
+    };
+    wrappedView.__v12DatabaseWrapped = true;
+    try { window.renderAdminView = wrappedView; } catch(_) {}
+    try { renderAdminView = wrappedView; } catch(_) {}
+  }
+  const oldRenderAdminContent = (typeof window.renderAdminContent === 'function') ? window.renderAdminContent : (typeof renderAdminContent === 'function' ? renderAdminContent : null);
+  if (oldRenderAdminContent && !oldRenderAdminContent.__v12DatabaseWrapped) {
+    const wrappedContent = function(){
+      const c = document.getElementById('admin-content');
+      if (window.state && state.adminTab === 'database') { if (c) window.renderDatabaseAdmin(c); return; }
+      const r = oldRenderAdminContent.apply(this, arguments);
+      setTimeout(function(){ installIntentPanel(); enrichQueryDescriptions(); }, 0);
+      return r;
+    };
+    wrappedContent.__v12DatabaseWrapped = true;
+    try { window.renderAdminContent = wrappedContent; } catch(_) {}
+    try { renderAdminContent = wrappedContent; } catch(_) {}
+  }
+  const oldSetAdminTab = (typeof window.setAdminTab === 'function') ? window.setAdminTab : (typeof setAdminTab === 'function' ? setAdminTab : null);
+  if (oldSetAdminTab && !oldSetAdminTab.__v12Wrapped) {
+    const wrappedSet = function(id){ return oldSetAdminTab.apply(this, arguments); };
+    wrappedSet.__v12Wrapped = true;
+    try { window.setAdminTab = wrappedSet; } catch(_) {}
+    try { setAdminTab = wrappedSet; } catch(_) {}
+  }
+
+  // renderSavedQueriesAdmin sonrası intent panel garanti
+  const oldRSQ = (typeof window.renderSavedQueriesAdmin === 'function') ? window.renderSavedQueriesAdmin : (typeof renderSavedQueriesAdmin === 'function' ? renderSavedQueriesAdmin : null);
+  if (oldRSQ && !oldRSQ.__v12IntentWrapped) {
+    const wrappedRSQ = function(){
+      const r = oldRSQ.apply(this, arguments);
+      enrichQueryDescriptions();
+      setTimeout(installIntentPanel, 0);
+      return r;
+    };
+    wrappedRSQ.__v12IntentWrapped = true;
+    try { window.renderSavedQueriesAdmin = wrappedRSQ; } catch(_) {}
+    try { renderSavedQueriesAdmin = wrappedRSQ; } catch(_) {}
+  }
+
+  setTimeout(function(){
+    try { enrichQueryDescriptions(); installIntentPanel(); if (window.state && state.adminTab === 'saved-queries' && typeof renderAdminContent === 'function') renderAdminContent(); } catch(e) {}
+  }, 600);
+  setTimeout(function(){ try { installIntentPanel(); } catch(e){} }, 1800);
+
+  console.log('[FABRİKA AI v12] Intent çekme, Gemini eşleştirme, Database ekranı ve konsol satır kırma aktif');
+})();
+</script>
+
 </body>
 </html>
 <script>
