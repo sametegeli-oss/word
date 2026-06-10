@@ -19463,6 +19463,132 @@ setInterval(() => {
   console.log('[FABRİKA Demo v23] Hatırlatıcı kartları eksik form/data alanlarına karşı güvenli.');
 })();
 </script>
+
+
+<script>
+/* ============================================================
+   FABRİKA v24 — Demo veri güvenlik yaması
+   - Demo kayıtları IndexedDB üzerinde kalır.
+   - Demo instances için form.title/title/name alanlarını garanti eder.
+   - Hatırlatıcı ekranındaki title undefined hatasını keser.
+   - Demo butonları capture düzeyinde ve doğrudan tekrar bağlanır.
+   ============================================================ */
+(function(){
+  'use strict';
+  const root = window;
+  function getSt(){ try { if (typeof state !== 'undefined') return state; } catch(_){} return root.state || null; }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>'"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m])); }
+  function defName(id){ const st=getSt()||{}; const d=(st.definitions||[]).find(x=>String(x.id)===String(id)); return d && d.name ? d.name : (id || 'Süreç'); }
+  function hardenDemoRecords(){
+    const st = getSt(); if(!st) return;
+    ['users','definitions','instances','tasks','orders','notifications','comments','roles'].forEach(k=>{ if(!Array.isArray(st[k])) st[k]=[]; });
+    (st.instances||[]).forEach(inst=>{
+      if(!inst || typeof inst !== 'object') return;
+      const dn = defName(inst.defId);
+      const title = inst.title || inst.name || (inst.form && (inst.form.title || inst.form.name || inst.form.plate || inst.form.plaka)) || (inst.data && (inst.data.title || inst.data.name || inst.data.plate || inst.data.plaka)) || (dn + ' - ' + (inst.id || 'kayıt'));
+      inst.title = title;
+      inst.name = inst.name || title;
+      if(!inst.form || typeof inst.form !== 'object') inst.form = {};
+      if(!inst.form.title) inst.form.title = title;
+      if(!inst.form.name) inst.form.name = dn;
+      if(!inst.data || typeof inst.data !== 'object') inst.data = {};
+      if(!inst.data.title) inst.data.title = title;
+    });
+    (st.tasks||[]).forEach(t=>{ if(t && !t.title) t.title = 'Görev - ' + (t.instanceId || t.id || 'kayıt'); });
+    (st.notifications||[]).forEach(n=>{ if(n && !n.title) n.title = 'Bildirim'; if(n && !n.text) n.text = n.title; });
+    (st.comments||[]).forEach(c=>{ if(c && !c.text) c.text = 'Yorum'; });
+  }
+
+  function installReminderSafeCard(){
+    const safeCard = function(d){
+      try{
+        const inst = d && d.instance ? d.instance : {};
+        const def = d && d.def ? d.def : ((typeof getDef === 'function' && inst.defId) ? getDef(inst.defId) : {}) || {};
+        const field = d && d.field ? d.field : {};
+        const form = (inst && typeof inst.form === 'object' && inst.form) ? inst.form : ((inst && typeof inst.data === 'object' && inst.data) ? inst.data : {});
+        const owner = (inst && inst.ownerId && typeof getUser === 'function') ? getUser(inst.ownerId) : null;
+        let accent='#888780', badgeBg='var(--panel-2)', badgeColor='var(--text-dim)';
+        if(d && (d.state==='past'||d.state==='today')){ accent='#E24B4A'; badgeBg='#FCEBEB'; badgeColor='#A32D2D'; }
+        else if(d && d.state==='soon'){ accent='#EF9F27'; badgeBg='#FAEEDA'; badgeColor='#854F0B'; }
+        else if(d && d.state==='upcoming'){ accent='#378ADD'; badgeBg='#E6F1FB'; badgeColor='#185FA5'; }
+        const rawDate = d && d.targetDate ? d.targetDate : (d && d.dateStr ? new Date(d.dateStr) : new Date());
+        const dt = rawDate instanceof Date && !isNaN(rawDate) ? rawDate : new Date();
+        const dateFmt = `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+        const recordTitle = form.title || form.baslik || form.name || form.plate || form.plaka || inst.title || inst.name || inst.id || def.name || 'Kayıt';
+        const fieldLabel = field.label || field.name || field.id || 'Tarih';
+        const defNm = def.name || inst.defId || 'Süreç';
+        const icon = def.icon || '⏰';
+        const instId = inst.id || '';
+        return `<div class="rem-card" style="border-left-color:${accent};" onclick="${instId ? `goToInstance('${esc(instId)}')` : ''}">
+          <div class="rem-card-main"><div class="rem-card-icon">${icon}</div><div class="rem-card-body"><div class="rem-card-title">${esc(fieldLabel)}</div><div class="rem-card-meta">${esc(recordTitle)} · ${esc(defNm)}</div></div><span class="rem-card-badge" style="background:${badgeBg};color:${badgeColor};">${esc(d && d.label ? d.label : '')}</span></div>
+          <div class="rem-card-foot"><span>📅 ${dateFmt}</span>${owner ? `<span>👤 ${esc(owner.name || owner.id || '')}</span>` : ''}</div>
+        </div>`;
+      }catch(e){
+        console.warn('[Demo v24] renderReminderCard güvenli mod:', e.message);
+        return '<div class="rem-card"><div class="rem-card-main"><div class="rem-card-body"><div class="rem-card-title">Hatırlatıcı</div><div class="rem-card-meta">Kayıt bilgisi okunamadı</div></div></div></div>';
+      }
+    };
+    try { root.renderReminderCard = safeCard; renderReminderCard = safeCard; } catch(_) { root.renderReminderCard = safeCard; }
+  }
+
+  function wrapRender(name){
+    const old = root[name] || (function(){ try { return eval(name); } catch(_) { return null; } })();
+    if(!old || old.__demoV24Safe) return;
+    const wrapped = function(){
+      try{ hardenDemoRecords(); return old.apply(this, arguments); }
+      catch(e){
+        console.warn('[Demo v24] '+name+' hatası yutuldu:', e.message);
+        const out = document.getElementById('demoOutput');
+        if(out) out.textContent = 'Demo veriler oluşturuldu; bazı eski ekran render hataları güvenli moda alındı: ' + e.message;
+      }
+    };
+    wrapped.__demoV24Safe = true;
+    try { root[name] = wrapped; eval(name + ' = root[name]'); } catch(_) { root[name] = wrapped; }
+  }
+
+  function clickAction(action){
+    if(!root.FabrikaDemoData) return false;
+    const map={
+      small:{users:25,instances:60,orders:12,clearFirst:true,firestore:false},
+      medium:{users:60,instances:160,orders:35,clearFirst:true,firestore:false},
+      large:{users:120,instances:400,orders:80,clearFirst:true,firestore:false},
+      append:{users:40,instances:120,orders:25,clearFirst:false,firestore:false},
+      standard:{users:60,instances:160,orders:35,clearFirst:true,firestore:false}
+    };
+    if(action==='prompt'){ root.FabrikaDemoData.generateFromPrompt(); return true; }
+    if(action==='clear'){ root.FabrikaDemoData.clear(); return true; }
+    if(map[action]){ root.FabrikaDemoData.create(map[action]).then(hardenDemoRecords); return true; }
+    return false;
+  }
+
+  function bindDemoButtons(){
+    const buttons = document.querySelectorAll('[data-demo-action]');
+    buttons.forEach(btn=>{
+      btn.style.pointerEvents='auto';
+      btn.style.position='relative';
+      btn.style.zIndex='20';
+      if(btn.__demoV24Bound) return;
+      btn.__demoV24Bound = true;
+      btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); clickAction(btn.getAttribute('data-demo-action')); }, true);
+    });
+    const ta = document.getElementById('demoAiPrompt');
+    if(ta){ ta.removeAttribute('readonly'); ta.removeAttribute('disabled'); ta.style.pointerEvents='auto'; ta.style.userSelect='text'; ta.style.zIndex='20'; }
+  }
+
+  document.addEventListener('click', function(ev){
+    const btn = ev.target && ev.target.closest ? ev.target.closest('[data-demo-action]') : null;
+    if(!btn) return;
+    ev.preventDefault(); ev.stopPropagation(); clickAction(btn.getAttribute('data-demo-action'));
+  }, true);
+
+  installReminderSafeCard();
+  ['renderAll','renderView','renderMain','renderRemindersView'].forEach(wrapRender);
+  setInterval(function(){ hardenDemoRecords(); bindDemoButtons(); }, 700);
+  setTimeout(function(){ hardenDemoRecords(); bindDemoButtons(); }, 200);
+  console.log('[FABRİKA v24] Demo güvenlik yaması aktif: IndexedDB + güvenli hatırlatıcı + sağlam butonlar');
+})();
+</script>
+
 </body>
 </html>
 <script>
@@ -20200,8 +20326,9 @@ setInterval(() => {
       const instId = 'DEMO-TR-' + String(i+1).padStart(4,'0');
       const createdAt = nowMs() - (i+1) * 3600 * 1000 * 6;
       const currentStep = status === 'running' ? pick((def.steps||[]).filter(s=>s.type==='human').map(s=>s.id), i) || def.startStep : (status === 'completed' ? 's_done' : 's_rej');
-      const data = demoFormData(def, i, users);
-      instances.push({ id:instId, defId:def.id, ownerId:owner.id, status, currentStep, data, createdAt, updatedAt:createdAt + 3600000, isDemo:true, priority: pick(['low','normal','high','urgent'], i) });
+      const data = demoFormData(def, i, users) || {};
+      const recTitle = (def.name || 'Demo Süreç') + ' - ' + instId;
+      instances.push({ id:instId, title:recTitle, name:recTitle, defId:def.id, ownerId:owner.id, status, currentStep, form:Object.assign({ title:recTitle, name:def.name || 'Demo Süreç' }, data), data, createdAt, updatedAt:createdAt + 3600000, isDemo:true, priority: pick(['low','normal','high','urgent'], i) });
       if (status === 'running'){
         const assignee = resolveAssigneeForStep(st, owner, currentStep, def, i);
         tasks.push({ id:'demo_task_' + String(i+1).padStart(4,'0'), title:def.name + ' - ' + instId, instanceId:instId, defId:def.id, stepId:currentStep, assigneeId:assignee, status:'open', createdAt, dueAt: daysFromNow((i%6)-2), priority: pick(['normal','high','urgent'], i), isDemo:true });
