@@ -19374,3 +19374,414 @@ setInterval(() => {
   console.log('[FABRİKA AI v8] Yerel sorgu kalıcılığı aktif');
 })();
 </script>
+<script>
+/* ============================================================
+   FABRİKA AI AKTİF KULLANIM PATCH v9
+   Amaç: YZ'yi sadece soru-cevap değil; yönetici özeti, risk,
+   kapasite, süreç kalite kontrol, iş dağıtımı ve sorgu sihirbazı
+   desteği olarak aktif kullanmak.
+   ============================================================ */
+(function(){
+  'use strict';
+  if (window.__FABRIKA_AI_ACTIVE_V9__) return;
+  window.__FABRIKA_AI_ACTIVE_V9__ = true;
+
+  function S(){ try { return window.state || state || {}; } catch(_) { return {}; } }
+  function arr(x){ return Array.isArray(x) ? x : []; }
+  function now(){ return Date.now(); }
+  function daysAgo(ts){
+    const n = Number(ts || 0);
+    if (!n) return null;
+    return Math.floor((now() - n) / 86400000);
+  }
+  function safe(v){ return (v === undefined || v === null || v === '') ? '(boş)' : String(v); }
+  function userName(id){
+    const st = S();
+    const u = arr(st.users).find(x => x.id === id || x.firebaseUid === id || x.email === id);
+    return u ? (u.name || u.displayName || u.id || id) : safe(id);
+  }
+  function defName(id){
+    const st = S();
+    const d = arr(st.definitions).find(x => x.id === id || x.templateId === id || x.name === id);
+    return d ? (d.name || d.id || id) : safe(id);
+  }
+  function fieldMissing(o, k){
+    return !o || o[k] === undefined || o[k] === null || o[k] === '' || (Array.isArray(o[k]) && !o[k].length);
+  }
+  function groupCount(list, keyFn){
+    const map = new Map();
+    arr(list).forEach(item => {
+      let key = keyFn(item);
+      if (Array.isArray(key)) key = key.join(', ');
+      key = safe(key);
+      map.set(key, (map.get(key) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([name,count]) => ({ name, count })).sort((a,b)=>b.count-a.count);
+  }
+  function lines(title, body){
+    return [title, '', ...body].filter(x => x !== null && x !== undefined).join('\n');
+  }
+  function addTool(name, desc, run){
+    if (!window.AI_TOOLS) window.AI_TOOLS = {};
+    window.AI_TOOLS[name] = {
+      desc: desc,
+      risk: 'safe',
+      perm: null,
+      run: run
+    };
+  }
+
+  addTool('ceoOzeti', 'Yönetici için şirket/fabrika genel durum özetini çıkarır.', function(){
+    const st = S();
+    const users = arr(st.users), defs = arr(st.definitions), inst = arr(st.instances), tasks = arr(st.tasks);
+    const running = inst.filter(x => x.status === 'running');
+    const completed = inst.filter(x => x.status === 'completed');
+    const rejected = inst.filter(x => x.status === 'rejected');
+    const openTasks = tasks.filter(x => x.status === 'open');
+    const unassigned = openTasks.filter(x => fieldMissing(x, 'assigneeId'));
+    const oldOpen = running.map(x => ({...x, age: daysAgo(x.createdAt)})).filter(x => x.age !== null).sort((a,b)=>b.age-a.age).slice(0,3);
+    const bottleneck = groupCount(running, x => x.currentStep || 'adım yok').slice(0,5);
+    const missingManagers = users.filter(u => fieldMissing(u, 'manager'));
+    const body = [
+      `Toplam ${users.length} kullanıcı, ${defs.length} süreç, ${inst.length} talep ve ${tasks.length} görev var.`,
+      `Açık talep: ${running.length}, tamamlanan: ${completed.length}, reddedilen: ${rejected.length}.`,
+      `Açık görev: ${openTasks.length}. Atanmamış açık görev: ${unassigned.length}.`,
+      `Yöneticisi tanımlı olmayan kullanıcı: ${missingManagers.length}.`,
+      '',
+      'Öne çıkan tıkanma noktaları:',
+      ...(bottleneck.length ? bottleneck.map(x => `• ${x.name}: ${x.count} talep`) : ['• Belirgin tıkanma bulunmadı.']),
+      '',
+      'En eski açık talepler:',
+      ...(oldOpen.length ? oldOpen.map(x => `• ${x.id} / ${defName(x.defId)} / ${x.age} gün`) : ['• Açık talep yok veya tarih bilgisi eksik.'])
+    ];
+    const userText = lines('📊 Yönetici Özeti', body);
+    return { userText, speechText: userText, counts:{users:users.length, definitions:defs.length, instances:inst.length, tasks:tasks.length, openTasks:openTasks.length, running:running.length} };
+  });
+
+  addTool('yoneticiDanismani', 'Bugün öncelik verilmesi gereken konuları önerir.', function(){
+    const st = S();
+    const tasks = arr(st.tasks), inst = arr(st.instances), users = arr(st.users);
+    const openTasks = tasks.filter(x => x.status === 'open');
+    const staleTasks = openTasks.map(x => ({...x, age: daysAgo(x.createdAt)})).filter(x => (x.age || 0) >= 3).sort((a,b)=>(b.age||0)-(a.age||0));
+    const unassigned = openTasks.filter(x => fieldMissing(x,'assigneeId'));
+    const running = inst.filter(x => x.status === 'running');
+    const oldInst = running.map(x => ({...x, age: daysAgo(x.createdAt)})).filter(x => (x.age || 0) >= 5).sort((a,b)=>(b.age||0)-(a.age||0));
+    const missingManagers = users.filter(u => fieldMissing(u,'manager'));
+    const suggestions = [];
+    if (unassigned.length) suggestions.push(`Atanmamış ${unassigned.length} açık görevi sahiplendir.`);
+    if (staleTasks.length) suggestions.push(`${staleTasks.length} görev 3 günü geçmiş; önce en eskileri kontrol et.`);
+    if (oldInst.length) suggestions.push(`${oldInst.length} açık talep 5 günü geçmiş; süreç sahiplerinden durum iste.`);
+    if (missingManagers.length) suggestions.push(`${missingManagers.length} kullanıcının yöneticisi eksik; organizasyon bilgisini tamamla.`);
+    if (!suggestions.length) suggestions.push('Acil görünen bir tıkanma yok; günlük açık görev takibini sürdür.');
+    const userText = lines('🧭 Yönetici Danışmanı', suggestions.map((x,i)=>`${i+1}. ${x}`));
+    return { userText, speechText:userText, suggestions };
+  });
+
+  addTool('riskAnalizi', 'Gecikme, atanmamış iş ve eksik veri risklerini listeler.', function(){
+    const st = S();
+    const tasks = arr(st.tasks), inst = arr(st.instances), users = arr(st.users), defs = arr(st.definitions);
+    const risks = [];
+    const delayedTasks = tasks.filter(t => t.status === 'open' && (daysAgo(t.createdAt) || 0) >= 3);
+    const delayedInst = inst.filter(i => i.status === 'running' && (daysAgo(i.createdAt) || 0) >= 5);
+    const unassigned = tasks.filter(t => t.status === 'open' && fieldMissing(t,'assigneeId'));
+    const missingManagers = users.filter(u => fieldMissing(u,'manager'));
+    const badDefs = defs.filter(d => fieldMissing(d,'steps') || fieldMissing(d,'fields') || fieldMissing(d,'transitions'));
+    if (delayedTasks.length) risks.push({level:'yüksek', text:`${delayedTasks.length} açık görev 3 günü geçmiş.`});
+    if (delayedInst.length) risks.push({level:'yüksek', text:`${delayedInst.length} açık talep 5 günü geçmiş.`});
+    if (unassigned.length) risks.push({level:'orta', text:`${unassigned.length} açık görev atanmamış.`});
+    if (missingManagers.length) risks.push({level:'orta', text:`${missingManagers.length} kullanıcıda yönetici bilgisi eksik.`});
+    if (badDefs.length) risks.push({level:'orta', text:`${badDefs.length} süreç tanımında alan/adım/geçiş eksikleri olabilir.`});
+    if (!risks.length) risks.push({level:'düşük', text:'Kritik risk görünmüyor.'});
+    const userText = lines('🚨 Risk Analizi', risks.map(r => `• [${r.level}] ${r.text}`));
+    return { userText, speechText:userText, risks };
+  });
+
+  addTool('kapasiteAnalizi', 'Açık görev yüküne göre kişi kapasitesini analiz eder.', function(){
+    const st = S();
+    const users = arr(st.users), tasks = arr(st.tasks).filter(t => t.status === 'open');
+    const load = users.map(u => ({ id:u.id, name:u.name || u.id, count: tasks.filter(t => t.assigneeId === u.id).length, roles: arr(u.roles).join(', ') || '-' }))
+      .sort((a,b)=>a.count-b.count);
+    const empty = load.filter(x => x.count === 0);
+    const heavy = [...load].sort((a,b)=>b.count-a.count).slice(0,5);
+    const body = [
+      `Açık görev toplamı: ${tasks.length}.`,
+      `Açık görevi olmayan kullanıcı: ${empty.length}.`,
+      '',
+      'En müsait kişiler:',
+      ...(load.slice(0,5).map(x => `• ${x.name}: ${x.count} açık görev (${x.roles})`)),
+      '',
+      'En yüklü kişiler:',
+      ...(heavy.map(x => `• ${x.name}: ${x.count} açık görev (${x.roles})`))
+    ];
+    const userText = lines('⚖️ Kapasite Analizi', body);
+    return { userText, speechText:userText, rows:load };
+  });
+
+  addTool('slaAnalizi', 'Açık talep ve görevlerde gecikme/SLA analizini yapar. Parametre: gun', function(params){
+    params = params || {};
+    const gun = Number(params.gun || 3);
+    const st = S();
+    const delayedTasks = arr(st.tasks).filter(t => t.status === 'open' && (daysAgo(t.createdAt) || 0) >= gun)
+      .map(t => ({ id:t.id, title:t.title, assignee:userName(t.assigneeId), age:daysAgo(t.createdAt)}))
+      .sort((a,b)=>(b.age||0)-(a.age||0));
+    const delayedInst = arr(st.instances).filter(i => i.status === 'running' && (daysAgo(i.createdAt) || 0) >= gun)
+      .map(i => ({ id:i.id, def:defName(i.defId), owner:userName(i.ownerId), age:daysAgo(i.createdAt)}))
+      .sort((a,b)=>(b.age||0)-(a.age||0));
+    const body = [
+      `${gun} gün eşiğine göre ${delayedTasks.length} geciken görev, ${delayedInst.length} geciken talep bulundu.`,
+      '',
+      'Geciken görevler:',
+      ...(delayedTasks.slice(0,10).map(x => `• ${x.id} - ${safe(x.title)} / ${x.assignee} / ${x.age} gün`) || []),
+      delayedTasks.length ? null : '• Geciken görev yok.',
+      '',
+      'Geciken talepler:',
+      ...(delayedInst.slice(0,10).map(x => `• ${x.id} - ${x.def} / ${x.owner} / ${x.age} gün`) || []),
+      delayedInst.length ? null : '• Geciken talep yok.'
+    ];
+    const userText = lines('⏱️ SLA Analizi', body);
+    return { userText, speechText:userText, delayedTasks, delayedInst };
+  });
+
+  addTool('surecKaliteKontrol', 'Süreç tanımlarında eksik alan, adım veya geçişleri kontrol eder.', function(){
+    const defs = arr(S().definitions);
+    const rows = defs.map(d => ({
+      id:d.id,
+      name:d.name || d.id,
+      active:d.active !== false,
+      missing:[
+        fieldMissing(d,'fields') ? 'form alanı' : null,
+        fieldMissing(d,'steps') ? 'adım' : null,
+        fieldMissing(d,'transitions') ? 'geçiş' : null
+      ].filter(Boolean)
+    })).filter(x => x.missing.length);
+    const body = rows.length
+      ? [`${rows.length} süreçte kontrol edilmesi gereken eksik var.`, '', ...rows.slice(0,20).map(x => `• ${x.name}: ${x.missing.join(', ')} eksik`)]
+      : ['Süreç tanımlarında temel alan/adım/geçiş eksikliği görünmüyor.'];
+    const userText = lines('🧪 Süreç Kalite Kontrol', body);
+    return { userText, speechText:userText, rows };
+  });
+
+  addTool('kullaniciVeriKalitesi', 'Kullanıcı kayıtlarında eksik profil/veri alanlarını listeler.', function(){
+    const users = arr(S().users);
+    const rows = users.map(u => ({
+      id:u.id,
+      name:u.name || u.id,
+      missing:[
+        fieldMissing(u,'email') ? 'email' : null,
+        fieldMissing(u,'roles') ? 'rol' : null,
+        fieldMissing(u,'manager') ? 'yönetici' : null,
+        fieldMissing(u,'cep') ? 'cep' : null,
+        fieldMissing(u,'dahili') ? 'dahili' : null,
+        fieldMissing(u,'hireDate') ? 'işe giriş' : null
+      ].filter(Boolean)
+    })).filter(x => x.missing.length);
+    const body = rows.length
+      ? [`${rows.length} kullanıcıda eksik bilgi var.`, '', ...rows.slice(0,30).map(x => `• ${x.name}: ${x.missing.join(', ')}`)]
+      : ['Kullanıcı profillerinde temel eksik görünmüyor.'];
+    const userText = lines('👥 Kullanıcı Veri Kalitesi', body);
+    return { userText, speechText:userText, rows };
+  });
+
+  addTool('atanmamisIsAnalizi', 'Atanmamış açık görevleri ve bağlı talepleri listeler.', function(){
+    const st = S();
+    const rows = arr(st.tasks).filter(t => t.status === 'open' && fieldMissing(t,'assigneeId'))
+      .map(t => ({ id:t.id, title:t.title || t.id, instanceId:t.instanceId || '', age:daysAgo(t.createdAt)}))
+      .sort((a,b)=>(b.age||0)-(a.age||0));
+    const body = rows.length
+      ? [`${rows.length} atanmamış açık görev var.`, '', ...rows.slice(0,20).map(x => `• ${x.id} - ${safe(x.title)} / talep: ${safe(x.instanceId)} / ${x.age === null ? 'tarih yok' : x.age + ' gün'}`)]
+      : ['Atanmamış açık görev bulunmadı.'];
+    const userText = lines('📌 Atanmamış İş Analizi', body);
+    return { userText, speechText:userText, rows };
+  });
+
+  addTool('isDagitimOnerisiAkilli', 'Atanmamış işleri müsait kişilere dağıtmak için öneri üretir.', function(){
+    const st = S();
+    const users = arr(st.users);
+    const openTasks = arr(st.tasks).filter(t => t.status === 'open');
+    const unassigned = openTasks.filter(t => fieldMissing(t,'assigneeId'));
+    const load = users.map(u => ({ id:u.id, name:u.name || u.id, count:openTasks.filter(t => t.assigneeId === u.id).length })).sort((a,b)=>a.count-b.count);
+    const suggestions = unassigned.slice(0,20).map((t,i) => {
+      const target = load[i % Math.max(load.length,1)] || {name:'uygun kullanıcı yok', id:null, count:0};
+      if (target.id) target.count++;
+      load.sort((a,b)=>a.count-b.count);
+      return { taskId:t.id, title:t.title || t.id, suggestedTo:target.name, currentLoad:target.count };
+    });
+    const body = suggestions.length
+      ? [`${suggestions.length} görev için dağıtım önerisi hazırlandı.`, '', ...suggestions.map(x => `• ${x.taskId} - ${safe(x.title)} → ${x.suggestedTo}`)]
+      : ['Dağıtılacak atanmamış açık görev yok.'];
+    const userText = lines('🧩 İş Dağıtım Önerisi', body);
+    return { userText, speechText:userText, suggestions };
+  });
+
+  function normTR(s){
+    return String(s || '').trim().toLocaleLowerCase('tr-TR')
+      .replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u')
+      .replace(/[âîû]/g,'').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  function aiActivePlan(text){
+    const s = normTR(text);
+    if (/\b(ceo|patron|yonetici|genel|sirket|fabrika)\b.*\b(ozet|durum|rapor)\b|bugunun ozeti|yonetici ozeti/.test(s)) return {tool:'ceoOzeti', params:{}, explain:'Yönetici özeti hazırlanıyor.'};
+    if (/neye bakmaliyim|onceligim ne|neye mudahale|yonetici tavsiye|bugun ne yapmaliyim/.test(s)) return {tool:'yoneticiDanismani', params:{}, explain:'Yönetici danışmanı çalışıyor.'};
+    if (/risk|alarm|tehlike|kritik/.test(s)) return {tool:'riskAnalizi', params:{}, explain:'Risk analizi yapılıyor.'};
+    if (/darbogaz|tikanan|tikaniyor|surec.*sorun|hangi surec bekliyor/.test(s)) return {tool:'surecTikaniklikAnalizi', params:{}, explain:'Süreç tıkanıklıkları analiz ediliyor.'};
+    if (/kapasite|kim bosta|bos kapasite|doluluk|ekip.*yuk/.test(s)) return {tool:'kapasiteAnalizi', params:{}, explain:'Kapasite analizi hazırlanıyor.'};
+    if (/sla|geciken|suresi gecen|gecikme/.test(s)) return {tool:'slaAnalizi', params:{gun:3}, explain:'SLA/gecikme analizi yapılıyor.'};
+    if (/hatal[iı] surec|eksik surec|surec kalite|form kalite|surecleri kontrol/.test(s)) return {tool:'surecKaliteKontrol', params:{}, explain:'Süreç kalite kontrolü yapılıyor.'};
+    if (/eksik kullanici|profil kalite|kullanici veri|kullanici.*eksik/.test(s)) return {tool:'kullaniciVeriKalitesi', params:{}, explain:'Kullanıcı veri kalitesi kontrol ediliyor.'};
+    if (/atanmamis|sahipsiz gorev|kime atanmadi/.test(s)) return {tool:'atanmamisIsAnalizi', params:{}, explain:'Atanmamış işler analiz ediliyor.'};
+    if (/isleri kime|gorev dagit|is dagit|kime vereyim/.test(s)) return {tool:'isDagitimOnerisiAkilli', params:{}, explain:'İş dağıtım önerisi hazırlanıyor.'};
+    return null;
+  }
+
+  function installPlanPatch(){
+    const fe = window.FabrikaIntentEngine = window.FabrikaIntentEngine || {};
+    if (!fe.__aiActiveV9PlanPatched) {
+      const oldMakePlan = fe.makePlan;
+      fe.makePlan = function(text){
+        const p = aiActivePlan(text);
+        if (p) return p;
+        const old = typeof oldMakePlan === 'function' ? oldMakePlan.call(this, text) : null;
+        if (old && old.tool === 'sorgu' && old.params && old.params.tool && window.AI_TOOLS && window.AI_TOOLS[old.params.tool]) {
+          return { tool: old.params.tool, params:{}, explain: old.explain || (old.params.tool + ' çalıştırılıyor.') };
+        }
+        return old;
+      };
+      fe.__aiActiveV9PlanPatched = true;
+    }
+
+    const oldInterpret = (typeof window.interpretCommand === 'function') ? window.interpretCommand : (typeof interpretCommand === 'function' ? interpretCommand : null);
+    if (oldInterpret && !oldInterpret.__aiActiveV9Patched) {
+      const patched = async function(text){
+        const p = (window.FabrikaIntentEngine && typeof window.FabrikaIntentEngine.makePlan === 'function') ? window.FabrikaIntentEngine.makePlan(text) : aiActivePlan(text);
+        if (p) return p;
+        return oldInterpret.apply(this, arguments);
+      };
+      patched.__aiActiveV9Patched = true;
+      window.interpretCommand = patched;
+      try { interpretCommand = patched; } catch(_) {}
+    }
+  }
+
+  function fillWizardTemplates(){
+    const name = document.getElementById('qw-name')?.value || 'Bu sorgu';
+    const col = document.getElementById('qw-collection')?.value || '';
+    const group = document.getElementById('qw-group')?.value || '';
+    const rt = document.getElementById('qw-response-template');
+    const st = document.getElementById('qw-speech-template');
+    if (!rt) return;
+    const entity = col === 'users' ? 'kullanıcı' : col === 'tasks' ? 'görev' : col === 'instances' ? 'talep' : col === 'definitions' ? 'süreç' : 'kayıt';
+    let template = '';
+    if (group) {
+      template = `${name} sonucu:\n\nToplam {{count}} ${entity} bulundu.\n\n{{#groups}}\n• {{name}}: {{count}} adet\n{{/groups}}`;
+    } else {
+      template = `${name} sonucu:\n\nToplam {{count}} ${entity} bulundu.\n\n{{#rows}}\n• {{name}}{{title}}{{id}}\n{{/rows}}`;
+    }
+    rt.value = template;
+    if (st) st.value = `${name} için toplam {{count}} ${entity} bulundu.`;
+    if (typeof notify === 'function') notify('YZ metin şablonu oluşturdu', 'success');
+  }
+  window.aiFillQueryWizardTemplates = fillWizardTemplates;
+
+  function installWizardButton(){
+    try {
+      const rt = document.getElementById('qw-response-template');
+      if (!rt || document.getElementById('ai-fill-qw-template-btn')) return;
+      const btn = document.createElement('button');
+      btn.id = 'ai-fill-qw-template-btn';
+      btn.type = 'button';
+      btn.className = 'ghost-btn';
+      btn.style.cssText = 'font-size:11px;margin:6px 0 8px;';
+      btn.textContent = '🤖 YZ Metin Şablonu Üret';
+      btn.onclick = fillWizardTemplates;
+      rt.parentElement.insertBefore(btn, rt);
+    } catch(_) {}
+  }
+
+  function activePanelHtml(){
+    const actions = [
+      ['📊 Yönetici Özeti','şirketin genel durum özetini ver'],
+      ['🚨 Risk Analizi','risk analizi yap'],
+      ['🧭 Öncelik Öner','bugün neye müdahale etmeliyim'],
+      ['⚖️ Kapasite','kapasite durumu nedir'],
+      ['⏱️ SLA/Gecikme','geciken işler hangileri'],
+      ['🧪 Süreç Kontrol','süreç kalite kontrol yap'],
+      ['👥 Kullanıcı Eksikleri','eksik kullanıcı bilgileri neler'],
+      ['🧩 İş Dağıt','işleri kime dağıtayım']
+    ];
+    return `
+      <div id="ai-active-usage-panel" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;margin:0 0 14px;">
+        <div style="font-weight:700;margin-bottom:5px;">🤖 YZ Aktif Kullanım Paneli</div>
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.45;margin-bottom:10px;">
+          Bu düğmeler YZ'yi sorgu cevaplama dışında yönetici özeti, risk, kapasite, SLA, süreç kalite ve iş dağıtım danışmanı olarak çalıştırır.
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${actions.map(a => `<button class="ghost-btn" style="font-size:12px;" onclick="runAIActivePrompt('${a[1].replace(/'/g,"\\'")}')">${a[0]}</button>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  window.runAIActivePrompt = async function(prompt){
+    try {
+      if (typeof openAIConsole === 'function') openAIConsole();
+      const input = document.getElementById('ai-command-input') || document.querySelector('#aiConsole input, #ai-console input, input[placeholder*="Direktif"]');
+      if (input) input.value = prompt;
+      if (typeof sendAICommand === 'function') return sendAICommand(prompt);
+      const plan = aiActivePlan(prompt);
+      if (plan && typeof runAITool === 'function') {
+        const result = await runAITool(plan.tool, plan.params || {});
+        const text = result && (result.userText || result.speechText || result.analiz || JSON.stringify(result, null, 2));
+        if (typeof aiConsoleLog === 'function') aiConsoleLog('ai', text, result);
+        return result;
+      }
+      if (typeof notify === 'function') notify('AI komut gönderme fonksiyonu bulunamadı', 'error');
+    } catch(e) {
+      console.error('[FABRİKA AI v9] hızlı komut hatası:', e);
+      if (typeof notify === 'function') notify('AI hızlı komut hatası: ' + e.message, 'error');
+    }
+  };
+
+  function installActivePanel(){
+    try {
+      const c = document.getElementById('admin-content') || document.querySelector('.admin-content');
+      if (!c || c.querySelector('#ai-active-usage-panel')) return;
+      const isAdminAI = (S().adminTab === 'ai-panel' || S().adminTab === 'saved-queries' || S().adminTab === 'ai-builder');
+      if (!isAdminAI) return;
+      const anchor = c.querySelector('.admin-head') || c.firstElementChild;
+      if (anchor) anchor.insertAdjacentHTML('afterend', activePanelHtml());
+      else c.insertAdjacentHTML('afterbegin', activePanelHtml());
+    } catch(_) {}
+  }
+
+  function wrapRenderers(){
+    if (typeof window.renderAIControlPanel === 'function' && !window.renderAIControlPanel.__aiActiveV9Wrapped) {
+      const old = window.renderAIControlPanel;
+      window.renderAIControlPanel = function(c){ const r = old.apply(this, arguments); installActivePanel(); return r; };
+      window.renderAIControlPanel.__aiActiveV9Wrapped = true;
+      try { renderAIControlPanel = window.renderAIControlPanel; } catch(_) {}
+    }
+    if (typeof window.renderSavedQueriesAdmin === 'function' && !window.renderSavedQueriesAdmin.__aiActiveV9Wrapped) {
+      const old = window.renderSavedQueriesAdmin;
+      window.renderSavedQueriesAdmin = function(c){ const r = old.apply(this, arguments); installActivePanel(); return r; };
+      window.renderSavedQueriesAdmin.__aiActiveV9Wrapped = true;
+      try { renderSavedQueriesAdmin = window.renderSavedQueriesAdmin; } catch(_) {}
+    }
+    if (typeof window.renderAdminContent === 'function' && !window.renderAdminContent.__aiActiveV9Wrapped) {
+      const old = window.renderAdminContent;
+      window.renderAdminContent = function(){ const r = old.apply(this, arguments); setTimeout(installActivePanel, 0); return r; };
+      window.renderAdminContent.__aiActiveV9Wrapped = true;
+      try { renderAdminContent = window.renderAdminContent; } catch(_) {}
+    }
+  }
+
+  function boot(){
+    installPlanPatch();
+    wrapRenderers();
+    installActivePanel();
+    installWizardButton();
+  }
+  boot();
+  setInterval(function(){ boot(); installWizardButton(); }, 1000);
+  console.log('[FABRİKA AI v9] aktif YZ kullanım paneli ve yönetici analiz araçları aktif');
+})();
+</script>
