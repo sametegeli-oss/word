@@ -6983,32 +6983,45 @@ function renderRemindersView(v) {
 }
 
 function renderReminderCard(d) {
-  const inst = d.instance;
-  const owner = getUser(inst.ownerId);
+  const inst = d && d.instance ? d.instance : {};
+  const def = d && d.def ? d.def : getDef(inst.defId) || {};
+  const field = d && d.field ? d.field : {};
+  const form = (inst && typeof inst.form === 'object' && inst.form)
+    ? inst.form
+    : ((inst && typeof inst.data === 'object' && inst.data) ? inst.data : {});
+  const owner = inst && inst.ownerId ? getUser(inst.ownerId) : null;
+
   let accent, badgeBg, badgeColor;
-  if (d.state === 'past' || d.state === 'today') { accent = '#E24B4A'; badgeBg = '#FCEBEB'; badgeColor = '#A32D2D'; }
-  else if (d.state === 'soon') { accent = '#EF9F27'; badgeBg = '#FAEEDA'; badgeColor = '#854F0B'; }
-  else if (d.state === 'upcoming') { accent = '#378ADD'; badgeBg = '#E6F1FB'; badgeColor = '#185FA5'; }
+  if (d && (d.state === 'past' || d.state === 'today')) { accent = '#E24B4A'; badgeBg = '#FCEBEB'; badgeColor = '#A32D2D'; }
+  else if (d && d.state === 'soon') { accent = '#EF9F27'; badgeBg = '#FAEEDA'; badgeColor = '#854F0B'; }
+  else if (d && d.state === 'upcoming') { accent = '#378ADD'; badgeBg = '#E6F1FB'; badgeColor = '#185FA5'; }
   else { accent = '#888780'; badgeBg = 'var(--panel-2)'; badgeColor = 'var(--text-dim)'; }
 
-  const dt = d.targetDate;
+  const rawDate = d && d.targetDate ? d.targetDate : (d && d.dateStr ? new Date(d.dateStr) : new Date());
+  const dt = rawDate instanceof Date && !isNaN(rawDate) ? rawDate : new Date();
   const dateFmt = `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
-  const recordTitle = inst.form.title || inst.form.plate || d.def.name;
-  const fieldLabel = d.field.label;
+
+  const recordTitle =
+    form.title || form.baslik || form.name || form.plate || form.plaka ||
+    inst.title || inst.name || inst.id || def.name || 'Kayıt';
+  const fieldLabel = field.label || field.name || field.id || 'Tarih';
+  const defName = def.name || inst.defId || 'Süreç';
+  const icon = def.icon || '⏰';
+  const instId = inst.id || '';
 
   return `
-    <div class="rem-card" style="border-left-color:${accent};" onclick="goToInstance('${inst.id}')">
+    <div class="rem-card" style="border-left-color:${accent};" onclick="${instId ? `goToInstance('${instId}')` : ''}">
       <div class="rem-card-main">
-        <div class="rem-card-icon">${d.def.icon || '⏰'}</div>
+        <div class="rem-card-icon">${icon}</div>
         <div class="rem-card-body">
           <div class="rem-card-title">${escapeHtml(fieldLabel)}</div>
-          <div class="rem-card-meta">${escapeHtml(recordTitle)} · ${escapeHtml(d.def.name)}</div>
+          <div class="rem-card-meta">${escapeHtml(recordTitle)} · ${escapeHtml(defName)}</div>
         </div>
-        <span class="rem-card-badge" style="background:${badgeBg};color:${badgeColor};">${d.label}</span>
+        <span class="rem-card-badge" style="background:${badgeBg};color:${badgeColor};">${escapeHtml(d && d.label ? d.label : '')}</span>
       </div>
       <div class="rem-card-foot">
         <span>📅 ${dateFmt}</span>
-        ${owner ? `<span>👤 ${escapeHtml(owner.name)}</span>` : ''}
+        ${owner ? `<span>👤 ${escapeHtml(owner.name || owner.id || '')}</span>` : ''}
       </div>
     </div>
   `;
@@ -19434,6 +19447,22 @@ setInterval(() => {
 })();
 </script>
 
+
+<script>
+/* FABRİKA Demo v23: Demo kayıtları eksik form/data alanlarıyla gelse bile Hatırlatıcılar/Takvim ekranı kırılmasın. */
+(function(){
+  const oldGetDef = typeof window.getDef === 'function' ? window.getDef : null;
+  if (oldGetDef && !oldGetDef.__demoSafe) {
+    window.getDef = function(id){
+      try { return oldGetDef(id) || { id:id, name:id || 'Süreç', fields:[] }; }
+      catch(e){ return { id:id, name:id || 'Süreç', fields:[] }; }
+    };
+    window.getDef.__demoSafe = true;
+    try { getDef = window.getDef; } catch(_) {}
+  }
+  console.log('[FABRİKA Demo v23] Hatırlatıcı kartları eksik form/data alanlarına karşı güvenli.');
+})();
+</script>
 </body>
 </html>
 <script>
