@@ -6247,13 +6247,16 @@ function getDateStatus(dateStr) {
 // Tüm açık taleplerdeki tarih alanlarını topla (yaklaşan tarihler listesi için)
 function getAllUpcomingDates() {
   const result = [];
-  for (const inst of state.instances) {
-    if (inst.status === 'rejected') continue;
+  const instances = Array.isArray(state && state.instances) ? state.instances : [];
+  for (const inst of instances) {
+    if (!inst || inst.status === 'rejected') continue;
     const def = getDef(inst.defId);
-    if (!def) continue;
-    for (const field of def.fields) {
-      if (field.type !== 'date') continue;
-      const dateStr = inst.form[field.id];
+    const fields = def && Array.isArray(def.fields) ? def.fields : [];
+    if (!fields.length) continue;
+    const form = inst.form || inst.data || {};
+    for (const field of fields) {
+      if (!field || field.type !== 'date') continue;
+      const dateStr = form[field.id] || form[field.name];
       if (!dateStr) continue;
       const status = getDateStatus(dateStr);
       if (!status) continue;
@@ -6267,7 +6270,6 @@ function getAllUpcomingDates() {
       });
     }
   }
-  // Sırala: en yakın üstte (geçmiş tarihler en altta)
   result.sort((a, b) => a.diffDays - b.diffDays);
   return result;
 }
@@ -20253,21 +20255,21 @@ setInterval(() => {
       <div style="display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:16px;align-items:start;">
         <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;">
           <h3 style="margin:0 0 12px;">🤖 YZ Demo Komutu</h3>
-          <textarea id="demoAiPrompt" style="width:100%;min-height:95px;background:var(--bg);border:1px solid var(--border-hi);color:var(--text);border-radius:6px;padding:10px;font-family:var(--sans);" placeholder="Örnek: 80 kullanıcı, 250 talep, 50 sipariş oluştur. Avans, izin, bakım ve sipariş süreçlerinde karışık kayıt üret."></textarea>
+          <textarea id="demoAiPrompt" autocomplete="off" style="width:100%;min-height:95px;background:var(--bg);border:1px solid var(--border-hi);color:var(--text);border-radius:6px;padding:10px;font-family:var(--sans);position:relative;z-index:2;pointer-events:auto;" placeholder="Örnek: 80 kullanıcı, 250 talep, 50 sipariş oluştur. Avans, izin, bakım ve sipariş süreçlerinde karışık kayıt üret."></textarea>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-            <button class="primary-btn" onclick="FabrikaDemoData.generateFromPrompt()">✨ YZ Demo Oluştur</button>
-            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:60,instances:160,orders:35,clearFirst:true,firestore:true})">⚡ Standart Demo</button>
-            <button class="danger-btn" onclick="FabrikaDemoData.clear()">🧹 Demo Temizle</button>
+            <button type="button" class="primary-btn" data-demo-action="prompt">✨ YZ Demo Oluştur</button>
+            <button type="button" class="ghost-btn" data-demo-action="standard">⚡ Standart Demo</button>
+            <button type="button" class="danger-btn" data-demo-action="clear">🧹 Demo Temizle</button>
           </div>
           <div style="margin-top:12px;color:var(--text-dim);font-size:12px;line-height:1.5;">Mevcut demo sayıları:<br><b style="color:var(--text);">${escapeHtml(demoCounts())}</b></div>
         </div>
         <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;">
           <h3 style="margin:0 0 12px;">📦 Hızlı Demo Setleri</h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:25,instances:60,orders:12,clearFirst:true,firestore:true})">Küçük</button>
-            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:60,instances:160,orders:35,clearFirst:true,firestore:true})">Orta</button>
-            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:120,instances:400,orders:80,clearFirst:true,firestore:true})">Büyük</button>
-            <button class="ghost-btn" onclick="FabrikaDemoData.create({users:40,instances:120,orders:25,clearFirst:false,firestore:true})">Üzerine Ekle</button>
+            <button type="button" class="ghost-btn" data-demo-action="small">Küçük</button>
+            <button type="button" class="ghost-btn" data-demo-action="medium">Orta</button>
+            <button type="button" class="ghost-btn" data-demo-action="large">Büyük</button>
+            <button type="button" class="ghost-btn" data-demo-action="append">Üzerine Ekle</button>
           </div>
           <pre id="demoOutput" style="white-space:pre-wrap;min-height:190px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-family:var(--mono);font-size:12px;">Hazır. Bir demo seti seçin veya doğal dille tarif edin.</pre>
         </div>
@@ -20303,9 +20305,59 @@ setInterval(() => {
     }
   }
 
-  root.FabrikaDemoData = { create: async function(opts){ const out=document.getElementById('demoOutput'); if(out) out.textContent='Demo kayıtlar oluşturuluyor...'; const res=await createDemoData(opts); if(out) out.textContent=formatDemoResult(res); notifySafe('Demo veri oluşturuldu', 'success'); return res; }, clear: clearDemoData, generateFromPrompt: generateDemoFromPrompt, render: renderDemoDataStudio };
-  function boot(){ wrapRenderAdmin(); addDemoNavButton(); const st=getSt(); if(st && st.adminTab==='demo-data') renderDemoDataStudio(); }
+  root.FabrikaDemoData = {
+    create: async function(opts){
+      const out=document.getElementById('demoOutput');
+      const buttons = document.querySelectorAll('[data-demo-action]');
+      buttons.forEach(b=>{ b.disabled=true; b.style.opacity='0.65'; });
+      try{
+        if(out) out.textContent='Demo kayıtlar oluşturuluyor... Büyük set biraz sürebilir. Lütfen bekleyin.';
+        opts = Object.assign({firestore:true}, opts || {});
+        const res=await createDemoData(opts);
+        if(out) out.textContent=formatDemoResult(res);
+        notifySafe('Demo veri oluşturuldu', 'success');
+        setTimeout(()=>{ try{ if(typeof renderAll==='function') renderAll(); }catch(e){ console.warn('[Demo] renderAll atlandı:', e.message); } }, 60);
+        return res;
+      }catch(e){
+        console.error('[Demo] oluşturma hatası:', e);
+        if(out) out.textContent='Demo oluşturulamadı: ' + (e && e.message ? e.message : e);
+        notifySafe('Demo oluşturulamadı: ' + (e && e.message ? e.message : e), 'error');
+      }finally{
+        buttons.forEach(b=>{ b.disabled=false; b.style.opacity=''; });
+      }
+    },
+    clear: async function(){
+      const out=document.getElementById('demoOutput');
+      try{ if(out) out.textContent='Demo kayıtlar temizleniyor...'; await clearDemoData(); if(out) out.textContent='Demo kayıtlar temizlendi.'; }
+      catch(e){ if(out) out.textContent='Demo temizlenemedi: ' + (e.message||e); }
+    },
+    generateFromPrompt: generateDemoFromPrompt,
+    render: renderDemoDataStudio
+  };
+
+  function installDemoClickHandlers(){
+    if (root.__fabrikaDemoClickHandlersV20) return;
+    root.__fabrikaDemoClickHandlersV20 = true;
+    document.addEventListener('click', function(ev){
+      const btn = ev.target && ev.target.closest ? ev.target.closest('[data-demo-action]') : null;
+      if (!btn) return;
+      ev.preventDefault(); ev.stopPropagation();
+      const action = btn.getAttribute('data-demo-action');
+      const map = {
+        small:{users:25,instances:60,orders:12,clearFirst:true,firestore:true},
+        medium:{users:60,instances:160,orders:35,clearFirst:true,firestore:true},
+        large:{users:120,instances:400,orders:80,clearFirst:true,firestore:true},
+        append:{users:40,instances:120,orders:25,clearFirst:false,firestore:true},
+        standard:{users:60,instances:160,orders:35,clearFirst:true,firestore:true}
+      };
+      if(action === 'prompt') return root.FabrikaDemoData.generateFromPrompt();
+      if(action === 'clear') return root.FabrikaDemoData.clear();
+      if(map[action]) return root.FabrikaDemoData.create(map[action]);
+    }, true);
+  }
+
+  function boot(){ wrapRenderAdmin(); installDemoClickHandlers(); addDemoNavButton(); const st=getSt(); if(st && st.adminTab==='demo-data') renderDemoDataStudio(); }
   boot(); setInterval(boot, 1000);
-  console.log('[FABRİKA v19] Demo Veri Oluşturucu aktif');
+  console.log('[FABRİKA v20] Demo Veri Oluşturucu aktif - buton ve tarih alanı düzeltildi');
 })();
 </script>
