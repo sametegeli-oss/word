@@ -6253,10 +6253,12 @@ function getAllUpcomingDates() {
     const def = getDef(inst.defId);
     const fields = def && Array.isArray(def.fields) ? def.fields : [];
     if (!fields.length) continue;
-    const form = inst.form || inst.data || {};
+    const form = (inst && typeof inst.form === 'object' && inst.form) ? inst.form : ((inst && typeof inst.data === 'object' && inst.data) ? inst.data : {});
     for (const field of fields) {
       if (!field || field.type !== 'date') continue;
-      const dateStr = form[field.id] || form[field.name];
+      const fid = field.id || field.name;
+      if (!fid) continue;
+      const dateStr = form ? form[fid] : null;
       if (!dateStr) continue;
       const status = getDateStatus(dateStr);
       if (!status) continue;
@@ -20013,16 +20015,64 @@ setInterval(() => {
 
 <script>
 /* ============================================================
-   FABRİKA v19 — YZ Demo Veri Oluşturucu
+   FABRİKA v22 — YZ Demo Veri Oluşturucu
    - Yönetim menüsüne Demo Veri ekranı ekler.
    - YZ komutuyla veya butonlarla bol kayıt üretir.
    - Üretilen kayıtlar isDemo:true ile işaretlenir.
-   - Firestore izni yoksa yerel state/localStorage üzerinde çalışır.
+   - Firestore izni yoksa yerel state/IndexedDB üzerinde çalışır.
    ============================================================ */
 (function(){
   'use strict';
   const root = window;
-  const DEMO_BACKUP_KEY = 'FABRIKA_DEMO_DATA_LOCAL_V1';
+  const DEMO_DB_NAME = 'FABRIKA_DEMO_INDEXEDDB';
+  const DEMO_DB_VERSION = 1;
+  const DEMO_STORE = 'demoData';
+  const DEMO_ACTIVE_KEY = 'activeDemo';
+  const DEMO_BACKUP_KEY = 'lastBackup';
+
+  function openDemoDB(){
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) return reject(new Error('IndexedDB desteklenmiyor.'));
+      const req = indexedDB.open(DEMO_DB_NAME, DEMO_DB_VERSION);
+      req.onupgradeneeded = function(ev){
+        const db = ev.target.result;
+        if (!db.objectStoreNames.contains(DEMO_STORE)) db.createObjectStore(DEMO_STORE, { keyPath:'key' });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('IndexedDB açılamadı.'));
+    });
+  }
+
+  async function idbPut(key, value){
+    const db = await openDemoDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DEMO_STORE, 'readwrite');
+      tx.objectStore(DEMO_STORE).put({ key, value, updatedAt: Date.now() });
+      tx.oncomplete = () => { db.close(); resolve(true); };
+      tx.onerror = () => { const err = tx.error || new Error('IndexedDB yazma hatası.'); db.close(); reject(err); };
+    });
+  }
+
+  async function idbGet(key){
+    const db = await openDemoDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DEMO_STORE, 'readonly');
+      const req = tx.objectStore(DEMO_STORE).get(key);
+      req.onsuccess = () => resolve(req.result ? req.result.value : null);
+      req.onerror = () => reject(req.error || new Error('IndexedDB okuma hatası.'));
+      tx.oncomplete = () => db.close();
+    });
+  }
+
+  async function idbDelete(key){
+    const db = await openDemoDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DEMO_STORE, 'readwrite');
+      tx.objectStore(DEMO_STORE).delete(key);
+      tx.oncomplete = () => { db.close(); resolve(true); };
+      tx.onerror = () => { const err = tx.error || new Error('IndexedDB silme hatası.'); db.close(); reject(err); };
+    });
+  }
 
   function getSt(){
     try { if (typeof state !== 'undefined') return state; } catch(_) {}
@@ -20163,8 +20213,39 @@ setInterval(() => {
     return out;
   }
 
-  function backupLocal(st){
-    try { localStorage.setItem(DEMO_BACKUP_KEY, JSON.stringify({ at:Date.now(), users:st.users, definitions:st.definitions, instances:st.instances, tasks:st.tasks, orders:st.orders, notifications:st.notifications, comments:st.comments, roles:st.roles })); } catch(e){ console.warn('[Demo] local backup yazılamadı:', e); }
+  async function backupLocal(st){
+    try {
+      await idbPut(DEMO_BACKUP_KEY, { at:Date.now(), users:st.users, definitions:st.definitions, instances:st.instances, tasks:st.tasks, orders:st.orders, notifications:st.notifications, comments:st.comments, roles:st.roles });
+    } catch(e){ console.warn('[Demo] IndexedDB backup yazılamadı:', e && e.message ? e.message : e); }
+  }
+
+  async function saveDemoLocal(st){
+    try {
+      await idbPut(DEMO_ACTIVE_KEY, {
+        at: Date.now(),
+        users: (st.users||[]).filter(x=>x&&x.isDemo),
+        definitions: (st.definitions||[]).filter(x=>x&&x.isDemo),
+        instances: (st.instances||[]).filter(x=>x&&x.isDemo),
+        tasks: (st.tasks||[]).filter(x=>x&&x.isDemo),
+        orders: (st.orders||[]).filter(x=>x&&x.isDemo),
+        notifications: (st.notifications||[]).filter(x=>x&&x.isDemo),
+        comments: (st.comments||[]).filter(x=>x&&x.isDemo),
+        roles: (st.roles||[]).filter(x=>x&&x.isDemo)
+      });
+    } catch(e){ console.warn('[Demo] aktif demo IndexedDB kaydedilemedi:', e.message); }
+  }
+
+  async function restoreDemoLocal(st){
+    try {
+      const d = await idbGet(DEMO_ACTIVE_KEY);
+      if (!d || !st) return false;
+      ensureArrays(st);
+      ['users','definitions','instances','tasks','orders','notifications','comments','roles'].forEach(k=>{
+        const items = Array.isArray(d[k]) ? d[k] : [];
+        items.forEach(item=>{ if (item && item.id) addOrReplace(st[k], item); });
+      });
+      return true;
+    } catch(e){ console.warn('[Demo] aktif demo IndexedDB yüklenemedi:', e.message); return false; }
   }
   function removeDemo(st){
     ensureArrays(st);
@@ -20189,8 +20270,8 @@ setInterval(() => {
 
   async function createDemoData(opts){
     const st = getSt(); if (!st) { alert('State bulunamadı.'); return null; }
-    opts = Object.assign({users:60, instances:160, orders:35, clearFirst:true, firestore:true}, opts||{});
-    ensureArrays(st); backupLocal(st);
+    opts = Object.assign({users:60, instances:160, orders:35, clearFirst:true, firestore:false}, opts||{});
+    ensureArrays(st); await backupLocal(st);
     if (opts.clearFirst) removeDemo(st);
     demoRoles().forEach(r => addOrReplace(st.roles, r));
     makeUsers(opts.users).forEach(u => addOrReplace(st.users, u));
@@ -20201,8 +20282,9 @@ setInterval(() => {
     pack.comments.forEach(x => addOrReplace(st.comments, x));
     pack.notifications.forEach(x => addOrReplace(st.notifications, x));
     makeOrders(opts.orders, st.users.filter(u=>u.isDemo)).forEach(o => addOrReplace(st.orders, o));
-    try { localStorage.setItem('FABRIKA_DEMO_LAST_COUNTS', JSON.stringify(opts)); } catch(_) {}
-    try { if (typeof persist === 'function') persist(); } catch(e){ console.warn('[Demo] persist çağrılamadı:', e); }
+    await saveDemoLocal(st);
+    await idbPut('lastCounts', opts).catch(()=>{});
+    // Varsayılan demo modu yereldir. Firestore'a yazma, kota dolmasın diye sadece kullanıcı açıkça isterse denenir.
     let fs = null; if (opts.firestore) fs = await writeDemoToFirestore(st);
     if (typeof renderAdminContent === 'function') { try { renderAdminContent(); } catch(_){} }
     return { users:opts.users, definitions:makeDefinitions().length, instances:opts.instances, tasks:pack.tasks.length, orders:opts.orders, notifications:pack.notifications.length, comments:pack.comments.length, firestore:fs };
@@ -20211,8 +20293,8 @@ setInterval(() => {
   async function clearDemoData(){
     const st = getSt(); if (!st) return;
     if (!confirm('Demo veri temizlensin mi? Sadece isDemo:true kayıtlar kaldırılır.')) return;
-    backupLocal(st); removeDemo(st);
-    try { if (typeof persist === 'function') persist(); } catch(_) {}
+    await backupLocal(st); removeDemo(st);
+    await idbDelete(DEMO_ACTIVE_KEY).catch(()=>{});
     if (typeof renderAdminContent === 'function') renderAdminContent();
     notifySafe('Demo kayıtlar yerel ekrandan temizlendi. Firestore içindeki demo kayıtları silmek için Firebase kurallarında silme izni gerekir.', 'success');
   }
@@ -20226,7 +20308,7 @@ setInterval(() => {
       instances: getAfter('talep|süreç kaydı|form', nums[1] ? Number(nums[1]) : 160),
       orders: getAfter('sipariş', nums[2] ? Number(nums[2]) : 35),
       clearFirst: !/üzerine ekle|temizleme|silmeden/.test(s),
-      firestore: !/sadece yerel|local/.test(s)
+      firestore: /firestore|firebase|buluta|kalici|kalıcı/.test(s) && !/sadece yerel|local/.test(s)
     };
   }
 
@@ -20240,7 +20322,7 @@ setInterval(() => {
   }
   function formatDemoResult(res){
     if (!res) return 'Demo oluşturulamadı.';
-    const fs = res.firestore ? `\nFirestore: ${res.firestore.written || 0} yazıldı, ${res.firestore.failed || 0} hata.` : '\nFirestore: denenmedi.';
+    const fs = res.firestore ? `\nFirestore: ${res.firestore.written || 0} yazıldı, ${res.firestore.failed || 0} hata.` : '\nFirestore: denenmedi. Demo kayıtlar IndexedDB üzerinde yerel çalışıyor.';
     return `Demo veri oluşturuldu.\n\nKullanıcı: ${res.users}\nSüreç tanımı: ${res.definitions}\nTalep: ${res.instances}\nAçık görev: ${res.tasks}\nSipariş: ${res.orders}\nBildirim: ${res.notifications}\nYorum: ${res.comments}${fs}\n\nTüm demo kayıtlar isDemo:true olarak işaretlendi.`;
   }
 
@@ -20251,7 +20333,7 @@ setInterval(() => {
     if (!c) c = document.querySelector('.admin-content') || document.getElementById('admin-content');
     if (!c) return;
     c.innerHTML = `
-      <div class="admin-head"><div><h2>🎭 Demo Veri Oluşturucu</h2><p>YZ ile her aşamada bol kayıt üretin. Demo kayıtlar <b>isDemo:true</b> olarak ayrılır.</p></div><button class="ghost-btn" onclick="if(typeof renderAdminContent==='function')renderAdminContent()">↻ Yenile</button></div>
+      <div class="admin-head"><div><h2>🎭 Demo Veri Oluşturucu</h2><p>YZ ile her aşamada bol kayıt üretin. Demo kayıtlar <b>isDemo:true</b> olarak ayrılır. Varsayılan olarak IndexedDB'ye yazar; Firestore'a yazmaz ve kota hatası oluşturmaz.</p></div><button class="ghost-btn" onclick="if(typeof renderAdminContent==='function')renderAdminContent()">↻ Yenile</button></div>
       <div style="display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:16px;align-items:start;">
         <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;">
           <h3 style="margin:0 0 12px;">🤖 YZ Demo Komutu</h3>
@@ -20312,7 +20394,7 @@ setInterval(() => {
       buttons.forEach(b=>{ b.disabled=true; b.style.opacity='0.65'; });
       try{
         if(out) out.textContent='Demo kayıtlar oluşturuluyor... Büyük set biraz sürebilir. Lütfen bekleyin.';
-        opts = Object.assign({firestore:true}, opts || {});
+        opts = Object.assign({firestore:false}, opts || {});
         const res=await createDemoData(opts);
         if(out) out.textContent=formatDemoResult(res);
         notifySafe('Demo veri oluşturuldu', 'success');
@@ -20336,19 +20418,19 @@ setInterval(() => {
   };
 
   function installDemoClickHandlers(){
-    if (root.__fabrikaDemoClickHandlersV20) return;
-    root.__fabrikaDemoClickHandlersV20 = true;
+    if (root.__fabrikaDemoClickHandlersV22) return;
+    root.__fabrikaDemoClickHandlersV22 = true;
     document.addEventListener('click', function(ev){
       const btn = ev.target && ev.target.closest ? ev.target.closest('[data-demo-action]') : null;
       if (!btn) return;
       ev.preventDefault(); ev.stopPropagation();
       const action = btn.getAttribute('data-demo-action');
       const map = {
-        small:{users:25,instances:60,orders:12,clearFirst:true,firestore:true},
-        medium:{users:60,instances:160,orders:35,clearFirst:true,firestore:true},
-        large:{users:120,instances:400,orders:80,clearFirst:true,firestore:true},
-        append:{users:40,instances:120,orders:25,clearFirst:false,firestore:true},
-        standard:{users:60,instances:160,orders:35,clearFirst:true,firestore:true}
+        small:{users:25,instances:60,orders:12,clearFirst:true,firestore:false},
+        medium:{users:60,instances:160,orders:35,clearFirst:true,firestore:false},
+        large:{users:120,instances:400,orders:80,clearFirst:true,firestore:false},
+        append:{users:40,instances:120,orders:25,clearFirst:false,firestore:false},
+        standard:{users:60,instances:160,orders:35,clearFirst:true,firestore:false}
       };
       if(action === 'prompt') return root.FabrikaDemoData.generateFromPrompt();
       if(action === 'clear') return root.FabrikaDemoData.clear();
@@ -20356,8 +20438,8 @@ setInterval(() => {
     }, true);
   }
 
-  function boot(){ wrapRenderAdmin(); installDemoClickHandlers(); addDemoNavButton(); const st=getSt(); if(st && st.adminTab==='demo-data') renderDemoDataStudio(); }
+  async function boot(){ wrapRenderAdmin(); installDemoClickHandlers(); addDemoNavButton(); const st=getSt(); if(st) await restoreDemoLocal(st); if(st && st.adminTab==='demo-data') renderDemoDataStudio(); }
   boot(); setInterval(boot, 1000);
-  console.log('[FABRİKA v20] Demo Veri Oluşturucu aktif - buton ve tarih alanı düzeltildi');
+  console.log('[FABRİKA v22] Demo Veri Oluşturucu aktif - IndexedDB demo modu ve Firestore kota koruması');
 })();
 </script>
