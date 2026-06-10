@@ -19267,6 +19267,169 @@ setInterval(() => {
 })();
 </script>
 
+
+
+<script>
+/* ============================================================
+   FABRİKA v18 — AI Kontrol Paneli asistan düğmeleri geri yükleme
+   - Database Studio v17 korunur.
+   - AI Kontrol Paneli / Yapay Zeka Form / Kayıtlı Sorgular ekranlarında
+     YZ asistanlık düğmelerini görünür ve çalışır hale getirir.
+   ============================================================ */
+(function(){
+  'use strict';
+  const root = window;
+
+  function S(){ try { return root.state || state || {}; } catch(_) { return root.state || {}; } }
+  function rows(key){ const st=S(); return Array.isArray(st[key]) ? st[key] : []; }
+  function esc(s){ return String(s ?? '').replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+  function fmtDate(v){
+    if(!v) return '-';
+    const d = typeof v === 'number' ? new Date(v) : new Date(String(v));
+    return isNaN(d) ? String(v) : d.toLocaleString('tr-TR');
+  }
+  function userName(id){
+    const u = rows('users').find(x => x.id===id || x.username===id || x.email===id || x.firebaseUid===id);
+    return u ? (u.name || u.username || u.email || u.id) : (id || '-');
+  }
+  function defName(id){
+    const d = rows('definitions').find(x => x.id===id || x.templateId===id || x.name===id);
+    return d ? (d.name || d.id) : (id || '-');
+  }
+  function bullets(items){ return items.length ? items.map(x=>'• '+x).join('\n') : '• Kayıt bulunmadı.'; }
+
+  function buildAssistantText(kind){
+    const users=rows('users'), defs=rows('definitions'), inst=rows('instances'), tasks=rows('tasks'), orders=rows('orders');
+    const openTasks = tasks.filter(t => !['done','completed','closed','cancelled'].includes(String(t.status||'').toLowerCase()));
+    const openInst = inst.filter(i => !['completed','rejected','cancelled','closed'].includes(String(i.status||'').toLowerCase()));
+    const unassigned = openTasks.filter(t => !t.assigneeId && !t.assignee && !t.ownerId);
+    const noManager = users.filter(u => !u.manager && !(Array.isArray(u.roles)&&u.roles.includes('manager')));
+
+    if(kind==='ozet'){
+      return `Yönetici Özeti\n\nSistemde ${users.length} kullanıcı, ${defs.length} süreç, ${inst.length} talep, ${tasks.length} görev ve ${orders.length} sipariş görünüyor.\n\nAçık talep sayısı: ${openInst.length}.\nAçık görev sayısı: ${openTasks.length}.\nAtanmamış açık görev: ${unassigned.length}.\nYöneticisi eksik kullanıcı: ${noManager.length}.`;
+    }
+    if(kind==='risk'){
+      const lines=[];
+      if(unassigned.length) lines.push(`${unassigned.length} açık görevde atanan kişi yok.`);
+      if(noManager.length) lines.push(`${noManager.length} kullanıcıda yönetici/manager bilgisi eksik.`);
+      const emptyDefs = defs.filter(d => !Array.isArray(d.steps) || d.steps.length===0);
+      if(emptyDefs.length) lines.push(`${emptyDefs.length} süreçte adım tanımı yok.`);
+      if(!lines.length) lines.push('Kritik risk sinyali bulunmadı.');
+      return 'Risk Analizi\n\n' + bullets(lines);
+    }
+    if(kind==='oncelik'){
+      const lines=[];
+      if(unassigned.length) lines.push('Önce atanmamış açık görevleri kişilere dağıtın.');
+      if(openInst.length) lines.push('Açık taleplerin beklediği adımları kontrol edin.');
+      if(noManager.length) lines.push('Yöneticisi eksik kullanıcıların manager alanını tamamlayın.');
+      if(!lines.length) lines.push('Bugün için acil müdahale gerektiren konu görünmüyor.');
+      return 'Öncelik Önerisi\n\n' + bullets(lines);
+    }
+    if(kind==='kapasite'){
+      const by={}; openTasks.forEach(t=>{ const k=t.assigneeId||t.assignee||t.ownerId||'(atanmamış)'; by[k]=(by[k]||0)+1; });
+      const sorted=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,10);
+      return 'Kapasite Analizi\n\nAçık görev dağılımı:\n' + (sorted.length?sorted.map(([k,v])=>`• ${userName(k)}: ${v} görev`).join('\n'):'• Açık görev bulunmadı.');
+    }
+    if(kind==='sla'){
+      const sorted = openTasks.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).slice(0,10);
+      return 'SLA / Gecikme Analizi\n\nEn eski açık görevler:\n' + (sorted.length?sorted.map(t=>`• ${t.title||t.id||'Görev'} — ${userName(t.assigneeId||t.assignee||t.ownerId)} — ${fmtDate(t.createdAt)}`).join('\n'):'• Açık görev bulunmadı.');
+    }
+    if(kind==='surec'){
+      const lines = defs.map(d=>{
+        const stepCount = Array.isArray(d.steps) ? d.steps.length : 0;
+        const fieldCount = Array.isArray(d.fields) ? d.fields.length : 0;
+        const trCount = Array.isArray(d.transitions) ? d.transitions.length : 0;
+        const warns=[]; if(!stepCount) warns.push('adım yok'); if(!fieldCount) warns.push('alan yok'); if(stepCount>1 && !trCount) warns.push('geçiş yok');
+        return warns.length ? `${d.name||d.id}: ${warns.join(', ')}` : null;
+      }).filter(Boolean).slice(0,20);
+      return 'Süreç Kalite Kontrol\n\n' + (lines.length?bullets(lines):'Tüm süreçlerde temel alan/adım yapısı dolu görünüyor.');
+    }
+    if(kind==='kullanici'){
+      const lines=[];
+      const noEmail=users.filter(u=>!u.email).length, noName=users.filter(u=>!u.name && !u.username).length, noRole=users.filter(u=>!Array.isArray(u.roles)||!u.roles.length).length;
+      if(noName) lines.push(`${noName} kullanıcıda ad bilgisi eksik.`);
+      if(noEmail) lines.push(`${noEmail} kullanıcıda e-posta eksik.`);
+      if(noRole) lines.push(`${noRole} kullanıcıda rol bilgisi eksik.`);
+      if(noManager.length) lines.push(`${noManager.length} kullanıcıda yönetici bilgisi eksik olabilir.`);
+      return 'Kullanıcı Veri Eksikleri\n\n' + (lines.length?bullets(lines):'Kullanıcı temel verilerinde belirgin eksik görünmüyor.');
+    }
+    if(kind==='isdagit'){
+      const managers = users.filter(u => Array.isArray(u.roles) && (u.roles.includes('manager') || u.roles.includes('yonetim') || u.roles.includes('yönetim')));
+      const target = managers[0] || users[0];
+      return 'İş Dağıtım Önerisi\n\n' + (unassigned.length ? `Atanmamış ${unassigned.length} açık görev var. İlk dağıtım için ${userName(target && (target.id||target.username||target.email))} uygun aday olabilir.\n\nAtanmamış görevler:\n` + unassigned.slice(0,10).map(t=>`• ${t.title||t.id}`).join('\n') : 'Atanmamış açık görev bulunmadı.');
+    }
+    return 'Analiz türü tanınmadı.';
+  }
+
+  function writeAssistantResult(text){
+    const targets = [
+      document.querySelector('#ai-builder-output'),
+      document.querySelector('#ai-draft-output'),
+      document.querySelector('[data-ai-draft-output]'),
+      Array.from(document.querySelectorAll('.admin-content .rep-block, .admin-content .panel, .admin-content div')).find(el => /Oluşturulan taslak/i.test(el.textContent||''))
+    ].filter(Boolean);
+    let t = targets[0];
+    if(!t){
+      const c = document.getElementById('admin-content') || document.querySelector('.admin-content');
+      if(c){ c.insertAdjacentHTML('beforeend','<div id="ai-active-result" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:14px;white-space:pre-wrap;"></div>'); t=document.getElementById('ai-active-result'); }
+    }
+    if(t) t.innerHTML = `<pre style="white-space:pre-wrap;margin:0;font-family:var(--sans);line-height:1.55">${esc(text)}</pre>`;
+    if(typeof root.aiConsoleLog === 'function') root.aiConsoleLog('ai', text);
+    if(typeof root.openAIConsole === 'function') root.openAIConsole();
+  }
+
+  root.runAIActivePrompt = function(kind){
+    const map = {ozet:'ozet', risk:'risk', oncelik:'oncelik', kapasite:'kapasite', sla:'sla', surec:'surec', kullanici:'kullanici', isdagit:'isdagit'};
+    const k = map[kind] || kind;
+    try { writeAssistantResult(buildAssistantText(k)); }
+    catch(e){ writeAssistantResult('AI asistanlık analizi çalıştırılamadı: ' + e.message); }
+  };
+
+  function panelHtml(){
+    const buttons = [
+      ['ozet','📊 Yönetici Özeti'], ['risk','🚨 Risk Analizi'], ['oncelik','🧭 Öncelik Öner'], ['kapasite','⚖️ Kapasite'],
+      ['sla','⏱️ SLA/Gecikme'], ['surec','🧪 Süreç Kontrol'], ['kullanici','👥 Kullanıcı Eksikleri'], ['isdagit','🧩 İş Dağıt']
+    ];
+    return `<div id="ai-active-usage-panel" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;margin:0 0 14px;">
+      <div style="font-weight:700;margin-bottom:5px;">🤖 YZ Aktif Kullanım Paneli</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.45;margin-bottom:10px;">Bu düğmeler mevcut Firebase/yerel kayıtları okuyarak yönetici özeti, risk, kapasite, SLA, süreç kalite ve iş dağıtım analizi üretir.</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${buttons.map(([k,t])=>`<button class="ghost-btn" style="font-size:12px;" onclick="runAIActivePrompt('${k}')">${t}</button>`).join('')}</div>
+    </div>`;
+  }
+  function shouldShowPanel(){
+    const st=S();
+    const tab = String(st.adminTab || '').toLowerCase();
+    const txt = (document.querySelector('.admin-head')?.textContent || document.querySelector('.admin-content')?.textContent || '').toLowerCase();
+    return tab.includes('ai') || tab.includes('query') || txt.includes('yapay zeka') || txt.includes('kayıtlı sorgular') || txt.includes('ai kontrol');
+  }
+  function installPanel(){
+    const c = document.getElementById('admin-content') || document.querySelector('.admin-content');
+    if(!c || c.querySelector('#ai-active-usage-panel') || !shouldShowPanel()) return;
+    const anchor = c.querySelector('.admin-head') || c.firstElementChild;
+    if(anchor) anchor.insertAdjacentHTML('afterend', panelHtml()); else c.insertAdjacentHTML('afterbegin', panelHtml());
+  }
+  function wrapRender(){
+    if(typeof root.renderAdminContent === 'function' && !root.renderAdminContent.__aiActiveV18Wrapped){
+      const old = root.renderAdminContent;
+      root.renderAdminContent = function(){ const r=old.apply(this, arguments); setTimeout(installPanel,0); return r; };
+      root.renderAdminContent.__aiActiveV18Wrapped=true;
+      try { renderAdminContent = root.renderAdminContent; } catch(_) {}
+    }
+    ['renderAIControlPanel','renderAIBuilder','renderSavedQueriesAdmin'].forEach(fn=>{
+      if(typeof root[fn] === 'function' && !root[fn].__aiActiveV18Wrapped){
+        const old=root[fn]; root[fn]=function(){ const r=old.apply(this, arguments); setTimeout(installPanel,0); return r; };
+        root[fn].__aiActiveV18Wrapped=true;
+        try { eval(fn+' = root[fn]'); } catch(_) {}
+      }
+    });
+  }
+  function boot(){ wrapRender(); installPanel(); }
+  boot();
+  setInterval(boot, 1000);
+  console.log('[FABRİKA v18] AI asistanlık düğmeleri geri yüklendi');
+})();
+</script>
+
 </body>
 </html>
 <script>
