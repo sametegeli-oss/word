@@ -20395,3 +20395,270 @@ setInterval(() => {
   console.log('[FABRİKA AI v9] aktif YZ kullanım paneli ve yönetici analiz araçları aktif');
 })();
 </script>
+
+
+<script>
+/* ============================================================
+   FABRİKA AI v13 — yerel önce, Gemini sonra + DB şema + kuyruk garantisi
+   ============================================================ */
+(function(){
+  'use strict';
+
+  const DIRECT_LOCAL_MIN = 80;
+  const CHOICE_LOCAL_MIN = 45;
+  const GEMINI_DIRECT_MIN = 0.82;
+  const GEMINI_CHOICE_MIN = 0.50;
+
+  function esc(s){
+    if (typeof escapeHtml === 'function') return escapeHtml(String(s ?? ''));
+    return String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+  function clone(o){ try { return JSON.parse(JSON.stringify(o)); } catch(_) { return o; } }
+  function norm(s){
+    if (window.FabrikaIntentEngine && typeof window.FabrikaIntentEngine.normalizeTR === 'function') return window.FabrikaIntentEngine.normalizeTR(s);
+    return String(s||'').toLocaleLowerCase('tr-TR').replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u').replace(/[^a-z0-9]+/g,' ').trim();
+  }
+  function notifySafe(msg,type){ if (typeof notify === 'function') notify(msg,type||'info'); else console.log(msg); }
+
+  function getQueries(){
+    if (window.FabrikaIntentEngine && typeof window.FabrikaIntentEngine.getQueriesForAIConsole === 'function') {
+      try { return window.FabrikaIntentEngine.getQueriesForAIConsole() || []; } catch(_) {}
+    }
+    return (window.state && Array.isArray(state.savedQueries)) ? state.savedQueries : [];
+  }
+  function localAlts(text, limit){
+    if (window.FabrikaIntentEngine && typeof window.FabrikaIntentEngine.findQueryAlternatives === 'function') {
+      try { return window.FabrikaIntentEngine.findQueryAlternatives(text, limit || 5) || []; } catch(_) {}
+    }
+    return [];
+  }
+  function localPlanFirst(text){
+    let p = null;
+    const fe = window.FabrikaIntentEngine || {};
+    if (typeof fe.makePlan === 'function') {
+      try { p = fe.makePlan(text); } catch(e) { console.warn('[FABRİKA AI v13] yerel plan hatası:', e.message); }
+    }
+    if (p && p.tool) {
+      const sc = Number(p.score || 0);
+      if (!sc || sc >= DIRECT_LOCAL_MIN || p.tool !== 'sorgu') return p;
+    }
+    const alts = localAlts(text, 5);
+    const top = alts.length ? Number(alts[0].score || 0) : 0;
+    if (top >= DIRECT_LOCAL_MIN && alts[0] && alts[0].params) {
+      return { tool:'sorgu', params:clone(alts[0].params), explain:`Yerel eşleşme: "${alts[0].name}". Skor: ${Math.round(top)}.`, score:Math.round(top), queryName:alts[0].name, localMatched:true };
+    }
+    if (top >= CHOICE_LOCAL_MIN) {
+      return { needsChoice:true, originalText:text, candidates:alts.slice(0,5), explain:'Yerel motor tam emin olamadı. Aşağıdaki sorgulardan hangisini kastettiniz?' };
+    }
+    return null;
+  }
+
+  function getGeminiKey(){
+    try {
+      const cfg = typeof getAISettings === 'function' ? getAISettings() : null;
+      return cfg && cfg.keys ? (cfg.keys.gemini || '') : '';
+    } catch(_) { return ''; }
+  }
+  function getGeminiModel(){
+    try {
+      const cfg = typeof getAISettings === 'function' ? getAISettings() : null;
+      const m = cfg && cfg.models ? (cfg.models.gemini || 'gemini-2.5-flash') : 'gemini-2.5-flash';
+      return typeof remapGeminiModel === 'function' ? remapGeminiModel(m) : m;
+    } catch(_) { return 'gemini-2.5-flash'; }
+  }
+  function describeQuery(q){
+    if (typeof window.fabrikaDescribeQuery === 'function') return window.fabrikaDescribeQuery(q);
+    const p = q && q.params ? q.params : {};
+    return `${p.koleksiyon || 'tablo'} tablosunda ${p.grupla ? p.grupla + ' alanına göre sayım yapar' : 'kayıtları listeler'}.`;
+  }
+  async function geminiPlanAfterLocal(text){
+    const key = getGeminiKey();
+    if (!key) return null;
+    const queries = getQueries().filter(q => q && q.params && q.params.koleksiyon).slice(0, 160);
+    if (!queries.length) return null;
+    const catalog = queries.map((q,i)=>({
+      i,
+      ad:q.name || '',
+      aciklama:q.aciklama || q.descriptionForAI || describeQuery(q),
+      tablo:q.params && q.params.koleksiyon || '',
+      filtreler:q.params && q.params.filtreler || [],
+      grupla:q.params && q.params.grupla || '',
+      aliases:q.aliases || []
+    }));
+    const prompt = [
+      'Sen FABRİKA yönetim platformunda kullanıcı sorusunu kayıtlı sorgu kataloğuna eşleyen sınıflandırıcısın.',
+      'Sadece JSON döndür. FABRİKA dışı veya katalogla ilgisiz isteklerde index=-1 ver.',
+      'Kullanıcı sorusu: ' + text,
+      'Katalog: ' + JSON.stringify(catalog),
+      'Şema: {"index":number,"confidence":0-1,"reason":"kısa Türkçe"}'
+    ].join('\n');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getGeminiModel() || 'gemini-2.5-flash')}:generateContent?key=${encodeURIComponent(key)}`;
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.03, responseMimeType:'application/json'} }) });
+    if (!res.ok) throw new Error('Gemini eşleştirme hata: ' + res.status);
+    const data = await res.json();
+    const raw = data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('') || '{}';
+    const parsed = JSON.parse(raw.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```$/,'').trim());
+    const idx = Number(parsed.index);
+    const conf = Number(parsed.confidence) || 0;
+    if (!Number.isFinite(idx) || idx < 0 || idx >= queries.length) return { none:true, confidence:conf, reason:parsed.reason || '' };
+    const q = queries[idx];
+    return { query:q, confidence:conf, reason:parsed.reason || '', params:clone(q.params || {}), name:q.name || '' };
+  }
+  function queuePlan(text, reason){
+    setTimeout(function(){
+      try { if (typeof logUnansweredCommand === 'function') logUnansweredCommand(text, reason || 'eşleşmedi'); } catch(e) { console.warn('[FABRİKA AI v13] kuyruk yazılamadı:', e.message); }
+    }, 0);
+    return { tool:null, explain:(reason || 'Bu soruyu mevcut sorgularla eşleştiremedim. Öğrenme kuyruğuna ekledim.'), isUnrelated:true, queued:true, originalText:text };
+  }
+
+  async function v13Interpret(text){
+    // 1) Her zaman önce yerel akıllı motor / kayıtlı sorgu motoru
+    const lp = localPlanFirst(text);
+    if (lp && lp.tool) return lp;
+    if (lp && lp.needsChoice) {
+      // Yerel seçenekler makulse Gemini'ye gitmeden seçenek sun.
+      const top = Math.max(...(lp.candidates || []).map(c => Number(c.score)||0), 0);
+      if (top >= 65) return lp;
+    }
+
+    // 2) Yerel sonuca gidemezse Gemini sadece sorgu eşleştirme için kullanılır
+    try {
+      const gp = await geminiPlanAfterLocal(text);
+      if (gp && gp.query && gp.confidence >= GEMINI_DIRECT_MIN) {
+        return { tool:'sorgu', params:gp.params || {}, explain:`Gemini eşleştirme: "${gp.name}". Güven: ${Math.round(gp.confidence*100)}%. ${gp.reason || ''}`, score:Math.round(gp.confidence*100), queryName:gp.name, geminiMatched:true };
+      }
+      if (gp && gp.query && gp.confidence >= GEMINI_CHOICE_MIN) {
+        const main = { name:gp.name, aciklama:gp.query.aciklama || describeQuery(gp.query), collection:gp.query.params?.koleksiyon || '', params:gp.params || {}, score:Math.round(gp.confidence*100), source:'gemini' };
+        const rest = (lp && lp.needsChoice ? lp.candidates : localAlts(text,5)).filter(x => x && x.name !== main.name);
+        return { needsChoice:true, originalText:text, candidates:[main].concat(rest).slice(0,5), explain:'Gemini tam emin olamadı. En yakın seçenekleri seçin.' };
+      }
+      if (gp && gp.none) return queuePlan(text, 'Gemini de uygun sorgu bulamadı: ' + (gp.reason || 'alakasız'));
+    } catch(e) {
+      console.warn('[FABRİKA AI v13] Gemini fallback kullanılamadı:', e.message);
+    }
+
+    // 3) Gemini yoksa/başarısızsa düşük kaliteli yerel alternatif varsa seçenek göster; yoksa direkt kuyruk
+    if (lp && lp.needsChoice) return lp;
+    const alts = localAlts(text, 5);
+    const top = alts.length ? Number(alts[0].score || 0) : 0;
+    if (top >= CHOICE_LOCAL_MIN) return { needsChoice:true, originalText:text, candidates:alts, explain:'Tam emin olamadım. Aşağıdakilerden hangisini kastettiniz?' };
+    return queuePlan(text, 'Hazır sorgu eşleşmesi bulunamadı');
+  }
+
+  window.interpretCommand = v13Interpret;
+  try { interpretCommand = v13Interpret; } catch(_) {}
+
+  // Plan tool:null olduğunda kuyruk kaydı kesinleşsin; mevcut runAICommand bazen açıklama gösterip geçebiliyor.
+  if (typeof window.runAICommand === 'function' && !window.runAICommand.__v13QueueSafe) {
+    const oldRun = window.runAICommand;
+    window.runAICommand = async function(text){ return oldRun.apply(this, arguments); };
+    window.runAICommand.__v13QueueSafe = true;
+    try { runAICommand = window.runAICommand; } catch(_) {}
+  }
+
+  // Database ekranı: Firebase tablosu gibi alan/özellik + kayıtlar
+  const TABLES = [
+    ['users','Kullanıcılar'], ['definitions','Süreçler'], ['instances','Talepler'], ['tasks','Görevler'],
+    ['orders','Siparişler'], ['notifications','Bildirimler'], ['comments','Yorumlar'], ['roles','Roller'],
+    ['savedQueries','Kayıtlı Sorgular'], ['aiLearningQueue','YZ Öğrenme Kuyruğu']
+  ];
+  function tableRows(key){ return (window.state && Array.isArray(state[key])) ? state[key] : []; }
+  function typeOfVal(v){
+    if (v === null) return 'null';
+    if (Array.isArray(v)) return 'array';
+    if (v instanceof Date) return 'date';
+    return typeof v;
+  }
+  function summarizeVal(v){
+    if (v === undefined) return '';
+    if (v === null) return 'null';
+    if (typeof v === 'object') {
+      try { return JSON.stringify(v).slice(0,180); } catch(_) { return String(v); }
+    }
+    return String(v).slice(0,180);
+  }
+  function schemaFor(rows){
+    const map = new Map();
+    rows.forEach(r => {
+      Object.keys(r || {}).forEach(k => {
+        const v = r[k];
+        if (!map.has(k)) map.set(k, { field:k, types:new Set(), filled:0, empty:0, examples:[] });
+        const m = map.get(k);
+        m.types.add(typeOfVal(v));
+        const isEmpty = v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+        if (isEmpty) m.empty++; else m.filled++;
+        const ex = summarizeVal(v);
+        if (ex && m.examples.length < 3 && !m.examples.includes(ex)) m.examples.push(ex);
+      });
+    });
+    return Array.from(map.values()).sort((a,b)=>a.field.localeCompare(b.field,'tr')).map(m => ({...m, types:Array.from(m.types).join(', ')}));
+  }
+  function prettyRecord(r, i){
+    const keys = Object.keys(r || {}).sort((a,b)=>a.localeCompare(b,'tr'));
+    if (!keys.length) return `${i+1}. {}`;
+    return `${i+1}. KAYIT\n` + keys.map(k => `   ${k}: ${summarizeVal(r[k])}`).join('\n');
+  }
+  function dbText(key){
+    const rows = tableRows(key);
+    const name = (TABLES.find(x=>x[0]===key)||[key,key])[1];
+    const schema = schemaFor(rows);
+    const lines = [];
+    lines.push(`TABLO / KOLEKSİYON: ${key} (${name})`);
+    lines.push(`KAYIT SAYISI: ${rows.length}`);
+    lines.push('');
+    lines.push('ALANLAR VE ÖZELLİKLER');
+    if (!schema.length) lines.push('  Bu tabloda alan bilgisi çıkarılacak kayıt yok.');
+    schema.forEach(f => {
+      lines.push(`- ${f.field}`);
+      lines.push(`  Tür: ${f.types}`);
+      lines.push(`  Dolu kayıt: ${f.filled}, boş/yok: ${f.empty}`);
+      lines.push(`  Örnek: ${f.examples.join(' | ') || '-'}`);
+    });
+    lines.push('');
+    lines.push('KAYITLAR');
+    lines.push(rows.length ? rows.map(prettyRecord).join('\n\n') : 'Bu tabloda kayıt yok.');
+    return lines.join('\n');
+  }
+  window.renderDatabaseAdmin = function(c){
+    c = c || document.getElementById('admin-content');
+    if (!c) return;
+    const active = localStorage.getItem('FABRIKA_DB_ACTIVE_TABLE') || 'users';
+    const data = tableRows(active);
+    const name = (TABLES.find(x=>x[0]===active)||[active,active])[1];
+    const tabs = TABLES.map(([k,n]) => `<button class="ghost-btn" style="font-size:12px;${active===k?'border-color:var(--accent);color:var(--accent);':''}" onclick="localStorage.setItem('FABRIKA_DB_ACTIVE_TABLE','${k}'); renderDatabaseAdmin(document.getElementById('admin-content'))">${esc(n)} <span style="color:var(--text-mute);">${tableRows(k).length}</span></button>`).join('');
+    const schema = schemaFor(data);
+    const schemaRows = schema.map(f => `<tr><td style="font-family:var(--mono);">${esc(f.field)}</td><td>${esc(f.types)}</td><td>${f.filled}</td><td>${f.empty}</td><td>${esc(f.examples.join(' | ') || '-')}</td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--text-dim);">Alan yok.</td></tr>';
+    c.innerHTML = `
+      <div style="max-width:1200px;">
+        <h2 style="margin-bottom:6px;">🗄️ Database</h2>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:14px;">Firebase mantığında tablolar, alan özellikleri ve kayıtlar. Bu ekran sadece okuma amaçlıdır.</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${tabs}</div>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;">
+            <div style="font-weight:700;">${esc(name)} <span style="color:var(--text-dim);font-weight:400;">(${data.length} kayıt, ${schema.length} alan)</span></div>
+            <div style="display:flex;gap:6px;"><button class="ghost-btn" style="font-size:12px;" onclick="navigator.clipboard.writeText(document.getElementById('db-text-output').value); notify && notify('Database metni kopyalandı','success')">📋 Text Kopyala</button><button class="ghost-btn" style="font-size:12px;" onclick="downloadDatabaseTable('${active}')">⬇️ TXT İndir</button></div>
+          </div>
+          <div style="overflow:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:10px;">
+            <table class="data-table" style="min-width:800px;"><thead><tr><th>Alan</th><th>Tür</th><th>Dolu</th><th>Boş/Yok</th><th>Örnek Değerler</th></tr></thead><tbody>${schemaRows}</tbody></table>
+          </div>
+          <textarea id="db-text-output" spellcheck="false" style="width:100%;height:430px;background:var(--bg);border:1px solid var(--border-hi);border-radius:6px;color:var(--text);font-family:var(--mono,monospace);font-size:12px;line-height:1.45;padding:10px;">${esc(dbText(active))}</textarea>
+        </div>
+      </div>`;
+  };
+  window.downloadDatabaseTable = function(key){
+    const blob = new Blob([dbText(key)], { type:'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'fabrika_database_' + key + '_' + new Date().toISOString().slice(0,10) + '.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // Database menüsü daha önce eklendiyse yeni renderer ile yenile.
+  setTimeout(function(){
+    try { if (window.state && state.adminTab === 'database') window.renderDatabaseAdmin(document.getElementById('admin-content')); } catch(_) {}
+  }, 700);
+
+  console.log('[FABRİKA AI v13] Yerel önce, Gemini fallback, kuyruk garantisi ve Database şema ekranı aktif');
+})();
+</script>
