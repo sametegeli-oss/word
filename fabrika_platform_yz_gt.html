@@ -19133,8 +19133,21 @@ setInterval(() => {
            document.querySelector('main');
   }
   function getRows(key){
-    try { return (root.state && Array.isArray(root.state[key]) ? root.state[key] : []).map((r,i)=>r&&typeof r==='object'?r:{value:r,_row:i}); }
-    catch(_){ return []; }
+    try {
+      // ÖNEMLİ: Uygulamadaki ana veri değişkeni top-level `let state` olarak tanımlı.
+      // Bu değişken her zaman window.state üzerine düşmez. Eski sürüm bu yüzden
+      // Firebase'de veri olmasına rağmen Database Studio'da 0 kayıt gösteriyordu.
+      const appState =
+        (typeof state !== 'undefined' && state) ? state :
+        (root.state || null);
+
+      const arr = appState && Array.isArray(appState[key]) ? appState[key] : [];
+      return arr.map((r,i)=>r&&typeof r==='object'?r:{value:r,_row:i});
+    }
+    catch(e){
+      console.warn('[DB Studio] getRows hata:', key, e && e.message);
+      return [];
+    }
   }
   function flat(obj,prefix='',out={}){
     if(!obj || typeof obj!=='object' || Array.isArray(obj)) return out;
