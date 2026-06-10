@@ -20293,7 +20293,7 @@ setInterval(() => {
     return out;
   }
 
-  function makeDefinitions(){
+  function makeBaseDefinitions(){
     return [
       { id:'demo_avans', name:'Demo Avans Talebi', icon:'💰', description:'Personel avans talepleri; önce yönetici, sonra muhasebe onayı.', active:true, isDemo:true,
         fields:[{id:'amount',label:'Tutar',type:'number',required:true},{id:'reason',label:'Açıklama',type:'textarea',required:true},{id:'paymentDate',label:'Ödeme tarihi',type:'date',required:false}],
@@ -20316,6 +20316,77 @@ setInterval(() => {
     ];
   }
 
+
+
+  function safeDemoId(v){
+    return String(v || 'surec')
+      .toLocaleLowerCase('tr-TR')
+      .replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u')
+      .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'surec';
+  }
+
+  function normalizeDemoDefinition(src, index){
+    const originalId = src && (src.id || src.templateId || src.name) || ('surec_' + index);
+    const id = String(originalId).startsWith('demo_') ? String(originalId) : ('demo_' + safeDemoId(originalId));
+    const name = (src && (src.name || src.title || src.label)) || ('Demo Süreç ' + (index + 1));
+    let fields = Array.isArray(src && src.fields) ? JSON.parse(JSON.stringify(src.fields)) : [];
+    if (!fields.length) {
+      fields = [
+        { id:'title', label:'Başlık', type:'text', required:true },
+        { id:'description', label:'Açıklama', type:'textarea', required:false },
+        { id:'requestDate', label:'Talep Tarihi', type:'date', required:false }
+      ];
+    }
+    fields = fields.map((f, i) => ({
+      id: f.id || f.name || ('field_' + (i+1)),
+      label: f.label || f.title || f.name || f.id || ('Alan ' + (i+1)),
+      type: f.type || f.inputType || 'text',
+      required: !!f.required,
+      options: f.options || f.choices || []
+    }));
+
+    let steps = Array.isArray(src && src.steps) ? JSON.parse(JSON.stringify(src.steps)) : [];
+    if (!steps.length) {
+      steps = [
+        { id:'s_onay', title:'Onay', type:'human', assign:{ mode:'role', role:'manager' } },
+        { id:'s_done', title:'Tamamlandı', type:'end-good' },
+        { id:'s_rej', title:'Reddedildi', type:'end-bad' }
+      ];
+    }
+    steps = steps.map((stp, i) => ({
+      id: stp.id || ('s_' + (i+1)),
+      title: stp.title || stp.name || stp.label || ('Adım ' + (i+1)),
+      type: stp.type || (i === steps.length-1 ? 'end-good' : 'human'),
+      assign: stp.assign || stp.assignment || (stp.role ? {mode:'role', role:stp.role} : {mode:'role', role:'manager'})
+    }));
+    const firstHuman = steps.find(x => x.type === 'human') || steps[0];
+    const startStep = (src && src.startStep) || (firstHuman && firstHuman.id) || 's_onay';
+    let transitions = Array.isArray(src && src.transitions) ? JSON.parse(JSON.stringify(src.transitions)) : [];
+    if (!transitions.length && firstHuman) {
+      transitions = [
+        { from:firstHuman.id, when:'approve', to:'s_done' },
+        { from:firstHuman.id, when:'reject', to:'s_rej' }
+      ];
+    }
+    return Object.assign({}, src || {}, {
+      id, originalDefId: originalId, name, title:name, active:true, isDemo:true,
+      description: (src && (src.description || src.aciklama)) || (name + ' için otomatik demo evrak/süreç tanımı.'),
+      fields, steps, transitions, startStep
+    });
+  }
+
+  function makeDefinitions(st){
+    const realDefs = ((st && Array.isArray(st.definitions)) ? st.definitions : [])
+      .filter(d => d && !d.isDemo)
+      .map((d, i) => normalizeDemoDefinition(d, i));
+    const baseDefs = makeBaseDefinitions().map((d, i) => normalizeDemoDefinition(d, 1000+i));
+    const byKey = new Map();
+    [...realDefs, ...baseDefs].forEach(d => {
+      const key = safeDemoId(d.originalDefId || d.name || d.id);
+      if (!byKey.has(key)) byKey.set(key, d);
+    });
+    return Array.from(byKey.values());
+  }
   function makeInstancesAndTasks(st, instanceCount){
     const defs = st.definitions.filter(d => d.isDemo);
     const users = st.users.filter(u => u.isDemo);
@@ -20340,12 +20411,40 @@ setInterval(() => {
   }
 
   function demoFormData(def, i, users){
-    if (def.id.includes('avans')) return { amount: 1000 + (i%12)*750, reason: pick(['Yol masrafı','Acil ihtiyaç','Proje harcaması','Numune alımı'], i), paymentDate: daysFromNow(2+i%8) };
-    if (def.id.includes('izin')) return { startDate: daysFromNow(i%20), endDate: daysFromNow((i%20)+3), reason: pick(['Yıllık izin','Aile ziyareti','Sağlık','Kişisel işler'], i) };
-    if (def.id.includes('bakim')) return { machine:'M-' + (100+i%35), severity: pick(['low','medium','high'], i), problem: pick(['Ses yapıyor','Yağ kaçağı','Sensör arızası','Motor ısınıyor'], i) };
-    if (def.id.includes('siparis')) return { loadingDate: daysFromNow(i%15), orderType: pick(['ihracat','ic_piyasa'], i), description:'Demo sipariş onayı #' + (i+1), delegateUser: pick(users, i+5).id };
-    return { lotNo:'LOT-' + (2026*1000+i), defect: pick(['Dikiş hatası','Renk farkı','Ölçü sapması','Leke'], i), action:'Düzeltici faaliyet başlatıldı.' };
+    const idName = safeDemoId((def && (def.id + ' ' + def.name)) || '');
+    const chooseUser = (off) => (users && users.length ? pick(users, i + (off||0)).id : 'demo_user_001');
+    const data = {};
+    const fields = Array.isArray(def && def.fields) ? def.fields : [];
+    fields.forEach((f, ix) => {
+      const key = f.id || f.name || ('field_' + (ix+1));
+      const label = safeDemoId((f.label || f.title || key));
+      const type = String(f.type || '').toLowerCase();
+      const combo = safeDemoId(key + ' ' + label + ' ' + idName);
+      if (/amount|tutar|ucret|avans|price|fiyat|bedel|miktar/.test(combo) || type === 'number') data[key] = 1000 + ((i+ix)%18)*450;
+      else if (/start|baslangic|başlangıç|from/.test(combo)) data[key] = daysFromNow((i+ix)%20);
+      else if (/end|bitis|bitiş|to/.test(combo)) data[key] = daysFromNow(((i+ix)%20)+3);
+      else if (/date|tarih|loading|yukleme|yükleme|payment|odeme|ödeme/.test(combo) || type === 'date') data[key] = daysFromNow((i+ix)%25);
+      else if (/user|kisi|kişi|personel|vekil|delegate|assignee/.test(combo) || type === 'user') data[key] = chooseUser(ix+3);
+      else if (/email/.test(combo)) data[key] = 'demo' + (i+1) + '@fabrika.com';
+      else if (/phone|telefon|cep/.test(combo)) data[key] = '05' + String(300000000 + i + ix).padStart(9,'0');
+      else if (/type|tur|tür|kategori|select/.test(combo) || type === 'select') {
+        const opts = Array.isArray(f.options) ? f.options : [];
+        data[key] = opts.length ? (opts[(i+ix)%opts.length].value || opts[(i+ix)%opts.length].label || opts[(i+ix)%opts.length]) : pick(['normal','acil','ihracat','ic_piyasa'], i+ix);
+      }
+      else if (/machine|makine/.test(combo)) data[key] = 'M-' + (100 + (i%45));
+      else if (/lot/.test(combo)) data[key] = 'LOT-' + (2026000+i+ix);
+      else if (/order|siparis|sipariş/.test(combo)) data[key] = 'SIP-' + String(i+1).padStart(4,'0');
+      else if (/description|aciklama|açıklama|reason|sebep|problem|not|textarea/.test(combo) || type === 'textarea') data[key] = (def.name || 'Demo evrak') + ' için otomatik demo açıklaması #' + (i+1);
+      else if (/title|baslik|başlık|name|ad/.test(combo)) data[key] = (def.name || 'Demo evrak') + ' #' + (i+1);
+      else data[key] = (f.label || key) + ' demo değeri ' + (i+1);
+    });
+    if (idName.includes('avans')) Object.assign(data, { amount: data.amount || 1000 + (i%12)*750, reason: data.reason || 'Demo avans açıklaması #' + (i+1), paymentDate: data.paymentDate || daysFromNow(2+i%8) });
+    if (idName.includes('izin')) Object.assign(data, { startDate: data.startDate || daysFromNow(i%20), endDate: data.endDate || daysFromNow((i%20)+3), reason: data.reason || 'Demo izin açıklaması #' + (i+1) });
+    if (idName.includes('bakim')) Object.assign(data, { machine: data.machine || 'M-' + (100+i%35), severity: data.severity || pick(['low','medium','high'], i), problem: data.problem || 'Demo bakım problemi #' + (i+1) });
+    if (idName.includes('siparis') || idName.includes('sipariş')) Object.assign(data, { loadingDate: data.loadingDate || daysFromNow(i%15), orderType: data.orderType || pick(['ihracat','ic_piyasa'], i), description: data.description || 'Demo sipariş onayı #' + (i+1), delegateUser: data.delegateUser || chooseUser(5) });
+    return data;
   }
+
   function resolveAssigneeForStep(st, owner, stepId, def, i){
     const users = st.users || [];
     const step = (def.steps||[]).find(s=>s.id===stepId) || {};
@@ -20431,7 +20530,9 @@ setInterval(() => {
     if (opts.clearFirst) removeDemo(st);
     demoRoles().forEach(r => addOrReplace(st.roles, r));
     makeUsers(opts.users).forEach(u => addOrReplace(st.users, u));
-    makeDefinitions().forEach(d => addOrReplace(st.definitions, d));
+    const allDemoDefs = makeDefinitions(st);
+    allDemoDefs.forEach(d => addOrReplace(st.definitions, d));
+    opts.instances = Math.max(Number(opts.instances)||0, allDemoDefs.length * 4);
     const pack = makeInstancesAndTasks(st, opts.instances);
     pack.instances.forEach(x => addOrReplace(st.instances, x));
     pack.tasks.forEach(x => addOrReplace(st.tasks, x));
@@ -20443,7 +20544,7 @@ setInterval(() => {
     // Varsayılan demo modu yereldir. Firestore'a yazma, kota dolmasın diye sadece kullanıcı açıkça isterse denenir.
     let fs = null; if (opts.firestore) fs = await writeDemoToFirestore(st);
     if (typeof renderAdminContent === 'function') { try { renderAdminContent(); } catch(_){} }
-    return { users:opts.users, definitions:makeDefinitions().length, instances:opts.instances, tasks:pack.tasks.length, orders:opts.orders, notifications:pack.notifications.length, comments:pack.comments.length, firestore:fs };
+    return { users:opts.users, definitions:allDemoDefs.length, instances:opts.instances, tasks:pack.tasks.length, orders:opts.orders, notifications:pack.notifications.length, comments:pack.comments.length, firestore:fs, note:'Sistemdeki tüm süreç/evrak tanımlarından demo instance üretildi.' };
   }
 
   async function clearDemoData(){
@@ -20479,7 +20580,7 @@ setInterval(() => {
   function formatDemoResult(res){
     if (!res) return 'Demo oluşturulamadı.';
     const fs = res.firestore ? `\nFirestore: ${res.firestore.written || 0} yazıldı, ${res.firestore.failed || 0} hata.` : '\nFirestore: denenmedi. Demo kayıtlar IndexedDB üzerinde yerel çalışıyor.';
-    return `Demo veri oluşturuldu.\n\nKullanıcı: ${res.users}\nSüreç tanımı: ${res.definitions}\nTalep: ${res.instances}\nAçık görev: ${res.tasks}\nSipariş: ${res.orders}\nBildirim: ${res.notifications}\nYorum: ${res.comments}${fs}\n\nTüm demo kayıtlar isDemo:true olarak işaretlendi.`;
+    return `Demo veri oluşturuldu.\n\nKullanıcı: ${res.users}\nSüreç tanımı: ${res.definitions}\nTalep/Evrak Kaydı: ${res.instances}\nAçık görev: ${res.tasks}\nSipariş: ${res.orders}\nBildirim: ${res.notifications}\nYorum: ${res.comments}${fs}\n\nTüm demo kayıtlar isDemo:true olarak işaretlendi. Sistemdeki bütün süreç/evrak tiplerinden kayıt üretilir.`;
   }
 
   function demoCounts(){ const st=getSt()||{}; const names=['users','definitions','instances','tasks','orders','notifications','comments','roles']; return names.map(k=>`${k}: ${((st[k]||[]).filter(x=>x&&x.isDemo)).length}`).join(' · '); }
@@ -20489,7 +20590,7 @@ setInterval(() => {
     if (!c) c = document.querySelector('.admin-content') || document.getElementById('admin-content');
     if (!c) return;
     c.innerHTML = `
-      <div class="admin-head"><div><h2>🎭 Demo Veri Oluşturucu</h2><p>YZ ile her aşamada bol kayıt üretin. Demo kayıtlar <b>isDemo:true</b> olarak ayrılır. Varsayılan olarak IndexedDB'ye yazar; Firestore'a yazmaz ve kota hatası oluşturmaz.</p></div><button class="ghost-btn" onclick="if(typeof renderAdminContent==='function')renderAdminContent()">↻ Yenile</button></div>
+      <div class="admin-head"><div><h2>🎭 Demo Veri Oluşturucu</h2><p>YZ ile her aşamada bol kayıt üretin. Demo kayıtlar <b>isDemo:true</b> olarak ayrılır. Sistemde tanımlı tüm evrak/süreç tiplerinden talep, görev, yorum ve bildirim üretir. Varsayılan olarak IndexedDB'ye yazar; Firestore'a yazmaz ve kota hatası oluşturmaz.</p></div><button class="ghost-btn" onclick="if(typeof renderAdminContent==='function')renderAdminContent()">↻ Yenile</button></div>
       <div style="display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:16px;align-items:start;">
         <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;">
           <h3 style="margin:0 0 12px;">🤖 YZ Demo Komutu</h3>
