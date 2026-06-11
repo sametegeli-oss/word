@@ -4275,6 +4275,13 @@ function setupRealtimeListeners() {
   _realtimeUnsubscribers.forEach(u => { try { u(); } catch(e){} });
   _realtimeUnsubscribers = [];
 
+  // DEMO MODU: Firestore realtime dinleyicileri tamamen kapalı.
+  // Demo kayıtlar IndexedDB üzerinde çalışır; WebChannel/QUIC/kota hataları üretmesin.
+  if (window.FABRIKA_DEMO_MODE === true || window.FABRIKA_DISABLE_REALTIME === true) {
+    console.log('[Demo] Firestore realtime listener pas geçildi. Demo kayıtlar IndexedDB’den çalışıyor.');
+    return;
+  }
+
   if (!window.fb || !window.fb.auth.currentUser) return;
   const db = window.fb.db;
 
@@ -4304,6 +4311,15 @@ function setupRealtimeListeners() {
 }
 
 window.setupRealtimeListeners = setupRealtimeListeners;
+window.stopRealtimeListeners = function() {
+  try {
+    _realtimeUnsubscribers.forEach(u => { try { u(); } catch(e){} });
+    _realtimeUnsubscribers = [];
+    console.log('[Demo] Firestore realtime listener kapatıldı.');
+  } catch(e) {
+    console.warn('[Demo] realtime listener kapatılamadı:', e && e.message ? e.message : e);
+  }
+};
 
 // Kullanıcı çıkış yaptığında
 window.handleAuthLogout = function() {
@@ -4897,6 +4913,10 @@ let _persistInProgress = false;
 
 // persist() çağrıldığında 500ms debounce ile Firestore'a yazar
 function persist() {
+  if (window.FABRIKA_DEMO_MODE === true || window.FABRIKA_DISABLE_FIRESTORE_PERSIST === true) {
+    console.log('[Demo] persist() pas geçildi; demo kayıtlar IndexedDB’de tutuluyor.');
+    return;
+  }
   if (_persistTimer) clearTimeout(_persistTimer);
   _persistTimer = setTimeout(() => persistNow(), 500);
 }
@@ -4933,6 +4953,10 @@ function hashCollection(items) {
 
 // Asıl yazma işlemi - SADECE değişen koleksiyonları yazar
 async function persistNow() {
+  if (window.FABRIKA_DEMO_MODE === true || window.FABRIKA_DISABLE_FIRESTORE_PERSIST === true) {
+    console.log('[Demo] persistNow() pas geçildi; Firestore’a demo yazılmadı.');
+    return;
+  }
   if (_persistInProgress) {
     setTimeout(persistNow, 200);
     return;
@@ -20525,6 +20549,11 @@ setInterval(() => {
 
   async function createDemoData(opts){
     const st = getSt(); if (!st) { alert('State bulunamadı.'); return null; }
+    // Demo oluşturma anından itibaren Firestore realtime/persist kapalıdır.
+    root.FABRIKA_DEMO_MODE = true;
+    root.FABRIKA_DISABLE_REALTIME = true;
+    root.FABRIKA_DISABLE_FIRESTORE_PERSIST = true;
+    try { if (typeof root.stopRealtimeListeners === 'function') root.stopRealtimeListeners(); } catch(_) {}
     opts = Object.assign({users:60, instances:160, orders:35, clearFirst:true, firestore:false}, opts||{});
     ensureArrays(st); await backupLocal(st);
     if (opts.clearFirst) removeDemo(st);
@@ -20695,8 +20724,22 @@ setInterval(() => {
     }, true);
   }
 
-  async function boot(){ wrapRenderAdmin(); installDemoClickHandlers(); addDemoNavButton(); const st=getSt(); if(st) await restoreDemoLocal(st); if(st && st.adminTab==='demo-data') renderDemoDataStudio(); }
+  async function boot(){
+    wrapRenderAdmin(); installDemoClickHandlers(); addDemoNavButton();
+    const st=getSt();
+    if(st) {
+      const restored = await restoreDemoLocal(st);
+      const hasDemo = ['users','definitions','instances','tasks','orders','notifications','comments','roles'].some(k => (st[k]||[]).some(x => x && x.isDemo));
+      if (restored || hasDemo) {
+        root.FABRIKA_DEMO_MODE = true;
+        root.FABRIKA_DISABLE_REALTIME = true;
+        root.FABRIKA_DISABLE_FIRESTORE_PERSIST = true;
+        try { if (typeof root.stopRealtimeListeners === 'function') root.stopRealtimeListeners(); } catch(_) {}
+      }
+    }
+    if(st && st.adminTab==='demo-data') renderDemoDataStudio();
+  }
   boot(); setInterval(boot, 1000);
-  console.log('[FABRİKA v22] Demo Veri Oluşturucu aktif - IndexedDB demo modu ve Firestore kota koruması');
+  console.log('[FABRİKA v27] Demo Veri Oluşturucu aktif - IndexedDB + Firestore listener/persist kapalı');
 })();
 </script>
