@@ -240,8 +240,9 @@ function ingestDict(json,src){
     if(!word)return;
     const k=baseWord(word);
     const old=state.dict.get(k)||{word,examples:[],contexts:[]};
-    const tr=x.tr||x.TR||x.turkish||x.Turkish||x.meaning_tr||x.meaningTR||x.anlam||x.Anlam||x.Turkce||x.Türkçe||x['Türkçe Anlam']||x.turkceAnlam||old.tr;
-    const trPron=x.trPronunciation||x.TRPronunciation||x.tr_pronunciation||x.okunus||x.okunuş||x.Okunuş||x['Türkçe Okunuş']||x.pron_tr||x.TRPron||old.trPron;
+    const trMulti=[x.anlam1,x.anlam2,x.anlam3,x.anlam4,x.Anlam1,x.Anlam2,x.Anlam3].filter(Boolean).join('; ');
+    const tr=x.tr||x.TR||x.turkish||x.Turkish||x.meaning_tr||x.meaningTR||x.anlam||x.Anlam||x.Turkce||x.Türkçe||x['Türkçe Anlam']||x.turkceAnlam||trMulti||old.tr;
+    const trPron=x.trPronunciation||x.TRPronunciation||x.tr_pronunciation||x.okunus||x.okunuş||x.Okunuş||x['Türkçe Okunuş']||x['türkçe_okunuş']||x.turkce_okunus||x.pron_tr||x.TRPron||old.trPron;
     const ipa=x.ipa||x.IPA||x.phonetic||x.Phonetic||old.ipa;
     const example=x.example||x.Example||x.exampleEN||x.ExampleEN||x['Example EN']||old.example;
     state.dict.set(k,{...old, word:word, tr, trPron, ipa, cefr:x.level||x.Level||x.CEFR||x.cefr||old.cefr, example, wordFamily:x.wordFamily||x.WordFamily||x['Word Family']||old.wordFamily, synonyms:x.synonyms||x.Synonyms||old.synonyms, antonyms:x.antonyms||x.Antonyms||old.antonyms, source:src, examples:old.examples||[], contexts:old.contexts||[]});
@@ -496,7 +497,7 @@ async function resetProgress(){if(!confirm('Tüm IndexedDB ilerlemesi silinsin m
   };
 
   window.openWord=function(w){
-    const key=baseWord(w); const d=mergeDict(w); const examples=(d.examples||[]).slice(0,6); const meanings=String(d.tr||'').split(/<br>|\n|;|•/).map(x=>x.trim()).filter(Boolean);
+    const d=mergeDict(w); const key=d.word||w; const examples=(d.examples||[]).slice(0,6); const meanings=String(d.tr||'').split(/<br>|\n|;|•/).map(x=>x.trim()).filter(Boolean);
     document.getElementById('sheet').classList.add('dict-modal');
     document.getElementById('sheet').innerHTML=`<button class="dict-close" onclick="closeDrawer()">×</button><div class="dict-head-word">${esc2(d.word||w)}</div><div class="dict-ipa-label">📢 IPA</div><div class="ipa-big">${esc2(d.ipa||'—')}</div><div class="tr-pron-big">${esc2(d.trPron||'')}</div><div class="meaning-box"><div class="meaning-head"><span>📖 ANLAMLAR</span><span class="pill good">● Yüksek değer</span><span class="pill">${esc2(d.cefr||'')}</span></div><div class="meaning-list">${meanings.length?meanings.slice(0,5).map((m,i)=>`${i+1}. ${esc2(m)}`).join('<br>'):'Yerel sözlükte anlam bulunamadı.'}</div></div><h3>🔤 Syllables</h3><div class="syllables">${esc2(String(d.word||w).replace(/([aeiouy]+[^aeiouy]*)/ig,'$1·').replace(/·$/,''))}</div><div class="dict-actions"><button class="btn play-big" onclick="speakText('${jsq(d.word||w)}')">🔊 Play</button><button class="speed-chip" onclick="speakText('${jsq(d.word||w)}')">🐌 Slow</button><button class="speed-chip" onclick="speakText('${jsq(d.word||w)}')">💨 Fast</button></div><div class="dict-big-buttons"><button class="btn green" onclick="yolWordExplain('${jsq(key)}')">🤖 Kelime Açıklama</button><button class="btn" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);color:white" onclick="yolWordRelations('${jsq(key)}')">🔗 Kelime İlişkileri</button></div><div class="pron-section"><h3 class="muted small">🎤 TELAFFUZUNU DENE</h3><button class="btn red record-wide" onclick="startWordRecord('${jsq(d.word||w)}')">🎤 Kaydı Başlat</button><div id="wordRecordResult" class="word-panel-result"></div></div><div id="wordPanelResult" class="word-panel-result">${examples.length?`<div class="dict-box"><h3>Bu kelimenin geçtiği cümleler</h3>${examples.map(e=>`<div class="list-item"><b>${renderSentence(e.en||'',{})}</b><br><span class="muted">${esc2(e.tr||'')}</span></div>`).join('')}</div>`:''}</div>`;
     document.getElementById('drawer').classList.add('show');
@@ -512,12 +513,15 @@ async function resetProgress(){if(!confirm('Tüm IndexedDB ilerlemesi silinsin m
 
   // v7: Word repo sözlüğü + Excel sözlüğünü sağlam birleştir.
   mergeDict=function(word){
-    const key=baseWord(word); let local=state.dict.get(key)||{word}; let repo=null;
-    try{ repo = typeof window.WM_lookupDict==='function' ? window.WM_lookupDict(word) : null; }catch(e){}
+    const raw=String(word||'').toLowerCase().replace(/[’']/g,"'").replace(/[^a-z']/g,'');
+    const key=baseWord(word);
+    let local=state.dict.get(raw)||state.dict.get(key)||{word:raw};
+    const fullWord=local.word||raw||word; let repo=null;
+    try{ repo = typeof window.WM_lookupDict==='function' ? window.WM_lookupDict(fullWord) : null; }catch(e){}
     const meanings=repo?rowMeanings(repo):[];
-    const repoWord=repo?(repo.Kelime||repo.word||repo.Word||word):word;
+    const repoWord=repo?(repo.Kelime||repo.word||repo.Word||fullWord):fullWord;
     return Object.assign({}, local, repo||{}, {
-      word: repoWord || local.word || word,
+      word: repoWord || local.word || fullWord,
       tr: local.tr || meanings.join('<br>') || '',
       trPron: local.trPron || (repo?rowPron(repo):''),
       ipa: local.ipa || (repo?rowIPA(repo):''),
