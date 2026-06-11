@@ -1221,3 +1221,82 @@ body > .quick-btn {
 .menu-tile:nth-child(6) .ico{color:var(--muted)}
 .menu-tile .t{font-size:15px;font-weight:800;color:var(--text)}
 .menu-tile .s{font-size:12px;font-weight:600;color:var(--muted)}
+
+/* =====================================================================
+   PRO UI LAYER — tüm ekranlara yayılan profesyonel tasarım katmanı.
+   Ortak bileşenleri (buton, kart, üst bar, liste, çip, input, alt menü)
+   tutarlı hale getirir. Geç sırada olduğu için global olarak uygulanır.
+   ===================================================================== */
+:root{
+  --radius:16px;--radius-sm:12px;--radius-lg:22px;
+  --shadow:0 8px 24px rgba(0,0,0,.28);
+  --shadow-sm:0 2px 8px rgba(0,0,0,.22);
+  --ring:0 0 0 3px rgba(59,130,246,.45);
+  --ease:.16s cubic-bezier(.2,.6,.3,1);
+}
+
+/* --- Kartlar: daha hafif kenar, yumuşak gölge, tutarlı yarıçap --- */
+.card,.panel,.wm-card,.word-card,.sentence-card,.list-item{
+  border-radius:var(--radius);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-sm);
+}
+.card,.panel,.wm-card{padding:16px}
+
+/* --- Butonlar: tutarlı yükseklik, ağırlık, geçiş, basılı/odak durumu --- */
+.btn,button.act-btn,.filter-btn,.nav-btn,.bnav-btn,.smng-btn,.rlnew-btn{
+  border-radius:var(--radius-sm);
+  font-weight:700;
+  transition:transform var(--ease),box-shadow var(--ease),background var(--ease),border-color var(--ease);
+}
+.btn:active,.act-btn:active,.menu-tile:active,.filter-btn:active{transform:scale(.97)}
+.btn:hover{box-shadow:var(--shadow-sm)}
+.btn-sm{padding:8px 12px;font-size:13px}
+.btn-ghost{background:var(--bg2);color:var(--sub);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:#3b82f6;color:var(--text)}
+
+/* --- Klavye odak halkası (erişilebilirlik) --- */
+button:focus-visible,a:focus-visible,input:focus-visible,
+select:focus-visible,textarea:focus-visible,.menu-tile:focus-visible{
+  outline:none;box-shadow:var(--ring);
+}
+input:focus,textarea:focus,select:focus{border-color:#3b82f6;box-shadow:var(--ring)}
+
+/* --- Üst bar: temiz, sticky, tutarlı --- */
+.top-bar{min-height:52px;padding:8px 0 12px}
+.top-bar h2{font-size:20px;font-weight:800;letter-spacing:-.3px}
+
+/* --- Geri butonu: yuvarlak, dokunmatik dostu, hizalı --- */
+.back-btn{
+  width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:22px;line-height:1;border-radius:12px;background:var(--bg2);
+  color:var(--sub);border:1px solid var(--border);padding:0;
+}
+.back-btn:hover{color:var(--text);border-color:#3b82f6}
+
+/* --- Liste öğeleri: tutarlı --- */
+.list-item{padding:14px 16px;margin:10px 0}
+
+/* --- Çip & rozetler: tutarlı pill --- */
+.chip,.badge,.level-chip,.topic-pill,.genre-chip,.speed-chip,.sp-chip{
+  border-radius:999px;font-weight:700;font-size:12px;
+}
+
+/* --- Inputlar: tutarlı yükseklik & yarıçap --- */
+input,select,textarea{border-radius:var(--radius-sm)}
+
+/* --- Alt navigasyon: temiz, hizalı --- */
+.bottom-nav,.nav-bottom,#bottomNav{background:rgba(15,21,36,.96);backdrop-filter:blur(8px)}
+.bottom-nav button.active,.nav-bottom button.active,#bottomNav button.active{font-weight:800}
+
+/* --- Özellik kategorileri (kelime ekranı) — kart hissi --- */
+.feature-category{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card2);margin:8px 0;overflow:hidden}
+.feature-header{padding:12px 14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+.feature-content{padding:0 12px 12px}
+
+/* --- Bırakma alanı (yükleme) — daha rafine --- */
+.drop-zone{border-radius:var(--radius-lg);transition:border-color var(--ease),background var(--ease)}
+.drop-zone:hover{border-color:#60a5fa;background:rgba(59,130,246,.12)}
+
+/* --- Genel SVG ikon yardımcı sınıfı (tüm ekranlar kullanabilir) --- */
+.ico{width:22px;height:22px;flex:none;vertical-align:middle}
