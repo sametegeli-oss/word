@@ -114,6 +114,7 @@
 <symbol id="i-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 1 0-12 0c0 6-3 8-3 8h18s-3-2-3-8"/><path d="M10.5 21a2 2 0 0 0 3 0"/></g></symbol>
 <symbol id="i-upload" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M12 3v13M7 8l5-5 5 5"/></g></symbol>
 <symbol id="i-flame" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3c3 4 5 6 5 9a5 5 0 0 1-10 0c0-1.5.5-2.5 1.5-3.5C9 10 9 8 9 7c1 1 2 2 3 2 0-2 0-4 0-6z"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2.2-2.6 4"/><path d="M12 17h.01"/></g></symbol>
 </defs></svg>
 <!-- Klasör Seçim Ekranı -->
 <div id="folder-selection-screen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:99999;display:none;align-items:center;justify-content:center;padding:20px">
@@ -3937,16 +3938,16 @@
 
 
 <nav class="bottom-nav" id="bottomNav">
-<button class="bnav-btn" id="bn-daily" onclick="switchTab('daily')"><span class="bico">🌅</span>Bugün</button>
-<button class="bnav-btn" id="bn-languageMap" onclick="window.open('dil_haritasi_v1.html','_blank')"><span class="bico">🧭</span>Dil Haritası</button>
-<button class="bnav-btn" id="bn-pronstandalone" onclick="switchTab('pronstandalone')"><span class="bico">🎤</span>Telaffuz</button>
-<button class="bnav-btn active" id="bn-word" onclick="switchTab('word')"><span class="bico">📖</span>Kelime</button>
-<button class="bnav-btn" id="bn-learned" onclick="switchTab('learned')"><span class="bico">📚</span>Liste</button>
-<button class="bnav-btn" id="bn-stats" onclick="switchTab('stats')"><span class="bico">📊</span>İstatistik</button>
-<button class="bnav-btn" id="bn-ai" onclick="switchTab('ai')"><span class="bico">🤖</span>AI</button>
-<button class="bnav-btn" id="bn-askai" onclick="switchTab('askai')"><span class="bico">❓</span>AI Sor</button>
-<button class="bnav-btn" id="bn-cameraCoach" onclick="switchTab('cameraCoach')"><span class="bico">📷</span>Kamera</button>
-<button class="bnav-btn" id="bn-settings" onclick="switchTab('settings')"><span class="bico">⚙️</span>Ayarlar</button>
+<button class="bnav-btn" id="bn-daily" onclick="switchTab('daily')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-sun"/></svg>Bugün</button>
+<button class="bnav-btn" id="bn-languageMap" onclick="window.open('dil_haritasi_v1.html','_blank')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-map"/></svg>Dil Haritası</button>
+<button class="bnav-btn" id="bn-pronstandalone" onclick="switchTab('pronstandalone')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-mic"/></svg>Telaffuz</button>
+<button class="bnav-btn active" id="bn-word" onclick="switchTab('word')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-book"/></svg>Kelime</button>
+<button class="bnav-btn" id="bn-learned" onclick="switchTab('learned')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-list"/></svg>Liste</button>
+<button class="bnav-btn" id="bn-stats" onclick="switchTab('stats')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-chart"/></svg>İstatistik</button>
+<button class="bnav-btn" id="bn-ai" onclick="switchTab('ai')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-bot"/></svg>AI</button>
+<button class="bnav-btn" id="bn-askai" onclick="switchTab('askai')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-help"/></svg>AI Sor</button>
+<button class="bnav-btn" id="bn-cameraCoach" onclick="switchTab('cameraCoach')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-camera"/></svg>Kamera</button>
+<button class="bnav-btn" id="bn-settings" onclick="switchTab('settings')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-cog"/></svg>Ayarlar</button>
 </nav>
 
 

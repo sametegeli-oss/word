@@ -1300,3 +1300,7 @@ input,select,textarea{border-radius:var(--radius-sm)}
 
 /* --- Genel SVG ikon yardımcı sınıfı (tüm ekranlar kullanabilir) --- */
 .ico{width:22px;height:22px;flex:none;vertical-align:middle}
+
+/* Alt menü SVG ikonları (emoji yerine) */
+.bnav-btn .bico{width:22px;height:22px;display:block;margin:0 auto 3px}
+svg.bico{stroke-width:2}
