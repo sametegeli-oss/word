@@ -4275,13 +4275,6 @@ function setupRealtimeListeners() {
   _realtimeUnsubscribers.forEach(u => { try { u(); } catch(e){} });
   _realtimeUnsubscribers = [];
 
-  // DEMO MODU: Firestore realtime dinleyicileri tamamen kapalı.
-  // Demo kayıtlar IndexedDB üzerinde çalışır; WebChannel/QUIC/kota hataları üretmesin.
-  if (window.FABRIKA_DEMO_MODE === true || window.FABRIKA_DISABLE_REALTIME === true) {
-    console.log('[Demo] Firestore realtime listener pas geçildi. Demo kayıtlar IndexedDB’den çalışıyor.');
-    return;
-  }
-
   if (!window.fb || !window.fb.auth.currentUser) return;
   const db = window.fb.db;
 
@@ -4311,15 +4304,6 @@ function setupRealtimeListeners() {
 }
 
 window.setupRealtimeListeners = setupRealtimeListeners;
-window.stopRealtimeListeners = function() {
-  try {
-    _realtimeUnsubscribers.forEach(u => { try { u(); } catch(e){} });
-    _realtimeUnsubscribers = [];
-    console.log('[Demo] Firestore realtime listener kapatıldı.');
-  } catch(e) {
-    console.warn('[Demo] realtime listener kapatılamadı:', e && e.message ? e.message : e);
-  }
-};
 
 // Kullanıcı çıkış yaptığında
 window.handleAuthLogout = function() {
@@ -4913,10 +4897,6 @@ let _persistInProgress = false;
 
 // persist() çağrıldığında 500ms debounce ile Firestore'a yazar
 function persist() {
-  if (window.FABRIKA_DEMO_MODE === true || window.FABRIKA_DISABLE_FIRESTORE_PERSIST === true) {
-    console.log('[Demo] persist() pas geçildi; demo kayıtlar IndexedDB’de tutuluyor.');
-    return;
-  }
   if (_persistTimer) clearTimeout(_persistTimer);
   _persistTimer = setTimeout(() => persistNow(), 500);
 }
@@ -4953,10 +4933,6 @@ function hashCollection(items) {
 
 // Asıl yazma işlemi - SADECE değişen koleksiyonları yazar
 async function persistNow() {
-  if (window.FABRIKA_DEMO_MODE === true || window.FABRIKA_DISABLE_FIRESTORE_PERSIST === true) {
-    console.log('[Demo] persistNow() pas geçildi; Firestore’a demo yazılmadı.');
-    return;
-  }
   if (_persistInProgress) {
     setTimeout(persistNow, 200);
     return;
@@ -19613,6 +19589,269 @@ setInterval(() => {
 })();
 </script>
 
+
+<script>
+/* ============================================================
+   FABRİKA v28 — Demo görünürlük + sipariş formu garantisi
+   - Demo oluşturma sonrası üretim siparişlerini render uyumlu hale getirir (qty/status/currentStation)
+   - Sistemdeki tüm sipariş/sipariş onay evrakları için instance + task + comment + notification üretir
+   - Aktif demo paketini IndexedDB'ye tekrar yazar
+   - Demo çıktı alanına kayıtların nerede görüneceğini açıkça yazar
+   ============================================================ */
+(function(){
+  'use strict';
+  const root = window;
+  const DB_NAME = 'FABRIKA_DEMO_INDEXEDDB';
+  const STORE = 'demoData';
+  const ACTIVE = 'activeDemo';
+
+  function getSt(){ try{ if(typeof state !== 'undefined') return state; }catch(_){} return root.state || null; }
+  function ensureArrays(st){ ['users','definitions','instances','tasks','orders','notifications','comments','roles'].forEach(k=>{ if(!Array.isArray(st[k])) st[k]=[]; }); }
+  function now(){ return Date.now(); }
+  function days(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+  function pad(n,w){ return String(n).padStart(w,'0'); }
+  function pick(arr,i){ return arr && arr.length ? arr[i % arr.length] : null; }
+  function norm(s){ return String(s||'').toLowerCase().replace(/[ıİ]/g,'i').replace(/[ğĞ]/g,'g').replace(/[üÜ]/g,'u').replace(/[şŞ]/g,'s').replace(/[öÖ]/g,'o').replace(/[çÇ]/g,'c'); }
+  function addOrReplace(arr,item){ const i=arr.findIndex(x=>String(x&&x.id)===String(item&&item.id)); if(i>=0) arr[i]=item; else arr.push(item); }
+
+  function openDB(){
+    return new Promise((resolve,reject)=>{
+      if(!('indexedDB' in window)) return reject(new Error('IndexedDB desteklenmiyor'));
+      const req=indexedDB.open(DB_NAME,1);
+      req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'key'}); };
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error('IndexedDB açılamadı'));
+    });
+  }
+  async function idbPut(key,value){
+    const db=await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,'readwrite');
+      tx.objectStore(STORE).put({key,value,updatedAt:Date.now()});
+      tx.oncomplete=()=>{db.close();resolve(true);};
+      tx.onerror=()=>{const err=tx.error||new Error('IndexedDB yazma hatası');db.close();reject(err);};
+    });
+  }
+  async function saveActiveDemo(st){
+    ensureArrays(st);
+    await idbPut(ACTIVE,{
+      at:Date.now(),
+      users:st.users.filter(x=>x&&x.isDemo),
+      definitions:st.definitions.filter(x=>x&&x.isDemo),
+      instances:st.instances.filter(x=>x&&x.isDemo),
+      tasks:st.tasks.filter(x=>x&&x.isDemo),
+      orders:st.orders.filter(x=>x&&x.isDemo),
+      notifications:st.notifications.filter(x=>x&&x.isDemo),
+      comments:st.comments.filter(x=>x&&x.isDemo),
+      roles:st.roles.filter(x=>x&&x.isDemo)
+    });
+  }
+
+  function makeFallbackOrderDefinition(){
+    return {
+      id:'demo_siparis_onay_formu_garantili',
+      name:'Demo Sipariş Onay Formu',
+      title:'Demo Sipariş Onay Formu',
+      icon:'🏭',
+      description:'Yükleme tarihi, sipariş türü, açıklama ve vekil kişi alanlarıyla demo sipariş onay evrakı.',
+      active:true,
+      isDemo:true,
+      fields:[
+        {id:'loadingDate',label:'Yükleme Tarihi',type:'date',required:true},
+        {id:'orderType',label:'Sipariş Türü',type:'select',required:true,options:[{value:'ihracat',label:'İhracat'},{value:'ic_piyasa',label:'İç Piyasa'}]},
+        {id:'description',label:'Açıklama',type:'textarea',required:true},
+        {id:'delegateUser',label:'Vekil Kişi',type:'user',required:false},
+        {id:'customer',label:'Müşteri',type:'text',required:true},
+        {id:'product',label:'Ürün',type:'text',required:true},
+        {id:'qty',label:'Adet',type:'number',required:true}
+      ],
+      startStep:'pazarlama',
+      steps:[
+        {id:'pazarlama',title:'Pazarlama Onayı',type:'human',assign:{mode:'role',role:'pazarlama_satis'}},
+        {id:'planlama',title:'Planlama Onayı',type:'human',assign:{mode:'role',role:'planlama'}},
+        {id:'mudur',title:'Müdür Onayı',type:'human',assign:{mode:'role',role:'manager'}},
+        {id:'s_done',title:'Tamamlandı',type:'end-good'},
+        {id:'s_rej',title:'Reddedildi',type:'end-bad'}
+      ],
+      transitions:[
+        {from:'pazarlama',when:'approve',to:'planlama'},
+        {from:'planlama',when:'approve',to:'mudur'},
+        {from:'mudur',when:'approve',to:'s_done'},
+        {from:'pazarlama',when:'reject',to:'s_rej'},
+        {from:'planlama',when:'reject',to:'s_rej'},
+        {from:'mudur',when:'reject',to:'s_rej'}
+      ]
+    };
+  }
+
+  function getOrderFormDefs(st){
+    let defs=(st.definitions||[]).filter(d=>{
+      const s=norm([d.id,d.name,d.title,d.description,d.aciklama].join(' '));
+      return /(siparis|sipariş|order).*(onay|form|talep)?|siparis_onay|sipariş onay/.test(s);
+    });
+    if(!defs.length){
+      const d=makeFallbackOrderDefinition();
+      addOrReplace(st.definitions,d);
+      defs=[d];
+    }
+    return defs;
+  }
+
+  function chooseAssignee(st, role, i){
+    const users=(st.users||[]).filter(u=>u&&u.isDemo);
+    const byRole=users.filter(u=>Array.isArray(u.roles)&&u.roles.includes(role));
+    return (pick(byRole,i)||pick(users,i)||{id:'demo_user_001'}).id;
+  }
+
+  function ensureProductionOrders(st, minCount){
+    ensureArrays(st);
+    const users=(st.users||[]).filter(u=>u&&u.isDemo);
+    const customers=['Akhan Tekstil','Muteks','Ege Konfeksiyon','Denizli Export','İzmir Moda','Pamukkale Tekstil','Anatolia Wear'];
+    const products=['Tişört','Sweatshirt','Pantolon','Eşofman','Polo Yaka','Gömlek','Mont'];
+    // Eski demo siparişlerini üretim ekranının beklediği alanlara çevir.
+    st.orders.filter(o=>o&&o.isDemo).forEach((o,i)=>{
+      if(o.qty == null) o.qty = Number(o.quantity || o.amount || (500+(i%20)*125));
+      if(!o.product) o.product = pick(products,i) || 'Demo Ürün';
+      if(!o.customer) o.customer = pick(customers,i) || 'Demo Müşteri';
+      if(!o.ownerId) o.ownerId = (pick(users,i)||{}).id || 'demo_user_001';
+      if(!o.currentStation) o.currentStation = 1 + (i % 9);
+      if(!['in_progress','pending','completed'].includes(o.status)) {
+        o.status = /complete|ship|done|tamam/.test(norm(o.status)) ? 'completed' : (i%5===0?'pending':'in_progress');
+      }
+      if(!o.createdAt) o.createdAt = now()-i*3600000;
+      o.title = o.title || ('Demo üretim siparişi ' + o.id);
+      o.isDemo = true;
+    });
+    const existing=st.orders.filter(o=>o&&o.isDemo).length;
+    for(let i=existing;i<minCount;i++){
+      const id='DEMO-SIP-' + pad(i+1,4);
+      addOrReplace(st.orders,{
+        id,
+        title:'Demo üretim siparişi ' + id,
+        customer:pick(customers,i),
+        product:pick(products,i),
+        qty:500+(i%20)*125,
+        quantity:500+(i%20)*125,
+        status:i%7===0?'pending':(i%6===0?'completed':'in_progress'),
+        ownerId:(pick(users,i)||{}).id || 'demo_user_001',
+        currentStation:1+(i%9),
+        createdAt:now()-i*7200000,
+        dueDate:days(5+i%25),
+        isDemo:true
+      });
+    }
+  }
+
+  function ensureOrderFormInstances(st, perDef){
+    ensureArrays(st);
+    const defs=getOrderFormDefs(st);
+    const users=(st.users||[]).filter(u=>u&&u.isDemo);
+    const customers=['Akhan Tekstil','Muteks','Ege Konfeksiyon','Denizli Export','İzmir Moda','Pamukkale Tekstil'];
+    const products=['Tişört','Sweatshirt','Pantolon','Eşofman','Polo Yaka','Gömlek'];
+    let added=0;
+    defs.forEach((def,di)=>{
+      const current=(st.instances||[]).filter(x=>x&&x.isDemo&&String(x.defId)===String(def.id)).length;
+      for(let j=current;j<perDef;j++){
+        const n=di*1000+j+1;
+        const instId='DEMO-SIPFORM-' + pad(n,4);
+        const owner=(pick(users,n)||{id:'demo_user_001'}).id;
+        const status=(j%5===0)?'completed':((j%7===0)?'rejected':'running');
+        const step=status==='running' ? (j%3===0?'pazarlama':(j%3===1?'planlama':'mudur')) : (status==='completed'?'s_done':'s_rej');
+        const orderNo='SIP-FORM-' + pad(n,4);
+        const form={
+          title:(def.name||'Sipariş Onay Formu') + ' - ' + orderNo,
+          name:def.name||'Sipariş Onay Formu',
+          loadingDate:days(3+j%30),
+          orderType:j%2===0?'ihracat':'ic_piyasa',
+          description:'Demo sipariş onay formu açıklaması #' + n,
+          delegateUser:chooseAssignee(st,'planlama',n),
+          customer:pick(customers,n),
+          product:pick(products,n),
+          qty:400+(j%18)*150,
+          orderNo
+        };
+        addOrReplace(st.instances,{id:instId,title:form.title,name:form.title,defId:def.id,ownerId:owner,status,currentStep:step,form,data:form,createdAt:now()-n*3600000,updatedAt:now()-n*3500000,isDemo:true,priority:j%6===0?'urgent':(j%4===0?'high':'normal')});
+        if(status==='running'){
+          const assignee= step==='planlama' ? chooseAssignee(st,'planlama',n) : (step==='pazarlama' ? chooseAssignee(st,'pazarlama_satis',n) : chooseAssignee(st,'manager',n));
+          addOrReplace(st.tasks,{id:'demo_sipform_task_'+pad(n,4),title:form.title+' onayı',instanceId:instId,defId:def.id,stepId:step,assigneeId:assignee,status:'open',createdAt:now()-n*3500000,dueAt:days((j%8)-2),priority:j%5===0?'urgent':'normal',isDemo:true});
+          addOrReplace(st.notifications,{id:'demo_sipform_notif_'+pad(n,4),userId:assignee,title:'Sipariş formu onay bekliyor',text:form.title,read:false,createdAt:now()-n*3400000,isDemo:true});
+        }
+        addOrReplace(st.comments,{id:'demo_sipform_comment_'+pad(n,4),instanceId:instId,userId:owner,text:'Demo sipariş formu kontrol yorumu.',createdAt:now()-n*3300000,isDemo:true});
+        added++;
+      }
+    });
+    return added;
+  }
+
+  function showDemoLocation(out, extra){
+    if(!out) return;
+    const st=getSt()||{};
+    const sipFormCount=(st.instances||[]).filter(x=>x&&x.isDemo&&/siparis|sipariş|order/.test(norm([x.defId,x.title,x.name,(x.form||{}).title].join(' ')))).length;
+    const prodOrderCount=(st.orders||[]).filter(x=>x&&x.isDemo).length;
+    out.textContent = (out.textContent||'') +
+      '\n\nNerede göreceksiniz?' +
+      '\n• İş Akışları ekranı: DEMO-TR ve DEMO-SIPFORM talep/evrak kayıtları.' +
+      '\n• Üretim > Tüm Siparişler: DEMO-SIP üretim siparişleri.' +
+      '\n• Database Studio: users, definitions, instances, tasks, orders koleksiyonları.' +
+      '\n\nSipariş onay formu demo kaydı: ' + sipFormCount +
+      '\nÜretim siparişi demo kaydı: ' + prodOrderCount +
+      (extra ? '\n' + extra : '');
+  }
+
+  async function finalizeDemoData(opts){
+    const st=getSt(); if(!st) return null;
+    root.FABRIKA_DEMO_MODE=true;
+    root.FABRIKA_DISABLE_REALTIME=true;
+    root.FABRIKA_DISABLE_FIRESTORE_PERSIST=true;
+    ensureArrays(st);
+    const orderTarget = Math.max(Number(opts&&opts.orders)||0, 25);
+    ensureProductionOrders(st, orderTarget);
+    const perDef = orderTarget >= 80 ? 20 : (orderTarget >= 35 ? 12 : 8);
+    const addedForms = ensureOrderFormInstances(st, perDef);
+    await saveActiveDemo(st).catch(e=>console.warn('[Demo v28] IndexedDB kayıt güncelleme hatası:', e.message));
+    try{ if(typeof renderAll==='function') renderAll(); }catch(e){ console.warn('[Demo v28] renderAll atlandı:', e.message); }
+    return {addedForms, orderTarget};
+  }
+
+  function installDemoV28Patch(){
+    if(root.__fabrikaDemoV28Installed) return;
+    root.__fabrikaDemoV28Installed=true;
+    const old = root.FabrikaDemoData && root.FabrikaDemoData.create;
+    if(old && !old.__v28Wrapped){
+      root.FabrikaDemoData.create = async function(opts){
+        const out=document.getElementById('demoOutput');
+        const res = await old.call(this, opts || {});
+        const final = await finalizeDemoData(opts || {});
+        showDemoLocation(out, final ? ('Eklenen sipariş formu kaydı: ' + final.addedForms) : '');
+        return res;
+      };
+      root.FabrikaDemoData.create.__v28Wrapped=true;
+    }
+    const oldRender = root.FabrikaDemoData && root.FabrikaDemoData.render;
+    if(oldRender && !oldRender.__v28Wrapped){
+      root.FabrikaDemoData.render = function(){
+        const r=oldRender.apply(this, arguments);
+        setTimeout(()=>{
+          const st=getSt(); if(!st) return;
+          const out=document.getElementById('demoOutput');
+          if(out && /Hazır\./.test(out.textContent||'')) showDemoLocation(out, 'Mevcut demo kayıtlarını görüntülemek için yukarıdaki menülerden İş Akışları veya Üretim sekmesine geçin.');
+        },50);
+        return r;
+      };
+      root.FabrikaDemoData.render.__v28Wrapped=true;
+    }
+    // Sayfa zaten demo veriyle açıldıysa eski siparişleri de hemen düzelt.
+    setTimeout(()=>finalizeDemoData({orders:80}).then(()=>{
+      const out=document.getElementById('demoOutput');
+      if(out) showDemoLocation(out,'Mevcut IndexedDB demo paketi v28 ile görünür hale getirildi.');
+    }).catch(()=>{}),1800);
+    console.log('[FABRİKA v28] Demo görünürlük ve sipariş formu garantisi aktif');
+  }
+  installDemoV28Patch();
+  setInterval(installDemoV28Patch, 1000);
+})();
+</script>
+
 </body>
 </html>
 <script>
@@ -20549,11 +20788,6 @@ setInterval(() => {
 
   async function createDemoData(opts){
     const st = getSt(); if (!st) { alert('State bulunamadı.'); return null; }
-    // Demo oluşturma anından itibaren Firestore realtime/persist kapalıdır.
-    root.FABRIKA_DEMO_MODE = true;
-    root.FABRIKA_DISABLE_REALTIME = true;
-    root.FABRIKA_DISABLE_FIRESTORE_PERSIST = true;
-    try { if (typeof root.stopRealtimeListeners === 'function') root.stopRealtimeListeners(); } catch(_) {}
     opts = Object.assign({users:60, instances:160, orders:35, clearFirst:true, firestore:false}, opts||{});
     ensureArrays(st); await backupLocal(st);
     if (opts.clearFirst) removeDemo(st);
@@ -20724,22 +20958,8 @@ setInterval(() => {
     }, true);
   }
 
-  async function boot(){
-    wrapRenderAdmin(); installDemoClickHandlers(); addDemoNavButton();
-    const st=getSt();
-    if(st) {
-      const restored = await restoreDemoLocal(st);
-      const hasDemo = ['users','definitions','instances','tasks','orders','notifications','comments','roles'].some(k => (st[k]||[]).some(x => x && x.isDemo));
-      if (restored || hasDemo) {
-        root.FABRIKA_DEMO_MODE = true;
-        root.FABRIKA_DISABLE_REALTIME = true;
-        root.FABRIKA_DISABLE_FIRESTORE_PERSIST = true;
-        try { if (typeof root.stopRealtimeListeners === 'function') root.stopRealtimeListeners(); } catch(_) {}
-      }
-    }
-    if(st && st.adminTab==='demo-data') renderDemoDataStudio();
-  }
+  async function boot(){ wrapRenderAdmin(); installDemoClickHandlers(); addDemoNavButton(); const st=getSt(); if(st) await restoreDemoLocal(st); if(st && st.adminTab==='demo-data') renderDemoDataStudio(); }
   boot(); setInterval(boot, 1000);
-  console.log('[FABRİKA v27] Demo Veri Oluşturucu aktif - IndexedDB + Firestore listener/persist kapalı');
+  console.log('[FABRİKA v22] Demo Veri Oluşturucu aktif - IndexedDB demo modu ve Firestore kota koruması');
 })();
 </script>
