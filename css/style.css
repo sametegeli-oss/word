@@ -1199,3 +1199,25 @@ body > .quick-btn {
 /* Aksiyon satırları derli toplu */
 #sc-realnew .rlnew-actions, #sc-realnew .rlnew-footer-actions{ display:flex !important; gap:10px !important; flex-wrap:wrap !important; }
 #sc-realnew .rlnew-actions > .rlnew-btn, #sc-realnew .rlnew-footer-actions > .rlnew-btn{ flex:1 1 auto !important; }
+
+/* ====== Profesyonel ana menü (sc-menu) ====== */
+#sc-menu{padding:0 18px 96px}
+.menu-hero{text-align:center;padding:44px 8px 22px}
+.menu-logo{width:54px;height:54px;margin:0 auto 14px;border-radius:16px;background:linear-gradient(135deg,var(--blue),#2563eb);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 10px 24px rgba(59,130,246,.35)}
+.menu-title{margin:0;font-size:30px;font-weight:900;letter-spacing:-.5px;background:linear-gradient(135deg,#60a5fa,#818cf8 55%,#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#a78bfa}
+.menu-sub{margin:6px 0 0;color:var(--muted);font-size:14px;font-weight:600}
+.menu-cta{width:100%;display:flex;align-items:center;gap:10px;padding:15px 18px;margin:0 0 18px;border-radius:18px;color:#fff;font-size:16px;font-weight:800;background:linear-gradient(135deg,#3b82f6,#2563eb);box-shadow:0 10px 26px rgba(37,99,235,.35)}
+.menu-cta .ico{width:22px;height:22px;flex:none}
+.menu-cta .ico-r{width:20px;height:20px;margin-left:auto;flex:none;opacity:.9}
+.menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.menu-tile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:16px 14px;border-radius:18px;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);text-align:left;transition:transform .12s ease,border-color .12s ease}
+.menu-tile:active{transform:scale(.97)}
+.menu-tile:hover{border-color:#3b82f6}
+.menu-tile .ico{width:26px;height:26px;color:var(--blue);margin-bottom:8px}
+.menu-tile:nth-child(2) .ico{color:var(--green)}
+.menu-tile:nth-child(3) .ico{color:var(--orange)}
+.menu-tile:nth-child(4) .ico{color:var(--purple)}
+.menu-tile:nth-child(5) .ico{color:var(--pink)}
+.menu-tile:nth-child(6) .ico{color:var(--muted)}
+.menu-tile .t{font-size:15px;font-weight:800;color:var(--text)}
+.menu-tile .s{font-size:12px;font-weight:600;color:var(--muted)}
