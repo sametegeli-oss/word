@@ -1,0 +1,223 @@
+/* Sentence Mode - Modern 2-column UI patch
+   Bu dosyayı css/style.css dosyasının EN ALTINA ekleyebilir veya ayrı dosya olarak index.html içinde style.css'ten sonra çağırabilirsin. */
+:root{
+  --sm-bg:#07111d;
+  --sm-panel:rgba(15,25,40,.82);
+  --sm-panel-2:rgba(13,23,36,.92);
+  --sm-border:rgba(148,163,184,.20);
+  --sm-text:#f8fafc;
+  --sm-muted:#aeb9c9;
+  --sm-blue:#2f81ff;
+  --sm-radius:18px;
+  --sm-gap:12px;
+}
+
+body.sentence-modern-ui,
+.sentence-modern-ui{
+  background:radial-gradient(circle at top,#0d2238 0,#07111d 42%,#050b13 100%) !important;
+  color:var(--sm-text);
+}
+
+/* Ana sayfa / menü gridleri */
+.sentence-modern-ui .home-menu,
+.sentence-modern-ui .home-menu-grid,
+.sentence-modern-ui .dashboard-menu,
+.sentence-modern-ui .dashboard-grid,
+.sentence-modern-ui .quick-menu,
+.sentence-modern-ui .feature-grid,
+.sentence-modern-ui .modules-grid,
+.sentence-modern-ui .menu-grid,
+.sentence-modern-ui #homeMenu,
+.sentence-modern-ui #mainMenu,
+.sentence-modern-ui [data-ui-grid="home"]{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:var(--sm-gap) !important;
+  width:100% !important;
+  align-items:stretch !important;
+}
+
+/* Tüm kart/düğme tipleri aynı mantık */
+.sentence-modern-ui .menu-card,
+.sentence-modern-ui .feature-card,
+.sentence-modern-ui .dashboard-card,
+.sentence-modern-ui .action-card,
+.sentence-modern-ui .module-card,
+.sentence-modern-ui .setting-card,
+.sentence-modern-ui .stat-card,
+.sentence-modern-ui .srs-card,
+.sentence-modern-ui .plan-card,
+.sentence-modern-ui .lesson-card,
+.sentence-modern-ui .smart-card,
+.sentence-modern-ui .tool-card,
+.sentence-modern-ui .nav-card,
+.sentence-modern-ui button.card,
+.sentence-modern-ui a.card,
+.sentence-modern-ui [data-card]{
+  width:100% !important;
+  min-width:0 !important;
+  min-height:86px !important;
+  height:auto !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  gap:12px !important;
+  padding:14px !important;
+  border-radius:var(--sm-radius) !important;
+  border:1px solid var(--sm-border) !important;
+  background:linear-gradient(145deg,rgba(17,28,44,.96),rgba(8,16,27,.94)) !important;
+  box-shadow:0 12px 26px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.04) !important;
+  overflow:hidden !important;
+  text-align:left !important;
+}
+
+/* Önceden full width olan kartları zorla yarım genişliğe indir */
+.sentence-modern-ui .menu-card.full,
+.sentence-modern-ui .menu-card.full-width,
+.sentence-modern-ui .feature-card.full,
+.sentence-modern-ui .feature-card.full-width,
+.sentence-modern-ui .span-2,
+.sentence-modern-ui .wide,
+.sentence-modern-ui [data-span="2"]{
+  grid-column:auto !important;
+  max-width:none !important;
+}
+
+.sentence-modern-ui .menu-card .icon,
+.sentence-modern-ui .feature-card .icon,
+.sentence-modern-ui .dashboard-card .icon,
+.sentence-modern-ui .action-card .icon,
+.sentence-modern-ui .module-card .icon,
+.sentence-modern-ui .setting-card .icon,
+.sentence-modern-ui .card-icon,
+.sentence-modern-ui .tile-icon,
+.sentence-modern-ui .menu-icon{
+  flex:0 0 44px !important;
+  width:44px !important;
+  height:44px !important;
+  border-radius:14px !important;
+  display:grid !important;
+  place-items:center !important;
+  font-size:22px !important;
+  background:rgba(47,129,255,.12) !important;
+}
+
+.sentence-modern-ui .menu-card .title,
+.sentence-modern-ui .feature-card .title,
+.sentence-modern-ui .dashboard-card .title,
+.sentence-modern-ui .action-card .title,
+.sentence-modern-ui .module-card .title,
+.sentence-modern-ui .setting-card .title,
+.sentence-modern-ui .card-title,
+.sentence-modern-ui .tile-title,
+.sentence-modern-ui h3{
+  font-size:15px !important;
+  line-height:1.15 !important;
+  font-weight:800 !important;
+  color:var(--sm-text) !important;
+  margin:0 0 4px !important;
+}
+
+.sentence-modern-ui .menu-card .desc,
+.sentence-modern-ui .feature-card .desc,
+.sentence-modern-ui .dashboard-card .desc,
+.sentence-modern-ui .action-card .desc,
+.sentence-modern-ui .module-card .desc,
+.sentence-modern-ui .setting-card .desc,
+.sentence-modern-ui .card-desc,
+.sentence-modern-ui .tile-desc,
+.sentence-modern-ui p,
+.sentence-modern-ui small{
+  font-size:11px !important;
+  line-height:1.25 !important;
+  color:var(--sm-muted) !important;
+  margin:0 !important;
+  display:-webkit-box !important;
+  -webkit-line-clamp:2 !important;
+  -webkit-box-orient:vertical !important;
+  overflow:hidden !important;
+}
+
+/* Alt menü */
+.sentence-modern-ui .bottom-nav,
+.sentence-modern-ui .tabbar,
+.sentence-modern-ui .bottom-tabs{
+  border-top:1px solid rgba(148,163,184,.12) !important;
+  background:rgba(5,11,19,.92) !important;
+  backdrop-filter:blur(16px) !important;
+}
+
+/* İç ekranlar: listeler ve ayarlar da aynı kart mantığı */
+.sentence-modern-ui .settings-grid,
+.sentence-modern-ui .profile-grid,
+.sentence-modern-ui .stats-grid,
+.sentence-modern-ui .cards-grid,
+.sentence-modern-ui .practice-grid{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:var(--sm-gap) !important;
+}
+
+.sentence-modern-ui .list-row,
+.sentence-modern-ui .record-row,
+.sentence-modern-ui .srs-row,
+.sentence-modern-ui .plan-row{
+  border-radius:16px !important;
+  border:1px solid rgba(148,163,184,.14) !important;
+  background:rgba(15,25,40,.72) !important;
+}
+
+@media (max-width:380px){
+  .sentence-modern-ui .home-menu,
+  .sentence-modern-ui .home-menu-grid,
+  .sentence-modern-ui .dashboard-menu,
+  .sentence-modern-ui .dashboard-grid,
+  .sentence-modern-ui .quick-menu,
+  .sentence-modern-ui .feature-grid,
+  .sentence-modern-ui .modules-grid,
+  .sentence-modern-ui .menu-grid,
+  .sentence-modern-ui #homeMenu,
+  .sentence-modern-ui #mainMenu,
+  .sentence-modern-ui .settings-grid,
+  .sentence-modern-ui .profile-grid,
+  .sentence-modern-ui .stats-grid,
+  .sentence-modern-ui .cards-grid,
+  .sentence-modern-ui .practice-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:10px !important;
+  }
+  .sentence-modern-ui .menu-card,
+  .sentence-modern-ui .feature-card,
+  .sentence-modern-ui .dashboard-card,
+  .sentence-modern-ui .action-card,
+  .sentence-modern-ui .module-card,
+  .sentence-modern-ui .setting-card,
+  .sentence-modern-ui [data-card]{
+    min-height:78px !important;
+    padding:11px !important;
+    gap:9px !important;
+  }
+  .sentence-modern-ui .card-icon,
+  .sentence-modern-ui .tile-icon,
+  .sentence-modern-ui .menu-icon,
+  .sentence-modern-ui .menu-card .icon,
+  .sentence-modern-ui .feature-card .icon{
+    width:38px !important;
+    height:38px !important;
+    flex-basis:38px !important;
+    font-size:19px !important;
+  }
+  .sentence-modern-ui .card-title,
+  .sentence-modern-ui .tile-title,
+  .sentence-modern-ui .menu-card .title,
+  .sentence-modern-ui .feature-card .title{
+    font-size:13px !important;
+  }
+  .sentence-modern-ui .card-desc,
+  .sentence-modern-ui .tile-desc,
+  .sentence-modern-ui .menu-card .desc,
+  .sentence-modern-ui .feature-card .desc{
+    font-size:10px !important;
+  }
+}
