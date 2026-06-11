@@ -136,39 +136,32 @@
      ANA MENÜ EKRANI
      ══════════════════════════════════════════════════════════ -->
 <div class="screen active" id="sc-menu">
-<div style="text-align:center;padding:40px 20px 20px 20px">
-<h1 style="margin:0 0 8px 0;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Sentence Mode</h1>
-<p style="margin:0 0 32px 0">Cümle Tabanlı İngilizce Öğrenme Platformu</p>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-map" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></g></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 5a2 2 0 0 1 2-2h6v16H6a2 2 0 0 0-2 2zM20 5a2 2 0 0 0-2-2h-6v16h6a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m4 6 1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></g></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+<symbol id="i-bot" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="2"/><path d="M12 3v5M8 13h.01M16 13h.01M9 17h6"/></g></symbol>
+<symbol id="i-cog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H7a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1 1.6 1.6 0 0 0 .3-1.8z"/></g></symbol>
+</defs></svg>
+<div class="menu-hero">
+<div class="menu-logo"><svg viewBox="0 0 24 24" width="24" height="24"><use href="#i-book"/></svg></div>
+<h1 class="menu-title">Sentence Mode</h1>
+<p class="menu-sub">Cümle Tabanlı İngilizce Öğrenme Platformu</p>
 </div>
-<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:0 20px 20px">
-<button onclick="WMPath.open()">
-<div style="font-size:32px;margin-bottom:8px">🗺️</div>
-<div style="font-weight:800">Modüller</div>
+<button class="menu-cta" onclick="WMPath.open()">
+<svg class="ico" viewBox="0 0 24 24"><use href="#i-map"/></svg>
+<span>Modüllere Git</span>
+<svg class="ico-r" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"/></svg>
 </button>
-<button onclick="switchTab('daily')">
-<div style="font-size:32px;margin-bottom:8px">🌅</div>
-<div style="font-size:14px;font-weight:800;color:#fff">Bugün</div>
-</button>
-<button onclick="switchTab('word')">
-<div style="font-size:32px;margin-bottom:8px">📖</div>
-<div style="font-size:14px;font-weight:800;color:#fff">Kelime</div>
-</button>
-<button onclick="switchTab('learned')">
-<div style="font-size:32px;margin-bottom:8px">📚</div>
-<div style="font-size:14px;font-weight:800;color:#fff">Liste</div>
-</button>
-<button onclick="switchTab('stats')">
-<div style="font-size:32px;margin-bottom:8px">📊</div>
-<div style="font-size:14px;font-weight:800;color:#fff">İstatistik</div>
-</button>
-<button onclick="switchTab('ai')">
-<div style="font-size:32px;margin-bottom:8px">🤖</div>
-<div style="font-size:14px;font-weight:800;color:#fff">AI</div>
-</button>
-<button onclick="switchTab('settings')">
-<div style="font-size:32px;margin-bottom:8px">⚙️</div>
-<div style="font-size:14px;font-weight:800;color:#fff">Ayarlar</div>
-</button>
+<div class="menu-grid">
+<button class="menu-tile" onclick="switchTab('daily')" aria-label="Bugün"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sun"/></svg><span class="t">Bugün</span><span class="s">Günlük plan</span></button>
+<button class="menu-tile" onclick="switchTab('word')" aria-label="Kelime"><svg class="ico" viewBox="0 0 24 24"><use href="#i-book"/></svg><span class="t">Kelime</span><span class="s">Kart çalışması</span></button>
+<button class="menu-tile" onclick="switchTab('learned')" aria-label="Liste"><svg class="ico" viewBox="0 0 24 24"><use href="#i-list"/></svg><span class="t">Liste</span><span class="s">Öğrenilenler</span></button>
+<button class="menu-tile" onclick="switchTab('stats')" aria-label="İstatistik"><svg class="ico" viewBox="0 0 24 24"><use href="#i-chart"/></svg><span class="t">İstatistik</span><span class="s">İlerlemen</span></button>
+<button class="menu-tile" onclick="switchTab('ai')" aria-label="AI Koç"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bot"/></svg><span class="t">AI Koç</span><span class="s">Konuşma pratiği</span></button>
+<button class="menu-tile" onclick="switchTab('settings')" aria-label="Ayarlar"><svg class="ico" viewBox="0 0 24 24"><use href="#i-cog"/></svg><span class="t">Ayarlar</span><span class="s">Tercihler</span></button>
 </div>
 </div>
 <!-- ══ UPLOAD SCREEN ══ -->
@@ -224,7 +217,7 @@
 <!-- ══ HATIRLATMA AYARLARI EKRANI ══ -->
 <div class="screen" id="sc-reminder">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🔔 Hatırlatmalar</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -274,7 +267,7 @@
 <!-- ══ SPACED REPETITION EKRANI ══ -->
 <div class="screen" id="sc-srs">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🔄 Akıllı Tekrar</h2>
 <span id="srsProgress"></span>
 </div>
@@ -341,7 +334,7 @@
 </div>
 <div class="screen" id="sc-word">
 <div class="top-bar">
-<button class="back-btn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="goHome()">←</button>
 <button onclick="showListSelector()" style="display:flex;align-items:center;gap:6px">
 <h2 id="currentListName" style="margin:0">Ana Liste</h2>
 <span>▼</span>
@@ -349,7 +342,7 @@
 <div style="font-size:9px;color:var(--muted);font-weight:600;margin-left:8px">
       🔨 15 May 2026, 06:38
     </div>
-<button id="darkModeBtn" onclick="toggleDarkMode()" style="margin-left:auto">🌙</button>
+<button id="darkModeBtn" aria-label="Tema değiştir" onclick="toggleDarkMode()" style="margin-left:auto">🌙</button>
 <span class="streak-badge" id="streakBadge" style="display:none"></span>
 </div>
 <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
@@ -509,7 +502,7 @@
 <!-- ══ SENTENCE MODE SCREEN ══ -->
 <div class="screen" id="sc-sent">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>Cümle Modu</h2>
 <span id="smCounter"></span>
 </div>
@@ -559,7 +552,7 @@
 <!-- ══ LETTER MODE SCREEN ══ -->
 <div class="screen" id="sc-letter">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>Harf Sırala</h2>
 <span id="lmCounter"></span>
 </div>
@@ -593,7 +586,7 @@
 <!-- ══ WORD LIST SCREEN ══ -->
 <div class="screen" id="sc-list">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📋 Kelime Listesi</h2>
 </div>
 <!-- Kategori Filtreleri -->
@@ -617,7 +610,7 @@
 <!-- ══ STATS SCREEN ══ -->
 <div class="screen" id="sc-stats">
 <div class="top-bar">
-<button class="back-btn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="goHome()">←</button>
 <h2>📊 İstatistikler</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -858,7 +851,7 @@
 <!-- ══ FLASHCARD MODE SCREEN ══ -->
 <div class="screen" id="sc-flashcard">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎴 Flashcard</h2>
 <span id="fcCounter"></span>
 </div>
@@ -907,7 +900,7 @@
 <!-- ══ AI PRONUNCIATION COACH SCREEN ══ -->
 <div class="screen" id="sc-proncoach">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎤 Telaffuz Koçu</h2>
 </div>
 <div class="card">
@@ -964,7 +957,7 @@
 <!-- ══ AI CONTEXT ANALYSIS SCREEN ══ -->
 <div class="screen" id="sc-context">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🧠 Bağlam Analizi</h2>
 <button onclick="showPromptEditor('context')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -996,7 +989,7 @@
 <!-- ══ AI STORY GENERATOR SCREEN ══ -->
 <div class="screen" id="sc-story">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📖 AI Hikaye Üretici</h2>
 <button onclick="showPromptEditor('story')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -1050,7 +1043,7 @@
 <!-- ══ AI CONVERSATION SIMULATION SCREEN ══ -->
 <div class="screen" id="sc-conversation">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🗣️ Konuşma Simülasyonu</h2>
 <button onclick="showPromptEditor('conversation')" style="margin-right:8px">📝 Prompt</button>
 <button onclick="clearConvChat()">🗑️ Temizle</button>
@@ -1122,7 +1115,7 @@
 <!-- ══ AI SENTENCE CORRECTOR SCREEN ══ -->
 <div class="screen" id="sc-corrector">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>✍️ Cümle Düzeltme</h2>
 <button onclick="showPromptEditor('corrector')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -1143,7 +1136,7 @@
 <!-- ══ AI CHAT SCREEN (GELİŞMİŞ - GROQ API) ══ -->
 <div class="screen" id="sc-ai">
 <div class="top-bar">
-<button class="back-btn" id="aiBackBtn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" id="aiBackBtn" onclick="goHome()">←</button>
 <h2>🤖 AI Analiz</h2>
 <button onclick="clearAIChat()" style="margin-left:auto">🗑️ Temizle</button>
 </div>
@@ -1197,7 +1190,7 @@
 <!-- ══ YAPAY ZEKAYA SOR SCREEN ══ -->
 <div class="screen" id="sc-askai">
   <div class="top-bar">
-    <button class="back-btn" onclick="switchTab('word')">←</button>
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
     <h2>❓ Yapay Zekaya Sor</h2>
     <button onclick="clearAskAI()" style="margin-left:auto">🗑️ Temizle</button>
   </div>
@@ -1235,7 +1228,7 @@
 <!-- ══ İNGİLİZCE-TÜRKÇE SÖZLÜK HAZIRLAYICI SCREEN ══ -->
 <div class="screen" id="sc-dictbuilder">
   <div class="top-bar">
-    <button class="back-btn" onclick="switchTab('word')">←</button>
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
     <h2>📘 Sözlük Hazırlayıcı</h2>
   </div>
   <div class="card" style="margin-bottom:12px">
@@ -1282,7 +1275,7 @@
 <!-- ══ SÖZLÜĞÜM SCREEN: sozluk.json verilerini gösterir ══ -->
 <div class="screen" id="sc-my-dictionary">
   <div class="top-bar">
-    <button class="back-btn" onclick="switchTab('word')">←</button>
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
     <h2>📚 Sözlüğüm</h2>
   </div>
   <div class="card" style="margin-bottom:12px">
@@ -1321,7 +1314,7 @@
 <!-- ══ AI CONTEXT TEACHER SCREEN ══ -->
 <div class="screen" id="sc-context-teacher">
   <div class="top-bar">
-    <button class="back-btn" onclick="showScreen('sc-word')">←</button>
+    <button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
     <h2>🧠 AI Context Teacher</h2>
   </div>
   <div class="card" style="margin-bottom:12px">
@@ -1341,7 +1334,7 @@
 <!-- ══ WORD FAMILY TREE SCREEN ══ -->
 <div class="screen" id="sc-word-family-tree">
   <div class="top-bar">
-    <button class="back-btn" onclick="showScreen('sc-word')">←</button>
+    <button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
     <h2>🌳 Kelime Ağacı</h2>
   </div>
   <div class="card" style="margin-bottom:12px">
@@ -1360,7 +1353,7 @@
 <!-- ══ GENİŞ SÖZLÜK SCREEN: firatkaya_simple.json verilerini gösterir ══ -->
 <div class="screen" id="sc-broad-dictionary">
   <div class="top-bar">
-    <button class="back-btn" onclick="switchTab('word')">←</button>
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
     <h2>🌍 Geniş Sözlük</h2>
   </div>
   <div class="card" style="margin-bottom:12px">
@@ -1469,7 +1462,7 @@
 <!-- ══ KELIME OYUNLARI SCREEN ══ -->
 <div class="screen" id="sc-games">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎮 Kelime Oyunları</h2>
 </div>
 <!-- Oyun Seçim -->
@@ -1741,7 +1734,7 @@
 <!-- ══ 27. AI KONUŞMA PARTNERİ ══ -->
 <div class="screen" id="sc-partner">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🗨️ Konuşma Partneri</h2>
 <button onclick="clearPartnerChat()" style="margin-left:auto">🗑️</button>
 </div>
@@ -1819,7 +1812,7 @@
 <!-- ══ 16. SHADOWING MODU ══ -->
 <div class="screen" id="sc-shadow">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>👥 Shadowing Modu</h2>
 </div>
 <div class="card">
@@ -1870,7 +1863,7 @@
 <!-- ══ 25. AI ÖĞRETMEN KİŞİSELLEŞTİRME ══ -->
 <div class="screen" id="sc-teacher">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>🤖 AI Öğretmenim</h2>
 <button onclick="showPromptEditor('teacher')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -1943,7 +1936,7 @@
 <!-- ══ 15. ACCENT COACH ══ -->
 <div class="screen" id="sc-accent">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🗣️ Accent Coach</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -1993,7 +1986,7 @@
 <!-- ══ 8. PODCAST ENTEGRASYONu ══ -->
 <div class="screen" id="sc-podcast">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎧 Podcast</h2>
 <button onclick="showPromptEditor('podcast')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -2139,7 +2132,7 @@
 <!-- ══ 20. OFFLİNE MODU ══ -->
 <div class="screen" id="sc-offline">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>📴 Offline Modu</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2287,7 +2280,7 @@
 <!-- ══ 17. KONUŞMA ODALARI ══ -->
 <div class="screen" id="sc-rooms">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>💬 Konuşma Odaları</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2319,7 +2312,7 @@
 <!-- ══ AI GÖRSEL AÇIKLAMA ══ -->
 <div class="screen" id="sc-visual">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🖼️ Görsel Açıklama</h2>
 <button onclick="showPromptEditor('visual')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -2342,7 +2335,7 @@
 <!-- ══ KELİME ŞARKISI ══ -->
 <div class="screen" id="sc-song">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎵 Kelime Şarkısı</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2392,7 +2385,7 @@
 <!-- ══ ÇOKLU LİSTE YÖNETİCİ ══ -->
 <div class="screen" id="sc-lists">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📋 Listelerim</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2420,7 +2413,7 @@
 <!-- ══ BULUT YEDEK ══ -->
 <div class="screen" id="sc-cloud">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>☁️ Bulut Yedek</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2484,7 +2477,7 @@
 <!-- ══ GÜNLÜK PLAN DASHBOARD ══ -->
 <div class="screen" id="sc-daily">
 <div class="top-bar">
-<button class="back-btn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="goHome()">←</button>
 <h2>🌅 Günlük Plan</h2>
 <button onclick="refreshDailyPlan()" style="margin-left:auto">🔄</button>
 </div>
@@ -2549,7 +2542,7 @@
 <!-- ══ STREAK & ROZETLER EKRANI ══ -->
 <div class="screen" id="sc-streak">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🏆 Streak &amp; Rozetler</h2>
 </div>
 <div class="scr-con" style="padding-bottom:80px">
@@ -2603,7 +2596,7 @@
 <!-- ══ ZAYIF NOKTA ANALİZİ EKRANI ══ -->
 <div class="screen" id="sc-weakness">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>🎯 Zayıf Nokta Analizi</h2>
 </div>
 <div class="scr-con" style="padding-bottom:100px">
@@ -2659,7 +2652,7 @@
 </div>
 <div class="screen" id="sc-analytics">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>📊 Analitikler</h2>
 </div>
 <!-- Genel İstatistikler -->
@@ -2746,7 +2739,7 @@
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-library">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <span class="top-title">📚 Kütüphane</span>
 <button onclick="openCameraOCR()" style="margin-left:auto">📸 OCR</button>
 </div>
@@ -2837,7 +2830,7 @@
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-reader">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-library')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-library')">←</button>
 <span class="top-title" id="readerTitle">📖 Kitap</span>
 </div>
 <div class="scr-con" style="padding:0;padding-bottom:80px">
@@ -2877,7 +2870,7 @@
 <!-- ══ WORD GRAPH SCREEN ══ -->
 <div class="screen" id="sc-wordgraph">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>🕸️ Kelime Grafiği</h2>
 <button onclick="buildWordGraph()" style="margin-left:auto">🔄 Yenile</button>
 </div>
@@ -2913,7 +2906,7 @@
 
 <div class="screen" id="sc-learned">
 <div class="top-bar">
-<button class="back-btn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="goHome()">←</button>
 <h2>📚 Öğrendiklerim</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2939,7 +2932,7 @@
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-settings">
 <div class="top-bar">
-<button class="back-btn" onclick="switchTab('word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
 <h2>⚙️ Ayarlar</h2>
 <button onclick="showTokenStats()" style="margin-left:auto;display:flex;align-items:center;gap:4px">
 <span>📊</span>
@@ -3398,7 +3391,7 @@
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-quiz" style="width:100%">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📝 AI Test</h2>
 <button onclick="showPromptEditor('test')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -3490,7 +3483,7 @@
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-grammar">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📚 Gramer Rehberi</h2>
 <button onclick="showPromptEditor('grammar')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -3514,7 +3507,7 @@
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-videos">
 <div class="top-bar">
-<button class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📺 Video ile Öğren</h2>
 </div>
 <div class="card">
@@ -3595,7 +3588,7 @@
 <div class="screen" id="sc-camera-ocr">
 <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:10000;overflow-y:auto">
 <div class="top-bar">
-<button class="back-btn" onclick="closeCameraOCR()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="closeCameraOCR()">←</button>
 <h2>📸 Kamera OCR</h2>
 </div>
 <div class="card" style="margin:12px">
@@ -3674,7 +3667,7 @@
      NEXT-GEN COACH HUB — Added by ChatGPT
      ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-nextgen">
-  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-menu')">←</button><h2>🚀 Premium Koç</h2><span class="streak-badge">Yeni</span></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-menu')">←</button><h2>🚀 Premium Koç</h2><span class="streak-badge">Yeni</span></div>
   <div class="card">
     <div style="font-size:20px;font-weight:900;margin-bottom:4px">Akıllı Öğrenme Merkezi</div>
     <div class="wmng-mini" style="margin-bottom:12px">Bu bölüm SRS 2.0, kritik kelimeler, cümle iyileştirici, ilerleme zekâsı, gerçek hayat konuşmaları ve telaffuz haritasını tek yerde toplar.</div>
@@ -3691,7 +3684,7 @@
 </div>
 
 <div class="screen" id="sc-critical">
-  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🔥 Bugünün Kritik Kelimeleri</h2></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>🔥 Bugünün Kritik Kelimeleri</h2></div>
   <div class="card">
     <div class="wmng-mini" style="margin-bottom:10px">Risk; hata sayısı, SRS gecikmesi, öğrenilme durumu ve zipf değerine göre hesaplanır.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
@@ -3704,12 +3697,12 @@
 </div>
 
 <div class="screen" id="sc-intelligence">
-  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🧠 İlerleme Zekâsı</h2></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>🧠 İlerleme Zekâsı</h2></div>
   <div class="card" id="wmngIntelligence"></div>
 </div>
 
 <div class="screen" id="sc-rewriter">
-  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>✍️ AI Cümle İyileştirici</h2></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>✍️ AI Cümle İyileştirici</h2></div>
   <div class="card">
     <div class="wmng-mini" style="margin-bottom:8px">Cümleni yazabilir veya mikrofona söyleyebilirsin. Konuşma otomatik olarak kutuya aktarılır.</div>
     <textarea id="wmngRewriteInput" class="wmng-textarea" rows="4" placeholder="İngilizce cümleni yaz veya söyle: I very like this movie..."></textarea>
@@ -3729,7 +3722,7 @@
 </div>
 
 <div class="screen" id="sc-life">
-  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🎭 Gerçek Hayat Konuşması</h2></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>🎭 Gerçek Hayat Konuşması</h2></div>
   <div class="card">
     <div class="chat-input-row">
       <textarea id="wmngLifeInput" class="chat-input" rows="2" placeholder="Cevabını İngilizce yaz..."></textarea>
@@ -3740,7 +3733,7 @@
 </div>
 
 <div class="screen" id="sc-pronmap">
-  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🗣️ Telaffuz Haritası</h2></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>🗣️ Telaffuz Haritası</h2></div>
   <div class="card">
     <input id="wmngPronTarget" class="wmng-input" placeholder="Hedef kelime: volunteer" />
     <input id="wmngPronSpoken" class="wmng-input" style="margin-top:8px" placeholder="Duyulan/okunan kelime: volintir" />
@@ -3773,7 +3766,7 @@
 <div class="screen" id="sc-realnew">
   <div class="rlnew-wrap">
     <div class="top-bar">
-      <button class="back-btn" onclick="showScreen('sc-menu')">←</button>
+      <button class="back-btn" aria-label="Geri" onclick="showScreen('sc-menu')">←</button>
       <h2>Yeni Gerçek Hayat</h2>
       <span class="streak-badge">AI</span>
     </div>
@@ -3891,7 +3884,7 @@
 
 <div class="screen" id="sc-pronstandalone">
   <div class="top-bar">
-    <button class="back-btn" onclick="switchTab('word')">←</button>
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
     <h2>🎤 Telaffuz Analizi</h2>
   </div>
 
@@ -4074,7 +4067,7 @@
 
 <div class="screen" id="sc-live-coach">
   <div class="top-bar">
-    <button class="back-btn" onclick="backToSettingsFromLiveCoach()">←</button>
+    <button class="back-btn" aria-label="Geri" onclick="backToSettingsFromLiveCoach()">←</button>
     <h2>⚡ Canlı Skor Koçu</h2>
   </div>
 
@@ -4234,7 +4227,7 @@
 
 
 <div class="screen" id="sc-pro-smart">
-  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-word')">←</button><h2>🧠 Akıllı Plan</h2><span class="streak-badge">Pro</span></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button><h2>🧠 Akıllı Plan</h2><span class="streak-badge">Pro</span></div>
   <div class="card">
     <div class="wm-pro-title">Bugünkü öğrenme planın</div>
     <div class="wm-pro-sub">Zayıf kelimeler, tekrar zamanı gelen kartlar ve telaffuz geçmişine göre otomatik öneri üretir.</div>
@@ -4243,7 +4236,7 @@
 </div>
 
 <div class="screen" id="sc-pro-pron-history">
-  <div class="top-bar"><button class="back-btn" onclick="showScreen('sc-word')">←</button><h2>🎙️ Telaffuz Geçmişi</h2><span class="streak-badge">Pro</span></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button><h2>🎙️ Telaffuz Geçmişi</h2><span class="streak-badge">Pro</span></div>
   <div class="card">
     <div class="wm-pro-title">Ses puanı kayıtları</div>
     <div class="wm-pro-sub">Kelime ve cümle okuma denemelerinin son sonuçlarını gösterir. Yeni kayıtlar mikrofon puanlamasından otomatik toplanır.</div>
@@ -4323,7 +4316,7 @@
 
 <div id="screen-sentence-mining" class="screen">
   <div class="top-bar">
-    <button class="back-btn" onclick="showScreen('word')">←</button>
+    <button class="back-btn" aria-label="Geri" onclick="showScreen('word')">←</button>
     <h2>⛏️ Sentence Mining</h2>
   </div>
 
