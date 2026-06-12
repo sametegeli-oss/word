@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-<title>Yol Haritası v40 • Çalışan Modül Düğmesi</title>
+<title>Yol Haritası v41 • Modüller Üst Düğme</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Word reposundaki çalışan özellik köprüleri: sözlük lookup, görsel arama, alternatif seçici, shadow panel -->
 <script src="./fixes.js"></script>
@@ -3687,5 +3687,118 @@ body.yol-v37-modules-open #yolV35Map *{
   }
   window.addEventListener('load',function(){setTimeout(boot,200);setTimeout(boot,900);setTimeout(boot,2000);});
   setTimeout(boot,300);
+})();
+</script>
+
+
+<style id="yol-v41-header-module-button-style">
+/* v41: Modüller düğmesi artık sağda/devtools altında değil, üst kartın içinde görünür */
+#yolV41HeaderModulesBtn{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:6px !important;
+  border:1px solid rgba(56,189,248,.55) !important;
+  background:#102033 !important;
+  color:#e0f2fe !important;
+  border-radius:14px !important;
+  padding:10px 12px !important;
+  font-size:12px !important;
+  font-weight:950 !important;
+  cursor:pointer !important;
+  box-shadow:0 8px 22px rgba(0,0,0,.30) !important;
+  pointer-events:auto !important;
+}
+#yolV41HeaderModulesBtn:hover{background:#132a44 !important}
+#yolV40ModulesBtn{display:none !important;}
+</style>
+
+<script id="yol-v41-header-module-button-script">
+(function(){
+  'use strict';
+  console.log('✅ yol.html v41 HEADER_MODULE_BUTTON yüklendi');
+
+  function forceOpenModules(){
+    console.log('🧭 v41 Modüller tıklandı');
+    if(typeof window.yolV40OpenModules==='function'){
+      window.yolV40OpenModules();
+      return;
+    }
+    if(typeof window.yolV38OpenModules==='function'){
+      window.yolV38OpenModules();
+      return;
+    }
+    alert('Modül ekranı henüz hazır değil. Sayfayı yenileyip tekrar dene.');
+  }
+
+  function addHeaderButton(){
+    var existing=document.getElementById('yolV41HeaderModulesBtn');
+    if(existing) return existing;
+
+    var btn=document.createElement('button');
+    btn.id='yolV41HeaderModulesBtn';
+    btn.type='button';
+    btn.innerHTML='🧭 Modüller';
+    btn.onclick=function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      forceOpenModules();
+      return false;
+    };
+
+    // Üst sağdaki Excel Yükle / index.html / Ayarlar satırına ekle
+    var hero=document.querySelector('.hero');
+    var rows=hero ? hero.querySelectorAll('.row') : [];
+    var target=null;
+
+    for(var i=0;i<rows.length;i++){
+      if(rows[i].textContent && rows[i].textContent.includes('Excel Yükle')){
+        target=rows[i];
+        break;
+      }
+    }
+
+    if(!target){
+      target=document.querySelector('.hero .row') || document.querySelector('.app') || document.body;
+    }
+
+    if(target.firstChild) target.insertBefore(btn,target.firstChild);
+    else target.appendChild(btn);
+
+    return btn;
+  }
+
+  function addBottomFallback(){
+    var tabs=document.querySelector('.tabs');
+    if(!tabs) return;
+    var old=document.getElementById('yolV41BottomModulesBtn');
+    if(old) return;
+    var b=document.createElement('button');
+    b.id='yolV41BottomModulesBtn';
+    b.className='tab';
+    b.innerHTML='<span>🧭</span>Modüller';
+    b.onclick=function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      forceOpenModules();
+      return false;
+    };
+    tabs.insertBefore(b,tabs.firstChild);
+  }
+
+  function boot(){
+    addHeaderButton();
+    addBottomFallback();
+
+    // Eski sağ sabit düğme devtools altında kalıyordu; gizle.
+    var old=document.getElementById('yolV40ModulesBtn');
+    if(old) old.style.display='none';
+  }
+
+  window.addEventListener('load',function(){
+    setTimeout(boot,100);
+    setTimeout(boot,600);
+    setTimeout(boot,1500);
+  });
+  setTimeout(boot,200);
 })();
 </script>
