@@ -94,211 +94,226 @@
   <link rel="stylesheet" href="css/style.css">
 <link rel="manifest" href="manifest.webmanifest">
 
-<!-- MODERN UI PATCH v2 -->
-<style id="modern-ui-patch-v2">
-
-/* ============================================================
-   FINAL MODERN UI OVERRIDE v2
-   Amaç: Eski parlak mavi/pill düğmeleri tüm ekranlarda ana menüdeki
-   modern koyu kart tasarımına çevirmek. Bu blok dosyanın EN ALTINDA
-   kalmalı. Inline background stillerini de !important ile ezer.
-   ============================================================ */
+<!-- MODERN UI PATCH v1 - eski mavi düğmeleri menü kartı tarzına çevirir -->
+<style id="modern-ui-patch-v1">
 :root{
-  --wm-ui-bg:#070d17;
-  --wm-ui-card-a:rgba(22,31,49,.98);
-  --wm-ui-card-b:rgba(10,17,29,.98);
-  --wm-ui-card-hover-a:rgba(30,43,68,.98);
-  --wm-ui-card-hover-b:rgba(14,24,40,.98);
-  --wm-ui-border:rgba(148,163,184,.20);
-  --wm-ui-border-hover:rgba(148,163,184,.34);
-  --wm-ui-text:#f8fafc;
-  --wm-ui-muted:#94a3b8;
-  --wm-ui-blue-soft:rgba(59,130,246,.13);
-  --wm-ui-radius:18px;
-  --wm-ui-radius-sm:16px;
-  --wm-ui-shadow:0 14px 36px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.035);
-  --wm-ui-btn-bg:linear-gradient(145deg,var(--wm-ui-card-a),var(--wm-ui-card-b));
-  --wm-ui-btn-bg-hover:linear-gradient(145deg,var(--wm-ui-card-hover-a),var(--wm-ui-card-hover-b));
+  --wm-modern-bg:#070d17;
+  --wm-modern-panel:rgba(15,23,42,.78);
+  --wm-modern-card:linear-gradient(180deg,rgba(22,31,49,.96),rgba(14,21,35,.96));
+  --wm-modern-card-hover:linear-gradient(180deg,rgba(30,43,68,.98),rgba(17,27,45,.98));
+  --wm-modern-border:rgba(148,163,184,.18);
+  --wm-modern-border-strong:rgba(148,163,184,.28);
+  --wm-modern-text:#f8fafc;
+  --wm-modern-muted:#94a3b8;
+  --wm-modern-blue:#3b82f6;
+  --wm-modern-blue-soft:rgba(59,130,246,.14);
+  --wm-modern-radius:18px;
+  --wm-modern-shadow:0 16px 44px rgba(0,0,0,.32);
 }
 
-html,body,#app{
-  background:radial-gradient(circle at top,#0d2036 0,#070d17 44%,#040913 100%) !important;
-  color:var(--wm-ui-text) !important;
+/* Genel ekran zemini */
+body{background:var(--wm-modern-bg)!important;}
+.screen{background:transparent!important;}
+.card,.upload-hero,.resume-banner,.fmt-guide,.top-bar{
+  border-color:var(--wm-modern-border)!important;
 }
 
-/* Genel kart dili */
-.card,.panel,.wm-card,.word-card,.sentence-card,.fmt-guide,.resume-banner,.upload-hero,
-.feature-category,.ff-card,.smng-card,.vc-card,.wmsw-card,.wmng-card,
-.menu-tile,.menu-cta,.module-card,.path-card,.lesson-card,.setting-card,.stat-card,
-[class*="card" i]:not(.score-card):not(.flashcard),
-[class*="tile" i],
-[class*="module" i]:not(script):not(style),
-[class*="lesson" i]:not(script):not(style){
-  background:var(--wm-ui-btn-bg) !important;
-  border:1px solid var(--wm-ui-border) !important;
-  border-radius:20px !important;
-  box-shadow:var(--wm-ui-shadow) !important;
-  color:var(--wm-ui-text) !important;
+/* Eski mavi butonları tek modern stile bağla */
+.btn,
+.btn-blue,
+.act-btn,
+.nav-btn,
+.filter-btn,
+.play-btn,
+.smng-btn,
+.vc-btn,
+.wmsw-btn,
+.top-bar > button,
+.back-btn,
+#pwaInstallBtn,
+button[class*="btn"],
+button[class*="Btn"]{
+  border:1px solid var(--wm-modern-border)!important;
+  border-radius:var(--wm-modern-radius)!important;
+  background:var(--wm-modern-card)!important;
+  color:var(--wm-modern-text)!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+  font-weight:800!important;
+  letter-spacing:.01em!important;
+  min-height:44px;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease!important;
 }
 
-/* Tüm eski mavi düğmeler: buton iskeleti */
-#app button,
-button,
-.btn,.btn-blue,.btn-green,.btn-purple,.btn-orange,.btn-ghost,
-.act-btn,.nav-btn,.filter-btn,.category-btn,.play-btn,.quiz-option,
-.ff-btn,.ff-fab,.smng-btn,.vc-btn,.wmsw-btn,.wm-tool-btn,
-.rlnew-btn,.shadow-btn,.song-btn,.sleep-btn,.reader-btn,.fc-btn,
-.type-btn,.analyze-btn,.compact-btn,.quiz-type-btn,.quiz-count-btn,
-.menu-cta,.menu-tile,
-#wmToolsBtn,#pwaInstallBtn,
-button[class*="btn" i],button[class*="Btn"],button[class*="button" i],button[class*="Button"],
-button[style*="background"],button[style*="linear-gradient"],button[style*="#3b82f6"],button[style*="#2563eb"],button[style*="blue" i]{
-  background:var(--wm-ui-btn-bg) !important;
-  background-image:var(--wm-ui-btn-bg) !important;
-  color:var(--wm-ui-text) !important;
-  border:1px solid var(--wm-ui-border) !important;
-  border-radius:var(--wm-ui-radius-sm) !important;
-  box-shadow:none !important;
-  text-shadow:none !important;
-  outline:none !important;
-  font-weight:800 !important;
-  letter-spacing:.01em !important;
+.btn:hover,
+.btn-blue:hover,
+.act-btn:hover,
+.nav-btn:hover,
+.filter-btn:hover,
+.play-btn:hover,
+.smng-btn:hover,
+.vc-btn:hover,
+.wmsw-btn:hover,
+.top-bar > button:hover,
+.back-btn:hover,
+#pwaInstallBtn:hover,
+button[class*="btn"]:hover,
+button[class*="Btn"]:hover{
+  background:var(--wm-modern-card-hover)!important;
+  border-color:var(--wm-modern-border-strong)!important;
+  transform:translateY(-1px)!important;
 }
 
-#app button:hover,
-button:hover,
-.btn:hover,.act-btn:hover,.nav-btn:hover,.filter-btn:hover,.category-btn:hover,
-.menu-cta:hover,.menu-tile:hover,#wmToolsBtn:hover,.wm-tool-btn:hover,
-button[class*="btn" i]:hover,button[class*="button" i]:hover{
-  background:var(--wm-ui-btn-bg-hover) !important;
-  background-image:var(--wm-ui-btn-bg-hover) !important;
-  border-color:var(--wm-ui-border-hover) !important;
-  filter:none !important;
-  transform:translateY(-1px);
+.btn:active,
+.btn-blue:active,
+.act-btn:active,
+.nav-btn:active,
+.filter-btn:active,
+.play-btn:active,
+.smng-btn:active,
+.vc-btn:active,
+.wmsw-btn:active,
+.top-bar > button:active,
+.back-btn:active,
+button[class*="btn"]:active,
+button[class*="Btn"]:active{
+  transform:translateY(0)!important;
 }
 
-#app button:active,button:active,.btn:active,.act-btn:active,.nav-btn:active{
-  transform:translateY(0) scale(.98) !important;
+/* Ana menüdeki modern kart dilini tüm tile/cta öğelerinde güçlendir */
+.menu-cta,
+.menu-tile,
+.pro-feature-card,
+.go-card,
+.wm-pro-card{
+  background:var(--wm-modern-card)!important;
+  border:1px solid var(--wm-modern-border)!important;
+  border-radius:20px!important;
+  box-shadow:none!important;
+}
+.menu-cta:hover,
+.menu-tile:hover,
+.pro-feature-card:hover,
+.go-card:hover,
+.wm-pro-card:hover{
+  background:var(--wm-modern-card-hover)!important;
+  border-color:var(--wm-modern-border-strong)!important;
 }
 
-/* Geri/ikon butonları: modern kare */
-.back-btn,.top-bar > button:first-child,.mic-btn,.rlnew-iconbtn,
-button[aria-label],button[style*="border-radius:50%"],button[style*="border-radius: 50%"]{
-  min-width:44px !important;
-  min-height:44px !important;
-  width:auto !important;
-  height:44px !important;
-  padding:0 14px !important;
-  border-radius:14px !important;
-  background:var(--wm-ui-btn-bg) !important;
-  color:var(--wm-ui-text) !important;
-  border:1px solid var(--wm-ui-border) !important;
+/* Öğrenme yolu ekranı: sağ üstteki eski yuvarlak mavi ikonları modern kare/pill düğmelere çevir */
+[id*="path" i] button,
+[class*="path" i] button,
+[id*="module" i] button,
+[class*="module" i] button{
+  border-radius:16px!important;
+  background:var(--wm-modern-card)!important;
+  border:1px solid var(--wm-modern-border)!important;
+  color:var(--wm-modern-text)!important;
+  box-shadow:none!important;
+}
+[id*="path" i] button:hover,
+[class*="path" i] button:hover,
+[id*="module" i] button:hover,
+[class*="module" i] button:hover{
+  background:var(--wm-modern-card-hover)!important;
+  border-color:var(--wm-modern-border-strong)!important;
 }
 
-/* Öğrenme yolu / Modüller ekranındaki üst sağ ikonlar */
-[id*="path" i] button,[class*="path" i] button,
-[id*="module" i] button,[class*="module" i] button,
-[id*="lesson" i] button,[class*="lesson" i] button,
-[id*="learn" i] button,[class*="learn" i] button{
-  background:var(--wm-ui-btn-bg) !important;
-  background-image:var(--wm-ui-btn-bg) !important;
-  border:1px solid var(--wm-ui-border) !important;
-  border-radius:16px !important;
-  color:var(--wm-ui-text) !important;
-  box-shadow:none !important;
+/* Yuvarlak/eski neon görünen butonları zorla modernleştir */
+button[style*="border-radius:50%"],
+button[style*="border-radius: 50%"],
+button[style*="linear-gradient"],
+button[style*="#3b82f6"],
+button[style*="#2563eb"],
+button[style*="blue" i]{
+  border-radius:16px!important;
+  background:var(--wm-modern-card)!important;
+  border:1px solid var(--wm-modern-border)!important;
+  color:var(--wm-modern-text)!important;
+  box-shadow:none!important;
 }
 
-/* Araçlar düğmesi kesin düzeltme */
-#wmToolsBtn{
-  position:fixed !important;
-  right:14px !important;
-  top:110px !important;
-  z-index:99999 !important;
-  padding:12px 16px !important;
-  border-radius:18px !important;
-  background:var(--wm-ui-btn-bg) !important;
-  background-image:var(--wm-ui-btn-bg) !important;
-  color:var(--wm-ui-text) !important;
-  border:1px solid var(--wm-ui-border) !important;
-  box-shadow:0 12px 32px rgba(0,0,0,.28) !important;
+/* Sağda/yanda duran eski Araçlar ve alttaki ekstra floating düğmeler */
+#smngLauncherFixed,
+#voiceCompareLauncher,
+[id*="Launcher"],
+[id*="launcher"],
+[class*="floating"],
+[class*="fab"],
+[class*="tools" i] > button,
+button[style*="position:fixed"],
+button[style*="position: fixed"]{
+  border-radius:18px!important;
+  background:var(--wm-modern-card)!important;
+  color:var(--wm-modern-text)!important;
+  border:1px solid var(--wm-modern-border)!important;
+  box-shadow:var(--wm-modern-shadow)!important;
 }
 
-/* Renk varyantlarını mavi/yeşil buton olarak değil, sadece ince vurgu olarak göster */
-.btn-blue,.ab-en,.ab-sent,.ab-tr,.vc-blue,.smng-blue{
-  border-color:rgba(96,165,250,.35) !important;
-  color:#bfdbfe !important;
+/* Alt menü: kart stiline yakın, daha sakin */
+.bottom-nav{
+  background:rgba(9,15,27,.92)!important;
+  backdrop-filter:blur(18px)!important;
+  border-top:1px solid var(--wm-modern-border)!important;
+  box-shadow:0 -16px 44px rgba(0,0,0,.26)!important;
 }
-.btn-green,.ab-ok,.play,.smng-primary{
-  border-color:rgba(34,197,94,.35) !important;
-  color:#bbf7d0 !important;
+.bnav-btn{
+  border-radius:14px!important;
+  color:var(--wm-modern-muted)!important;
+  background:transparent!important;
+  box-shadow:none!important;
 }
-.btn-purple,.smng-purple{
-  border-color:rgba(168,85,247,.35) !important;
-  color:#e9d5ff !important;
-}
-.btn-orange{
-  border-color:rgba(245,158,11,.35) !important;
-  color:#fde68a !important;
-}
-.vc-red{
-  border-color:rgba(239,68,68,.35) !important;
-  color:#fecaca !important;
-}
-.btn-ghost,.smng-ghost,.ff-ghost,.vc-ghost{
-  background:rgba(15,23,42,.68) !important;
-  background-image:none !important;
-  color:var(--wm-ui-muted) !important;
+.bnav-btn.active{
+  background:var(--wm-modern-blue-soft)!important;
+  color:#60a5fa!important;
+  border:1px solid rgba(59,130,246,.22)!important;
 }
 
-/* Alt menü bozulmasın ama mavi kapsül sakinleşsin */
-.bottom-nav,.nav-bottom,#bottomNav{
-  background:rgba(6,12,22,.94) !important;
-  border-top:1px solid var(--wm-ui-border) !important;
-  box-shadow:0 -12px 32px rgba(0,0,0,.24) !important;
-  backdrop-filter:blur(16px) !important;
+/* Üst bar ve geri butonu */
+.top-bar{
+  background:transparent!important;
+  gap:10px!important;
 }
-.bottom-nav button,.nav-bottom button,#bottomNav button{
-  background:transparent !important;
-  background-image:none !important;
-  border:1px solid transparent !important;
-  color:var(--wm-ui-muted) !important;
-  box-shadow:none !important;
-  border-radius:14px !important;
-}
-.bottom-nav button.active,.nav-bottom button.active,#bottomNav button.active,.bnav-btn.active{
-  background:var(--wm-ui-blue-soft) !important;
-  background-image:none !important;
-  border-color:rgba(96,165,250,.22) !important;
-  color:#60a5fa !important;
+.back-btn,
+.top-bar > button:first-child{
+  min-width:0!important;
+  padding:0 16px!important;
+  height:44px!important;
 }
 
-/* Input/select uyumu */
-input,select,textarea{
-  background:rgba(10,17,29,.92) !important;
-  border:1px solid var(--wm-ui-border) !important;
-  border-radius:16px !important;
-  color:var(--wm-ui-text) !important;
+/* Renkli özel aksiyonlar: modern ama anlamı korunsun */
+.btn-green,.ab-ok,.play,.smng-primary{border-color:rgba(34,197,94,.32)!important;color:#bbf7d0!important;}
+.btn-purple,.smng-purple{border-color:rgba(168,85,247,.32)!important;color:#e9d5ff!important;}
+.btn-orange{border-color:rgba(245,158,11,.32)!important;color:#fde68a!important;}
+.ab-en,.ab-sent,.ab-tr,.vc-blue,.smng-blue{border-color:rgba(59,130,246,.32)!important;color:#bfdbfe!important;}
+.vc-red{border-color:rgba(239,68,68,.32)!important;color:#fecaca!important;}
+
+/* Kart içi küçük buton kümeleri */
+.act-row,
+.smng-row,
+.vc-row{
+  gap:10px!important;
+}
+.feature-category,
+.feature-header,
+.feature-content{
+  border-color:var(--wm-modern-border)!important;
+  background:rgba(15,23,42,.50)!important;
+  border-radius:18px!important;
 }
 
-/* Inline renkli yuvarlak istatistikler düğme gibi görünmesin */
-#wordStatsChart [style*="border-radius:50%"],
-#wordStatsChart [style*="border-radius: 50%"]{
-  background:var(--wm-ui-btn-bg) !important;
-  border:1px solid var(--wm-ui-border) !important;
-  box-shadow:var(--wm-ui-shadow) !important;
-}
-
+/* Mobil taşma azaltma */
 @media (max-width:720px){
-  #app button,button,.btn,.act-btn,.nav-btn,.filter-btn{font-size:13px !important;min-height:42px !important;}
-  .menu-grid{gap:10px !important;}
+  .screen{padding-left:14px!important;padding-right:14px!important;}
+  .btn,.btn-blue,.act-btn,.nav-btn,.filter-btn,button[class*="btn"],button[class*="Btn"]{min-height:42px;font-size:13px!important;}
+  #smngLauncherFixed,#voiceCompareLauncher{right:12px!important;max-width:128px!important;}
 }
-
 </style>
-<!-- /MODERN UI PATCH v2 -->
+<!-- /MODERN UI PATCH v1 -->
 
 </head>
 <body>
-<div id="versionBadge" style="position:fixed;bottom:8px;right:8px;background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;font-family:monospace;z-index:99999;pointer-events:none;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.3)">Sentence Mode v1 · Modern UI v2</div>
+<div id="versionBadge" style="position:fixed;bottom:8px;right:8px;background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;font-family:monospace;z-index:99999;pointer-events:none;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.3)">Sentence Mode v1 · Modern UI Patch</div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <symbol id="i-map" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></symbol>
 <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></g></symbol>
@@ -4146,7 +4161,7 @@ input,select,textarea{
 <button class="bnav-btn" id="bn-daily" onclick="switchTab('daily')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-sun"/></svg>Bugün</button>
 <button class="bnav-btn" id="bn-languageMap" onclick="window.open('dil_haritasi_v1.html','_blank')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-map"/></svg>Dil Haritası</button>
 <button class="bnav-btn" id="bn-pronstandalone" onclick="switchTab('pronstandalone')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-mic"/></svg>Telaffuz</button>
-<button class="bnav-btn active" id="bn-word" onclick="switchTab('word')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-book"/></svg>Kelime</button>
+<button class="bnav-btn" id="bn-word" onclick="switchTab('word')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-book"/></svg>Kelime</button>
 <button class="bnav-btn" id="bn-learned" onclick="switchTab('learned')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-list"/></svg>Liste</button>
 <button class="bnav-btn" id="bn-stats" onclick="switchTab('stats')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-chart"/></svg>İstatistik</button>
 <button class="bnav-btn" id="bn-ai" onclick="switchTab('ai')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-bot"/></svg>AI</button>
@@ -4617,4 +4632,203 @@ input,select,textarea{
 <!-- RIGHT SLIDE PANEL TOOLS FIX -->
 
 <!-- Sentence Mode v1.2 clean: duplicate inline repair blocks removed -->
+
+
+<!-- WORD POPUP EXAMPLES + STARTUP MENU FIX v1 -->
+<script id="word-popup-examples-menu-fix-v1">
+(function(){
+  'use strict';
+
+  const EXCEL_URLS = [
+    'data/TumData_Temiz.xlsx',
+    './data/TumData_Temiz.xlsx',
+    'https://raw.githubusercontent.com/sametegeli-oss/word/main/data/TumData_Temiz.xlsx'
+  ];
+
+  let __wmTumRowsPromise = null;
+  let __lastPopupWord = '';
+
+  function cleanText(v){ return String(v == null ? '' : v).replace(/\s+/g,' ').trim(); }
+  function normKey(k){ return String(k || '').toLowerCase().replace(/[\s_\-.ğüşıöçİĞÜŞÖÇ]/g, function(ch){
+    return {'ğ':'g','ü':'u','ş':'s','ı':'i','ö':'o','ç':'c','İ':'i','Ğ':'g','Ü':'u','Ş':'s','Ö':'o','Ç':'c'}[ch] || '';
+  }); }
+  function escapeHtml(v){
+    return cleanText(v).replace(/[&<>'"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]; });
+  }
+  function getField(row, names){
+    if(!row) return '';
+    for(const n of names){ if(row[n] != null && cleanText(row[n])) return row[n]; }
+    const wanted = names.map(normKey);
+    for(const k of Object.keys(row)){
+      if(wanted.includes(normKey(k)) && cleanText(row[k])) return row[k];
+    }
+    return '';
+  }
+  function wordForms(word){
+    const w = cleanText(word).toLowerCase().replace(/[^a-z]/g,'');
+    const set = new Set();
+    if(!w) return [];
+    set.add(w);
+    if(w.endsWith('ing') && w.length > 5){
+      const b = w.slice(0,-3); set.add(b); set.add(b+'e'); set.add(b+'ed'); set.add(b+'d'); set.add(b+'s');
+    }
+    if(w.endsWith('ed') && w.length > 4){
+      const b = w.slice(0,-2); set.add(b); set.add(b+'e'); set.add(b+'ing'); set.add(b+'s');
+    }
+    if(w.endsWith('s') && w.length > 3){ set.add(w.slice(0,-1)); }
+    return Array.from(set).filter(Boolean);
+  }
+  function sentenceHasWord(sentence, forms){
+    const s = ' ' + cleanText(sentence).toLowerCase().replace(/[^a-z']/g,' ') + ' ';
+    return forms.some(f => new RegExp('(^|\\s)' + f.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + "('s)?(?=\\s|$)").test(s));
+  }
+  async function loadTumRows(){
+    if(__wmTumRowsPromise) return __wmTumRowsPromise;
+    __wmTumRowsPromise = (async function(){
+      if(!window.XLSX){ return []; }
+      let lastErr = null;
+      for(const url of EXCEL_URLS){
+        try{
+          const res = await fetch(url, {cache:'force-cache'});
+          if(!res.ok) throw new Error('HTTP '+res.status+' '+url);
+          const buf = await res.arrayBuffer();
+          const wb = XLSX.read(buf, {type:'array'});
+          const rows = [];
+          wb.SheetNames.forEach(name => {
+            const sh = wb.Sheets[name];
+            const arr = XLSX.utils.sheet_to_json(sh, {defval:''});
+            arr.forEach(r => rows.push(r));
+          });
+          return rows;
+        }catch(e){ lastErr = e; }
+      }
+      console.warn('TumData_Temiz.xlsx örnek cümle için okunamadı:', lastErr);
+      return [];
+    })();
+    return __wmTumRowsPromise;
+  }
+  function getGlobalRows(){
+    const known = ['DATA','data','words','allWords','currentWords','sentences','allSentences','learningData','learningPathData','tumDataRows','TUMDATA','vocabData','vocabulary'];
+    const out=[]; const seen=new Set();
+    function addArray(arr){
+      if(!Array.isArray(arr) || seen.has(arr)) return;
+      seen.add(arr);
+      if(arr.length && typeof arr[0] === 'object') out.push(arr);
+    }
+    known.forEach(k => addArray(window[k]));
+    try{
+      Object.keys(window).slice(0,1500).forEach(k => {
+        const v = window[k];
+        if(Array.isArray(v) && v.length && v.length < 80000 && typeof v[0] === 'object'){
+          const sample = v[0] || {};
+          const keys = Object.keys(sample).map(normKey).join('|');
+          if(/sentence|cumle|english|turkish|translation|word/.test(keys)) addArray(v);
+        }
+      });
+    }catch(e){}
+    return out.flat();
+  }
+  function findPopupWord(popup){
+    const selectors = ['.sp-word-display','.popup-word','.word-title','.word-head','.pron-word','[data-word]','h1','h2','h3','strong'];
+    for(const sel of selectors){
+      const el = popup.querySelector(sel);
+      if(!el) continue;
+      const dataWord = el.getAttribute && el.getAttribute('data-word');
+      const txt = cleanText(dataWord || el.textContent || '');
+      const m = txt.match(/[A-Za-z][A-Za-z'\-]{1,}/);
+      if(m && !/ipa|play|slow|fast|anlam|syllable|kelime|cümle/i.test(m[0])) return m[0].replace(/[^A-Za-z']/g,'');
+    }
+    if(window.currentWord){
+      if(typeof window.currentWord === 'string') return window.currentWord;
+      return cleanText(window.currentWord.word || window.currentWord.Word || window.currentWord.English || window.currentWord.Highlight || '');
+    }
+    return __lastPopupWord;
+  }
+  function candidatePopups(){
+    const list = Array.from(document.querySelectorAll(
+      '.pronunciation-popup, #wm-pronunciation-popup-container .pronunciation-popup, .word-popup, .wm-word-popup, .dict-popup, .popup-card, [id*="pronunciation" i], [id*="popup" i]'
+    ));
+    return list.filter(el => {
+      if(!el || el.id === 'pwaInstallBar') return false;
+      const st = getComputedStyle(el);
+      if(st.display === 'none' || st.visibility === 'hidden') return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 180 && r.height > 120 && (el.textContent || '').length > 20;
+    });
+  }
+  function renderBox(popup, word, rows, loading){
+    if(!word) return;
+    let box = popup.querySelector('.wm-word-sentence-examples');
+    if(!box){
+      box = document.createElement('div');
+      box.className = 'wm-word-sentence-examples';
+      popup.appendChild(box);
+    }
+    box.setAttribute('data-word', word.toLowerCase());
+    if(loading){
+      box.innerHTML = '<div class="wm-wse-title">Bu kelimenin geçtiği cümleler</div><div class="wm-wse-empty">Cümleler yükleniyor...</div>';
+      return;
+    }
+    if(!rows.length){
+      box.innerHTML = '<div class="wm-wse-title">Bu kelimenin geçtiği cümleler</div><div class="wm-wse-empty">Bu kelime için örnek cümle bulunamadı.</div>';
+      return;
+    }
+    box.innerHTML = '<div class="wm-wse-title">Bu kelimenin geçtiği cümleler</div>' + rows.map(r => {
+      const en = escapeHtml(getField(r, ['sentence','Sentence','SENTENCE','SentenceEN','sentenceEN','EnglishSentence','English Sentence','EN','English','CumleEN','Cümle EN']));
+      const tr = escapeHtml(getField(r, ['sentenceTr','SentenceTR','SENTENCETR','SentenceTr','TurkishSentence','Turkish Sentence','TR','Turkish','Translation','translation','Türkçe','Turkce','CumleTR','Cümle TR']));
+      return '<div class="wm-wse-card"><div class="wm-wse-en">'+en+'</div>'+(tr ? '<div class="wm-wse-tr">'+tr+'</div>' : '')+'</div>';
+    }).join('');
+  }
+  async function updatePopup(popup){
+    const word = cleanText(findPopupWord(popup));
+    if(!word || word.length < 2) return;
+    __lastPopupWord = word;
+    const existing = popup.querySelector('.wm-word-sentence-examples');
+    if(existing && existing.getAttribute('data-word') === word.toLowerCase()) return;
+    renderBox(popup, word, [], true);
+    const forms = wordForms(word);
+    let rows = getGlobalRows();
+    let matches = rows.filter(r => sentenceHasWord(getField(r, ['sentence','Sentence','SENTENCE','SentenceEN','sentenceEN','EnglishSentence','English Sentence','EN','English']), forms));
+    if(matches.length < 3){
+      rows = await loadTumRows();
+      matches = rows.filter(r => sentenceHasWord(getField(r, ['sentence','Sentence','SENTENCE','SentenceEN','sentenceEN','EnglishSentence','English Sentence','EN','English']), forms));
+    }
+    const clean = [];
+    const seen = new Set();
+    matches.forEach(r => {
+      const en = cleanText(getField(r, ['sentence','Sentence','SENTENCE','SentenceEN','sentenceEN','EnglishSentence','English Sentence','EN','English']));
+      if(!en || seen.has(en.toLowerCase())) return;
+      seen.add(en.toLowerCase()); clean.push(r);
+    });
+    renderBox(popup, word, clean.slice(0,8), false);
+  }
+  function scanPopups(){ candidatePopups().forEach(p => updatePopup(p)); }
+
+  function forceMenuScreen(){
+    const menu = document.getElementById('sc-menu');
+    if(!menu) return;
+    document.querySelectorAll('.screen').forEach(sc => sc.classList.remove('active'));
+    menu.classList.add('active');
+    document.querySelectorAll('.bnav-btn.active').forEach(b => b.classList.remove('active'));
+    const folder = document.getElementById('folder-selection-screen');
+    if(folder) folder.style.display = 'none';
+  }
+  function startupMenuFix(){
+    if(location.hash && location.hash.length > 1) return;
+    [0, 120, 450, 1000, 1800].forEach(ms => setTimeout(forceMenuScreen, ms));
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', startupMenuFix);
+  }else{
+    startupMenuFix();
+  }
+  window.addEventListener('load', function(){ startupMenuFix(); setTimeout(scanPopups, 300); });
+  const obs = new MutationObserver(function(){ scanPopups(); });
+  if(document.body) obs.observe(document.body, {childList:true, subtree:true});
+  setInterval(scanPopups, 1200);
+})();
+</script>
+<!-- /WORD POPUP EXAMPLES + STARTUP MENU FIX v1 -->
+
 </body></html>
