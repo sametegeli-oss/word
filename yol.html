@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-<title>Yol Haritası v37 • Modüller Alt Menüde</title>
+<title>Yol Haritası v38 • Modül Overlay</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Word reposundaki çalışan özellik köprüleri: sözlük lookup, görsel arama, alternatif seçici, shadow panel -->
 <script src="./fixes.js"></script>
@@ -3150,6 +3150,235 @@ body.yol-v37-modules-open #yolV35Map *{
     setTimeout(function(){window.yolV37CloseModules();},120);
   };
   function boot(){ensureBottomButton();render();}
+  window.addEventListener('load',function(){setTimeout(boot,300);setTimeout(boot,1200);setTimeout(boot,2500);});
+  setTimeout(boot,600);
+})();
+</script>
+
+
+<style id="yol-v38-module-overlay-style">
+/* v38: Modüller ayrı tam ekran overlay. Boş ekran sorununu keser. */
+#yolV38Overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:2147483000;
+  background:linear-gradient(180deg,#07111f,#0b1020);
+  color:#eef6ff;
+  overflow:auto;
+  padding:16px 16px 92px;
+  box-sizing:border-box;
+}
+#yolV38Overlay.show{
+  display:block !important;
+}
+.yol-v38-wrap{
+  max-width:1120px;
+  margin:0 auto;
+}
+.yol-v38-card{
+  background:rgba(15,23,42,.96);
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:24px;
+  padding:14px;
+  box-shadow:0 16px 40px rgba(0,0,0,.28);
+}
+.yol-v38-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:12px;
+}
+.yol-v38-head h2{margin:0;font-size:21px;color:#eef6ff}
+.yol-v38-back{
+  border:1px solid rgba(148,163,184,.25);
+  background:#101c2e;
+  color:#e0f2fe;
+  border-radius:16px;
+  padding:10px 14px;
+  font-weight:950;
+  cursor:pointer;
+}
+.yol-v38-levels{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px}
+.yol-v38-levels button{
+  border:1px solid rgba(148,163,184,.25);
+  background:#101c2e;
+  color:#dbeafe;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.yol-v38-levels button.active{
+  border-color:rgba(56,189,248,.75);
+  background:rgba(56,189,248,.15);
+  color:#67e8f9;
+}
+.yol-v38-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:10px;
+}
+.yol-v38-module{
+  background:#0d1728;
+  border:1px solid rgba(148,163,184,.18);
+  border-radius:18px;
+  overflow:hidden;
+}
+.yol-v38-module-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:11px 12px;
+  background:rgba(17,29,48,.90);
+}
+.yol-v38-parts{
+  position:relative;
+  padding:8px 10px 10px 16px;
+}
+.yol-v38-parts:before{
+  content:"";
+  position:absolute;
+  left:27px;
+  top:12px;
+  bottom:12px;
+  width:2px;
+  background:linear-gradient(180deg,rgba(56,189,248,.50),rgba(139,92,246,.25));
+}
+.yol-v38-part{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:28px 1fr;
+  gap:8px;
+  align-items:center;
+  border:1px solid rgba(148,163,184,.16);
+  background:#111d30;
+  border-radius:15px;
+  padding:8px;
+  margin:7px 0;
+  cursor:pointer;
+}
+.yol-v38-part.active{border-color:#67e8f9;box-shadow:0 0 0 2px rgba(56,189,248,.12)}
+.yol-v38-part.done{border-color:rgba(34,197,94,.55);background:rgba(34,197,94,.11)}
+.yol-v38-dot{
+  width:26px;height:26px;border-radius:999px;
+  display:grid;place-items:center;background:#0b1525;
+  border:1px solid rgba(56,189,248,.35);color:#67e8f9;
+  font-size:12px;font-weight:950;
+}
+.yol-v38-small{font-size:11px;color:#93a4ba;margin-top:2px}
+.yol-v38-tab{
+  border:0;background:transparent;color:var(--mut);font-weight:850;font-size:11px;
+  padding:7px;border-radius:14px;min-width:70px;cursor:pointer;
+}
+.yol-v38-tab span{display:block;font-size:22px}
+.yol-v38-tab.active{color:#67e8f9;background:rgba(56,189,248,.1)}
+@media(max-width:720px){
+  #yolV38Overlay{padding:10px 10px 92px}
+  .yol-v38-grid{grid-template-columns:1fr}
+}
+</style>
+
+<script id="yol-v38-module-overlay-script">
+(function(){
+  'use strict';
+  console.log('✅ yol.html v38 MODULE_OVERLAY yüklendi');
+
+  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function clean(s){try{return cleanText(s)}catch(e){return String(s??'').trim();}}
+  function levelOf(m){
+    var x=clean(m&&m.level);
+    if(!x && m&&m.name){var mm=String(m.name).match(/[A-C][12]/i); if(mm)x=mm[0];}
+    return (x||'Seviye Yok').toUpperCase();
+  }
+  function known(id){try{return typeof isKnown==='function' && isKnown(id)}catch(e){return false;}}
+  function donePart(p){try{return p&&p.rows&&p.rows.length&&p.rows.every(r=>known(r._id))}catch(e){return false;}}
+  function ensureModules(){
+    try{
+      if(typeof state==='undefined') return false;
+      if((!state.modules||!state.modules.length)&&state.rows&&state.rows.length&&typeof buildModules==='function') buildModules();
+      return !!(state.modules&&state.modules.length);
+    }catch(e){return false;}
+  }
+  function ensureOverlay(){
+    var o=document.getElementById('yolV38Overlay');
+    if(o) return o;
+    o=document.createElement('section');
+    o.id='yolV38Overlay';
+    o.innerHTML='<div class="yol-v38-wrap" id="yolV38Content"></div>';
+    document.body.appendChild(o);
+    return o;
+  }
+  function ensureBottomButton(){
+    var tabs=document.querySelector('.tabs');
+    if(!tabs) return;
+    if(document.getElementById('yolV38ModuleTab')) return;
+    var b=document.createElement('button');
+    b.id='yolV38ModuleTab';
+    b.className='yol-v38-tab';
+    b.innerHTML='<span>🧭</span>Modüller';
+    b.onclick=function(){window.yolV38OpenModules();};
+    tabs.insertBefore(b, tabs.firstChild);
+  }
+  function render(){
+    ensureBottomButton();
+    var o=ensureOverlay();
+    var c=document.getElementById('yolV38Content') || o;
+    if(!ensureModules()){
+      c.innerHTML='<div class="yol-v38-card"><div class="yol-v38-head"><h2>🧭 Modüller</h2><button class="yol-v38-back" onclick="window.yolV38CloseModules()">← Derse Dön</button></div><div class="muted small">Modül verisi yükleniyor. Birkaç saniye sonra tekrar dene veya Excel Yükle düğmesini kullan.</div></div>';
+      return;
+    }
+    if(!window.__yolV38Level) window.__yolV38Level='ALL';
+    var active=window.__yolV38Level;
+    var modules=state.modules||[];
+    var levels=[...new Set(modules.map(levelOf))].sort((a,b)=>String(a).localeCompare(String(b),'tr',{numeric:true}));
+    var visible=active==='ALL'?modules:modules.filter(m=>levelOf(m)===active);
+    var total=visible.reduce((s,m)=>s+(m.parts||[]).reduce((a,p)=>a+(p.rows?p.rows.length:0),0),0);
+    var done=visible.reduce((s,m)=>s+(m.parts||[]).reduce((a,p)=>a+(p.rows||[]).filter(r=>known(r._id)).length,0),0);
+    var levelsHtml='<button class="'+(active==='ALL'?'active':'')+'" onclick="window.__yolV38Level=\'ALL\';window.yolV38RenderModules()">Tümü</button>'+
+      levels.map(l=>'<button class="'+(active===l?'active':'')+'" onclick="window.__yolV38Level=\''+String(l).replace(/'/g,"\\'")+'\';window.yolV38RenderModules()">'+esc(l)+'</button>').join('');
+    c.innerHTML='<div class="yol-v38-card">'+
+      '<div class="yol-v38-head"><h2>🧭 Modüller</h2><div style="display:flex;gap:8px;align-items:center"><span class="pill">'+done+'/'+total+'</span><button class="yol-v38-back" onclick="window.yolV38CloseModules()">← Derse Dön</button></div></div>'+
+      '<div class="yol-v38-levels">'+levelsHtml+'</div>'+
+      '<div class="yol-v38-grid">'+visible.map(function(m){
+        var mi=modules.indexOf(m);
+        var pd=(m.parts||[]).filter(donePart).length;
+        return '<div class="yol-v38-module"><div class="yol-v38-module-head"><div><b>'+esc(m.name)+'</b><div class="yol-v38-small">'+esc(levelOf(m))+'</div></div><span class="pill">'+pd+'/'+(m.parts||[]).length+'</span></div>'+
+          '<div class="yol-v38-parts">'+(m.parts||[]).map(function(p,pi){
+            var d=donePart(p), act=state.activePart&&state.activePart.p===p;
+            var k=(p.rows||[]).filter(r=>known(r._id)).length;
+            return '<div class="yol-v38-part '+(d?'done ':'')+(act?'active':'')+'" onclick="window.yolV38SelectPart('+mi+','+pi+')">'+
+              '<div class="yol-v38-dot">'+(d?'✓':act?'●':'○')+'</div><div><b>'+esc(p.name)+'</b><div class="yol-v38-small">'+esc(p.stage||'Seçilebilir')+' • '+k+'/'+(p.rows?p.rows.length:0)+'</div></div></div>';
+          }).join('')+'</div></div>';
+      }).join('')+'</div></div>';
+  }
+  window.yolV38RenderModules=render;
+  window.yolV38OpenModules=function(){
+    render();
+    document.body.classList.remove('yol-v37-modules-open','yol-show-modules');
+    ensureOverlay().classList.add('show');
+    document.getElementById('yolV38ModuleTab')?.classList.add('active');
+  };
+  window.yolV38CloseModules=function(){
+    ensureOverlay().classList.remove('show');
+    document.getElementById('yolV38ModuleTab')?.classList.remove('active');
+    try{if(typeof screen==='function') screen('lesson')}catch(e){}
+  };
+  window.yolV38SelectPart=function(mi,pi){
+    try{selectPart(mi,pi)}catch(e){}
+    setTimeout(function(){window.yolV38CloseModules();},120);
+  };
+  function boot(){
+    document.body.classList.remove('yol-v37-modules-open','yol-show-modules');
+    var old37=document.getElementById('yolV37ModuleTab'); if(old37) old37.remove();
+    var old36=document.getElementById('yolV35Toggle'); if(old36) old36.remove();
+    ensureBottomButton();
+    ensureOverlay();
+    render();
+  }
   window.addEventListener('load',function(){setTimeout(boot,300);setTimeout(boot,1200);setTimeout(boot,2500);});
   setTimeout(boot,600);
 })();
