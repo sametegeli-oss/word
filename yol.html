@@ -52,43 +52,142 @@
 
 
 /* ============================================================
-   v32 ROADMAP FORCE VISIBLE FIX
-   - Sol modül haritası her zaman görünür.
-   - Mobilde ders üstünde tam genişlik görünür.
-   - Tüm modüller/partlar kilitsizdir.
+   v33 VISIBLE MODULE ROADMAP DOCK
+   Modül yolu artık sayfanın üstünde bağımsız panel olarak da görünür.
+   leftPanel bozulsa bile bu panel çalışır.
    ============================================================ */
-#leftPanel{
+#roadmapDock{
   display:block !important;
   visibility:visible !important;
   opacity:1 !important;
-  min-height:120px !important;
+  max-width:1120px;
+  margin:14px auto 0;
+  padding:0 16px;
 }
-.grid{
-  display:grid !important;
-  grid-template-columns:minmax(300px,360px) minmax(0,1fr) !important;
-  gap:14px !important;
-  align-items:start !important;
+.roadmap-dock-card{
+  background:rgba(15,23,42,.92);
+  border:1px solid rgba(148,163,184,.20);
+  border-radius:24px;
+  padding:14px;
+  box-shadow:0 12px 32px rgba(0,0,0,.25);
 }
-#leftPanel .module,
-#leftPanel .road-module,
-#leftPanel .part,
-#leftPanel .road-part{
-  display:block !important;
-  visibility:visible !important;
-  opacity:1 !important;
+.roadmap-dock-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
 }
-#leftPanel .road-part{
-  display:grid !important;
+.roadmap-dock-title h2{
+  margin:0;
+  font-size:18px;
 }
-@media(max-width:900px){
-  .grid{
-    grid-template-columns:1fr !important;
-  }
-  #leftPanel{
-    order:-1 !important;
-    max-height:none !important;
-    overflow:visible !important;
-  }
+.roadmap-levels{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:8px 0 12px;
+}
+.roadmap-levels button{
+  border:1px solid rgba(148,163,184,.22);
+  background:#101c2e;
+  color:#dbeafe;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.roadmap-levels button.active{
+  border-color:rgba(56,189,248,.65);
+  color:#67e8f9;
+  background:rgba(56,189,248,.12);
+}
+.roadmap-modules{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:10px;
+}
+.roadmap-module{
+  background:#0d1728;
+  border:1px solid rgba(148,163,184,.18);
+  border-radius:18px;
+  overflow:hidden;
+}
+.roadmap-module-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  padding:11px 12px;
+  background:rgba(17,29,48,.88);
+}
+.roadmap-module-head b{
+  font-size:13px;
+}
+.roadmap-parts{
+  position:relative;
+  padding:8px 10px 10px 16px;
+}
+.roadmap-parts:before{
+  content:"";
+  position:absolute;
+  left:27px;
+  top:12px;
+  bottom:12px;
+  width:2px;
+  background:linear-gradient(180deg,rgba(56,189,248,.50),rgba(139,92,246,.25));
+  border-radius:999px;
+}
+.roadmap-part{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:28px 1fr;
+  gap:8px;
+  align-items:center;
+  border:1px solid rgba(148,163,184,.14);
+  background:#111d30;
+  border-radius:15px;
+  padding:8px;
+  margin:7px 0;
+  cursor:pointer;
+}
+.roadmap-part:hover{
+  border-color:rgba(56,189,248,.55);
+}
+.roadmap-part.active{
+  border-color:#67e8f9;
+  box-shadow:0 0 0 2px rgba(56,189,248,.10);
+}
+.roadmap-part.done{
+  border-color:rgba(34,197,94,.45);
+  background:rgba(34,197,94,.10);
+}
+.roadmap-dot{
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  background:#0b1525;
+  border:1px solid rgba(56,189,248,.35);
+  color:#67e8f9;
+  font-size:12px;
+  font-weight:950;
+}
+.roadmap-part.done .roadmap-dot{
+  border-color:rgba(34,197,94,.65);
+  color:#86efac;
+}
+.roadmap-small{
+  font-size:11px;
+  color:var(--mut);
+  margin-top:2px;
+}
+@media(max-width:720px){
+  #roadmapDock{padding:0 10px}
+  .roadmap-modules{grid-template-columns:1fr}
 }
 
 </style>
@@ -327,73 +426,35 @@ function renderHeader(){const total=state.rows.length, done=state.rows.filter(r=
 function renderLeft(){
   const el=document.getElementById('leftPanel');
   if(!el) return;
-
-  // Modüller boşsa ama satırlar varsa yeniden kur.
-  if((!state.modules || !state.modules.length) && state.rows && state.rows.length){
-    try{ buildModules(); }catch(e){ console.warn('buildModules tekrar denenemedi',e); }
-  }
-
-  if(!state.modules || !state.modules.length){
-    el.innerHTML=`
-      <div class="card road-head-card">
-        <h2>🧭 Ders Haritası</h2>
-        <p class="muted">Modül verisi henüz oluşmadı.</p>
-        <p class="muted small">Açılışta <span class="kbd">data/TumData_Temiz.xlsx</span> otomatik yüklenir. Yüklenmezse manuel seç.</p>
-        <button class="btn" onclick="bootLoad()">Excel Seç</button>
-      </div>`;
+  if(!state.modules.length){
+    el.innerHTML=`<div class="card"><h2>Excel Veri Bankası</h2><p class="muted">Açılışta <span class="kbd">data/TumData_Temiz.xlsx</span> otomatik okunur. İstersen daha sonra Excel Yükle / Excel Değiştir ile manuel dosya seçebilirsin.</p><button class="btn" onclick="bootLoad()">Excel Seç</button></div>`;
     return;
   }
-
-  const levelName=(m)=>cleanText(m.level||String(m.name||'').match(/^[A-C][12]/i)?.[0]||'Seviye Yok').toUpperCase();
-  const allLevels=[...new Set(state.modules.map(levelName).filter(Boolean))]
-    .sort((a,b)=>String(a).localeCompare(String(b),'tr',{numeric:true}));
-
+  const allLevels=[...new Set(state.modules.map(m=>cleanText(m.level||'Seviye Yok')).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'tr',{numeric:true}));
   if(!window.__roadLevel) window.__roadLevel='ALL';
   const activeLevel=window.__roadLevel||'ALL';
-  const visibleModules=activeLevel==='ALL'
-    ? state.modules
-    : state.modules.filter(m=>levelName(m)===activeLevel);
-
+  const visibleModules=activeLevel==='ALL'?state.modules:state.modules.filter(m=>cleanText(m.level||'Seviye Yok')===activeLevel);
   const totalRows=visibleModules.reduce((sum,m)=>sum+m.parts.reduce((s,p)=>s+p.rows.length,0),0);
   const doneRows=visibleModules.reduce((sum,m)=>sum+m.parts.reduce((s,p)=>s+p.rows.filter(r=>isKnown(r._id)).length,0),0);
   const pct=totalRows?Math.round(doneRows/totalRows*100):0;
-
   const levelOptions=`<button class="road-level ${activeLevel==='ALL'?'active':''}" onclick="setRoadLevel('ALL')">Tümü</button>`+
-    allLevels.map(l=>`<button class="road-level ${activeLevel===l?'active':''}" onclick="setRoadLevel('${String(l).replace(/'/g,"\\'")}')">${escapeHTML(l)}</button>`).join('');
-
+    allLevels.map(l=>`<button class="road-level ${activeLevel===l?'active':''}" onclick="setRoadLevel('${String(l).replace(/'/g,"\'")}')">${escapeHTML(l)}</button>`).join('');
   el.innerHTML=`
     <div class="card road-head-card">
       <h2>🧭 Ders Haritası</h2>
-      <p class="muted small">Tüm modüller açıktır. Kilit yok. İstediğin seviyeyi ve partı seçebilirsin.</p>
+      <p class="muted small">Tüm seviyeler ve modüller açıktır. Hiçbir modül kilitli değildir.</p>
       <div class="road-levels">${levelOptions}</div>
       <div class="road-summary"><span>${escapeHTML(activeLevel==='ALL'?'Tüm Seviyeler':activeLevel)}</span><b>${doneRows}/${totalRows}</b></div>
       <div class="road-progress"><div style="width:${pct}%"></div></div>
     </div>`+
-    (visibleModules.length?visibleModules.map((m)=>{
+    (visibleModules.length?visibleModules.map((m,miVisible)=>{
       const mi=state.modules.indexOf(m);
       const modDone=m.parts.filter(partComplete).length;
-      return `<div class="module road-module open">
-        <div class="module-head road-module-head">
-          <div><b>${escapeHTML(m.name)}</b><div class="muted small">${escapeHTML(levelName(m))}</div></div>
-          <span class="pill">${modDone}/${m.parts.length}</span>
-        </div>
-        <div class="road-parts">
-          ${m.parts.map((p,pi)=>{
-            const done=partComplete(p), act=state.activePart?.p===p;
-            const known=p.rows.filter(r=>isKnown(r._id)).length;
-            return `<div class="part road-part ${done?'done':''} ${act?'active':''}" onclick="selectPart(${mi},${pi})">
-              <div class="road-dot">${done?'✓':act?'●':'○'}</div>
-              <div class="road-part-body">
-                <div class="row" style="justify-content:space-between"><b>${escapeHTML(p.name)}</b><span class="pill">${known}/${p.rows.length}</span></div>
-                <div class="muted small">${escapeHTML(p.stage||'Seçilebilir')}</div>
-              </div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`;
+      return `<div class="module road-module open"><div class="module-head road-module-head"><div><b>${escapeHTML(m.name)}</b><div class="muted small">${escapeHTML(m.level||'')}</div></div><span class="pill">${modDone}/${m.parts.length}</span></div><div class="road-parts">${m.parts.map((p,pi)=>{const done=partComplete(p),act=state.activePart?.p===p;const known=p.rows.filter(r=>isKnown(r._id)).length;return `<div class="part road-part ${done?'done':''} ${act?'active':''}" onclick="selectPart(${mi},${pi})"><div class="road-dot">${done?'✓':act?'●':'○'}</div><div class="road-part-body"><div class="row" style="justify-content:space-between"><b>${escapeHTML(p.name)}</b><span class="pill">${known}/${p.rows.length}</span></div><div class="muted small">${escapeHTML(p.stage||'Seçilebilir')}</div></div></div>`}).join('')}</div></div>`;
     }).join(''):`<div class="card"><p class="muted">Bu seviyede modül bulunamadı.</p></div>`);
 }
-function setRoadLevel(level){window.__roadLevel=level||'ALL';renderLeft();try{document.getElementById('leftPanel')?.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}} window.setRoadLevel=setRoadLevel;
+function setRoadLevel(level){window.__roadLevel=level||'ALL';renderLeft();}
+window.setRoadLevel=setRoadLevel;
 function screen(name){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+name).classList.add('active');document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.screen===name));}
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>screen(t.dataset.screen));
 
@@ -448,61 +509,42 @@ async function explainWordAI(word){const k=baseWord(word);const d=state.dict.get
 function exportProgress(){const data={stats:state.stats,progress:[...state.progress.values()]};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='dil-haritasi-progress-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 async function resetProgress(){if(!confirm('Tüm IndexedDB ilerlemesi silinsin mi?'))return;await dbClear('progress');state.progress.clear();state.stats={xp:0,streak:0,lastDay:null};await dbPut('stats',{id:'main',...state.stats});buildLessonQueue();renderAll();toast('İlerleme sıfırlandı.');}
 
-(async function init(){
-  await loadProgress();
-
-  // v32: Önce gerçek Excel dosyasını doğrudan yükle.
-  // Böylece index.html/wmStore eksik ya da bozuk olsa bile modül haritası oluşur.
-  let loaded=false;
+(async function init(){await loadProgress();
+  /* ORTAK VERİ: index.html'in indirdiği TumData'yı (wmStore IDB) paylaş.
+     Varsa tekrar indirme YOK — yol.html ↔ index.html aynı veriyi kullanır. */
+  var usedShared=false;
   try{
-    loaded = await tryAutoLoad();
-  }catch(e){
-    console.warn('Doğrudan TumData yükleme denenemedi:', e);
-    loaded=false;
-  }
-
-  // Doğrudan Excel yüklenmezse ortak wmStore verisini dene.
-  if(!loaded){
-    try{
-      var sdb = await new Promise(function(res,rej){
-        var rq=indexedDB.open('wmStore',1);
-        rq.onupgradeneeded=function(){ try{ rq.result.createObjectStore('kv'); }catch(e){} };
-        rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ rej(rq.error); };
-      });
-      var rows = await new Promise(function(res){
-        try{ var tx=sdb.transaction('kv','readonly'); var g=tx.objectStore('kv').get('wmPathData');
-          g.onsuccess=function(){ res(g.result); }; g.onerror=function(){ res(null); }; }
-        catch(e){ res(null); }
-      });
-      if(Array.isArray(rows) && rows.length){
-        state.rows = rows.map(function(r,i){
-          return { _id:(r.id||r.ID||('S'+i)), _row:i+2,
-            ID:r.id||r.ID, Module:r.module||r.Module, Part:r.part||r.Part,
-            LearningStage:r.stage||r.LearningStage, OrderIndex:r.order||r.OrderIndex||i,
-            Level:r.level||r.Level, SentenceEN:r.sentence||r.SentenceEN,
-            SentenceTR:r.sentenceTr||r.SentenceTR, GrammarStructure:r.grammar||r.GrammarStructure||'',
-            Pattern:r.pattern||r.Pattern||'', Word:r.word||r.Word||'' };
-        }).filter(function(r){ return r.SentenceEN; });
-        if(state.rows.length){
-          document.getElementById('dataPill').textContent=state.rows.length+' cümle';
-          await loadDictionaries();
-          buildModules();
-          selectFirstAvailable();
-          renderAll();
-          toast('Ortak veri yüklendi');
-          loaded=true;
-        }
+    var sdb = await new Promise(function(res,rej){
+      var rq=indexedDB.open('wmStore',1);
+      rq.onupgradeneeded=function(){ try{ rq.result.createObjectStore('kv'); }catch(e){} };
+      rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ rej(rq.error); };
+    });
+    var rows = await new Promise(function(res){
+      try{ var tx=sdb.transaction('kv','readonly'); var g=tx.objectStore('kv').get('wmPathData');
+        g.onsuccess=function(){ res(g.result); }; g.onerror=function(){ res(null); }; }
+      catch(e){ res(null); }
+    });
+    if(Array.isArray(rows) && rows.length){
+      // bizim satır formatını yol.html formatına çevir (alan adları farklı)
+      state.rows = rows.map(function(r,i){
+        return { _id:(r.id||r.ID||('S'+i)), _row:i+2,
+          ID:r.id||r.ID, Module:r.module||r.Module, Part:r.part||r.Part,
+          LearningStage:r.stage||r.LearningStage, OrderIndex:r.order||r.OrderIndex||i,
+          Level:r.level||r.Level, SentenceEN:r.sentence||r.SentenceEN,
+          SentenceTR:r.sentenceTr||r.SentenceTR, GrammarStructure:r.grammar||r.GrammarStructure||'',
+          Pattern:r.pattern||r.Pattern||'', Word:r.word||r.Word||'' };
+      }).filter(function(r){ return r.SentenceEN; });
+      if(state.rows.length){
+        document.getElementById('dataPill').textContent=state.rows.length+' cümle';
+        await loadDictionaries(); buildModules(); selectFirstAvailable(); renderAll();
+        toast('Ortak veri yüklendi (index.html ile paylaşımlı)');
+        usedShared=true;
       }
-    }catch(e){}
+    }
+  }catch(e){}
+  if(!usedShared){
+    if(!(await tryAutoLoad())){renderAll();toast('data/TumData_Temiz.xlsx bulunamadı. Manuel Excel seçebilirsin.');}
   }
-
-  if(!loaded){
-    renderAll();
-    toast('data/TumData_Temiz.xlsx bulunamadı. Manuel Excel seçebilirsin.');
-  }
-
-  // Son güvenlik: sol paneli tekrar çiz.
-  setTimeout(()=>{try{ if(state.rows.length && (!state.modules||!state.modules.length)) buildModules(); renderLeft(); }catch(e){}},500);
 })();
 </script>
 
