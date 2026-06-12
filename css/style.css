@@ -1309,3 +1309,7 @@ svg.bico{stroke-width:2}
 .wc-nav-bar{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin-top:12px;padding:10px;background:var(--bg3);border:1.5px solid var(--border);border-radius:14px}
 .wc-nav-btn{min-width:48px;padding:10px 14px;font-size:16px;font-weight:800}
 .btn-icon{width:18px;height:18px;vertical-align:middle;flex:none;stroke:currentColor;fill:none}
+
+/* --- Kelime başlığı hover efekti (JS inline'dan CSS'e taşındı) --- */
+.wc-word{cursor:pointer;transition:transform .2s;}
+.wc-word:hover{transform:scale(1.05);}
