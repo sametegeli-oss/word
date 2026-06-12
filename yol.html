@@ -50,6 +50,47 @@
 .road-part-body{min-width:0}
 @media(max-width:850px){.road-head-card{position:relative;top:auto}.road-levels{gap:6px}.road-level{font-size:11px;padding:7px 9px}}
 
+
+/* ============================================================
+   v32 ROADMAP FORCE VISIBLE FIX
+   - Sol modül haritası her zaman görünür.
+   - Mobilde ders üstünde tam genişlik görünür.
+   - Tüm modüller/partlar kilitsizdir.
+   ============================================================ */
+#leftPanel{
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  min-height:120px !important;
+}
+.grid{
+  display:grid !important;
+  grid-template-columns:minmax(300px,360px) minmax(0,1fr) !important;
+  gap:14px !important;
+  align-items:start !important;
+}
+#leftPanel .module,
+#leftPanel .road-module,
+#leftPanel .part,
+#leftPanel .road-part{
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+}
+#leftPanel .road-part{
+  display:grid !important;
+}
+@media(max-width:900px){
+  .grid{
+    grid-template-columns:1fr !important;
+  }
+  #leftPanel{
+    order:-1 !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -286,35 +327,73 @@ function renderHeader(){const total=state.rows.length, done=state.rows.filter(r=
 function renderLeft(){
   const el=document.getElementById('leftPanel');
   if(!el) return;
-  if(!state.modules.length){
-    el.innerHTML=`<div class="card"><h2>Excel Veri Bankası</h2><p class="muted">Açılışta <span class="kbd">data/TumData_Temiz.xlsx</span> otomatik okunur. İstersen daha sonra Excel Yükle / Excel Değiştir ile manuel dosya seçebilirsin.</p><button class="btn" onclick="bootLoad()">Excel Seç</button></div>`;
+
+  // Modüller boşsa ama satırlar varsa yeniden kur.
+  if((!state.modules || !state.modules.length) && state.rows && state.rows.length){
+    try{ buildModules(); }catch(e){ console.warn('buildModules tekrar denenemedi',e); }
+  }
+
+  if(!state.modules || !state.modules.length){
+    el.innerHTML=`
+      <div class="card road-head-card">
+        <h2>🧭 Ders Haritası</h2>
+        <p class="muted">Modül verisi henüz oluşmadı.</p>
+        <p class="muted small">Açılışta <span class="kbd">data/TumData_Temiz.xlsx</span> otomatik yüklenir. Yüklenmezse manuel seç.</p>
+        <button class="btn" onclick="bootLoad()">Excel Seç</button>
+      </div>`;
     return;
   }
-  const allLevels=[...new Set(state.modules.map(m=>cleanText(m.level||'Seviye Yok')).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'tr',{numeric:true}));
+
+  const levelName=(m)=>cleanText(m.level||String(m.name||'').match(/^[A-C][12]/i)?.[0]||'Seviye Yok').toUpperCase();
+  const allLevels=[...new Set(state.modules.map(levelName).filter(Boolean))]
+    .sort((a,b)=>String(a).localeCompare(String(b),'tr',{numeric:true}));
+
   if(!window.__roadLevel) window.__roadLevel='ALL';
   const activeLevel=window.__roadLevel||'ALL';
-  const visibleModules=activeLevel==='ALL'?state.modules:state.modules.filter(m=>cleanText(m.level||'Seviye Yok')===activeLevel);
+  const visibleModules=activeLevel==='ALL'
+    ? state.modules
+    : state.modules.filter(m=>levelName(m)===activeLevel);
+
   const totalRows=visibleModules.reduce((sum,m)=>sum+m.parts.reduce((s,p)=>s+p.rows.length,0),0);
   const doneRows=visibleModules.reduce((sum,m)=>sum+m.parts.reduce((s,p)=>s+p.rows.filter(r=>isKnown(r._id)).length,0),0);
   const pct=totalRows?Math.round(doneRows/totalRows*100):0;
+
   const levelOptions=`<button class="road-level ${activeLevel==='ALL'?'active':''}" onclick="setRoadLevel('ALL')">Tümü</button>`+
-    allLevels.map(l=>`<button class="road-level ${activeLevel===l?'active':''}" onclick="setRoadLevel('${String(l).replace(/'/g,"\'")}')">${escapeHTML(l)}</button>`).join('');
+    allLevels.map(l=>`<button class="road-level ${activeLevel===l?'active':''}" onclick="setRoadLevel('${String(l).replace(/'/g,"\\'")}')">${escapeHTML(l)}</button>`).join('');
+
   el.innerHTML=`
     <div class="card road-head-card">
       <h2>🧭 Ders Haritası</h2>
-      <p class="muted small">Tüm seviyeler ve modüller açıktır. Hiçbir modül kilitli değildir.</p>
+      <p class="muted small">Tüm modüller açıktır. Kilit yok. İstediğin seviyeyi ve partı seçebilirsin.</p>
       <div class="road-levels">${levelOptions}</div>
       <div class="road-summary"><span>${escapeHTML(activeLevel==='ALL'?'Tüm Seviyeler':activeLevel)}</span><b>${doneRows}/${totalRows}</b></div>
       <div class="road-progress"><div style="width:${pct}%"></div></div>
     </div>`+
-    (visibleModules.length?visibleModules.map((m,miVisible)=>{
+    (visibleModules.length?visibleModules.map((m)=>{
       const mi=state.modules.indexOf(m);
       const modDone=m.parts.filter(partComplete).length;
-      return `<div class="module road-module open"><div class="module-head road-module-head"><div><b>${escapeHTML(m.name)}</b><div class="muted small">${escapeHTML(m.level||'')}</div></div><span class="pill">${modDone}/${m.parts.length}</span></div><div class="road-parts">${m.parts.map((p,pi)=>{const done=partComplete(p),act=state.activePart?.p===p;const known=p.rows.filter(r=>isKnown(r._id)).length;return `<div class="part road-part ${done?'done':''} ${act?'active':''}" onclick="selectPart(${mi},${pi})"><div class="road-dot">${done?'✓':act?'●':'○'}</div><div class="road-part-body"><div class="row" style="justify-content:space-between"><b>${escapeHTML(p.name)}</b><span class="pill">${known}/${p.rows.length}</span></div><div class="muted small">${escapeHTML(p.stage||'Seçilebilir')}</div></div></div>`}).join('')}</div></div>`;
+      return `<div class="module road-module open">
+        <div class="module-head road-module-head">
+          <div><b>${escapeHTML(m.name)}</b><div class="muted small">${escapeHTML(levelName(m))}</div></div>
+          <span class="pill">${modDone}/${m.parts.length}</span>
+        </div>
+        <div class="road-parts">
+          ${m.parts.map((p,pi)=>{
+            const done=partComplete(p), act=state.activePart?.p===p;
+            const known=p.rows.filter(r=>isKnown(r._id)).length;
+            return `<div class="part road-part ${done?'done':''} ${act?'active':''}" onclick="selectPart(${mi},${pi})">
+              <div class="road-dot">${done?'✓':act?'●':'○'}</div>
+              <div class="road-part-body">
+                <div class="row" style="justify-content:space-between"><b>${escapeHTML(p.name)}</b><span class="pill">${known}/${p.rows.length}</span></div>
+                <div class="muted small">${escapeHTML(p.stage||'Seçilebilir')}</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
     }).join(''):`<div class="card"><p class="muted">Bu seviyede modül bulunamadı.</p></div>`);
 }
-function setRoadLevel(level){window.__roadLevel=level||'ALL';renderLeft();}
-window.setRoadLevel=setRoadLevel;
+function setRoadLevel(level){window.__roadLevel=level||'ALL';renderLeft();try{document.getElementById('leftPanel')?.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}} window.setRoadLevel=setRoadLevel;
 function screen(name){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+name).classList.add('active');document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.screen===name));}
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>screen(t.dataset.screen));
 
@@ -369,42 +448,61 @@ async function explainWordAI(word){const k=baseWord(word);const d=state.dict.get
 function exportProgress(){const data={stats:state.stats,progress:[...state.progress.values()]};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='dil-haritasi-progress-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 async function resetProgress(){if(!confirm('Tüm IndexedDB ilerlemesi silinsin mi?'))return;await dbClear('progress');state.progress.clear();state.stats={xp:0,streak:0,lastDay:null};await dbPut('stats',{id:'main',...state.stats});buildLessonQueue();renderAll();toast('İlerleme sıfırlandı.');}
 
-(async function init(){await loadProgress();
-  /* ORTAK VERİ: index.html'in indirdiği TumData'yı (wmStore IDB) paylaş.
-     Varsa tekrar indirme YOK — yol.html ↔ index.html aynı veriyi kullanır. */
-  var usedShared=false;
+(async function init(){
+  await loadProgress();
+
+  // v32: Önce gerçek Excel dosyasını doğrudan yükle.
+  // Böylece index.html/wmStore eksik ya da bozuk olsa bile modül haritası oluşur.
+  let loaded=false;
   try{
-    var sdb = await new Promise(function(res,rej){
-      var rq=indexedDB.open('wmStore',1);
-      rq.onupgradeneeded=function(){ try{ rq.result.createObjectStore('kv'); }catch(e){} };
-      rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ rej(rq.error); };
-    });
-    var rows = await new Promise(function(res){
-      try{ var tx=sdb.transaction('kv','readonly'); var g=tx.objectStore('kv').get('wmPathData');
-        g.onsuccess=function(){ res(g.result); }; g.onerror=function(){ res(null); }; }
-      catch(e){ res(null); }
-    });
-    if(Array.isArray(rows) && rows.length){
-      // bizim satır formatını yol.html formatına çevir (alan adları farklı)
-      state.rows = rows.map(function(r,i){
-        return { _id:(r.id||r.ID||('S'+i)), _row:i+2,
-          ID:r.id||r.ID, Module:r.module||r.Module, Part:r.part||r.Part,
-          LearningStage:r.stage||r.LearningStage, OrderIndex:r.order||r.OrderIndex||i,
-          Level:r.level||r.Level, SentenceEN:r.sentence||r.SentenceEN,
-          SentenceTR:r.sentenceTr||r.SentenceTR, GrammarStructure:r.grammar||r.GrammarStructure||'',
-          Pattern:r.pattern||r.Pattern||'', Word:r.word||r.Word||'' };
-      }).filter(function(r){ return r.SentenceEN; });
-      if(state.rows.length){
-        document.getElementById('dataPill').textContent=state.rows.length+' cümle';
-        await loadDictionaries(); buildModules(); selectFirstAvailable(); renderAll();
-        toast('Ortak veri yüklendi (index.html ile paylaşımlı)');
-        usedShared=true;
-      }
-    }
-  }catch(e){}
-  if(!usedShared){
-    if(!(await tryAutoLoad())){renderAll();toast('data/TumData_Temiz.xlsx bulunamadı. Manuel Excel seçebilirsin.');}
+    loaded = await tryAutoLoad();
+  }catch(e){
+    console.warn('Doğrudan TumData yükleme denenemedi:', e);
+    loaded=false;
   }
+
+  // Doğrudan Excel yüklenmezse ortak wmStore verisini dene.
+  if(!loaded){
+    try{
+      var sdb = await new Promise(function(res,rej){
+        var rq=indexedDB.open('wmStore',1);
+        rq.onupgradeneeded=function(){ try{ rq.result.createObjectStore('kv'); }catch(e){} };
+        rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ rej(rq.error); };
+      });
+      var rows = await new Promise(function(res){
+        try{ var tx=sdb.transaction('kv','readonly'); var g=tx.objectStore('kv').get('wmPathData');
+          g.onsuccess=function(){ res(g.result); }; g.onerror=function(){ res(null); }; }
+        catch(e){ res(null); }
+      });
+      if(Array.isArray(rows) && rows.length){
+        state.rows = rows.map(function(r,i){
+          return { _id:(r.id||r.ID||('S'+i)), _row:i+2,
+            ID:r.id||r.ID, Module:r.module||r.Module, Part:r.part||r.Part,
+            LearningStage:r.stage||r.LearningStage, OrderIndex:r.order||r.OrderIndex||i,
+            Level:r.level||r.Level, SentenceEN:r.sentence||r.SentenceEN,
+            SentenceTR:r.sentenceTr||r.SentenceTR, GrammarStructure:r.grammar||r.GrammarStructure||'',
+            Pattern:r.pattern||r.Pattern||'', Word:r.word||r.Word||'' };
+        }).filter(function(r){ return r.SentenceEN; });
+        if(state.rows.length){
+          document.getElementById('dataPill').textContent=state.rows.length+' cümle';
+          await loadDictionaries();
+          buildModules();
+          selectFirstAvailable();
+          renderAll();
+          toast('Ortak veri yüklendi');
+          loaded=true;
+        }
+      }
+    }catch(e){}
+  }
+
+  if(!loaded){
+    renderAll();
+    toast('data/TumData_Temiz.xlsx bulunamadı. Manuel Excel seçebilirsin.');
+  }
+
+  // Son güvenlik: sol paneli tekrar çiz.
+  setTimeout(()=>{try{ if(state.rows.length && (!state.modules||!state.modules.length)) buildModules(); renderLeft(); }catch(e){}},500);
 })();
 </script>
 
