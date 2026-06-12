@@ -91,7 +91,7 @@
 
 
 
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=menu-fix-1">
 <link rel="manifest" href="manifest.webmanifest">
 
 <!-- MODERN UI PATCH v1 - eski mavi düğmeleri menü kartı tarzına çevirir -->
@@ -4161,7 +4161,7 @@ button[style*="position: fixed"]{
 <button class="bnav-btn" id="bn-daily" onclick="switchTab('daily')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-sun"/></svg>Bugün</button>
 <button class="bnav-btn" id="bn-languageMap" onclick="window.open('dil_haritasi_v1.html','_blank')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-map"/></svg>Dil Haritası</button>
 <button class="bnav-btn" id="bn-pronstandalone" onclick="switchTab('pronstandalone')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-mic"/></svg>Telaffuz</button>
-<button class="bnav-btn" id="bn-word" onclick="switchTab('word')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-book"/></svg>Kelime</button>
+<button class="bnav-btn active" id="bn-word" onclick="switchTab('word')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-book"/></svg>Kelime</button>
 <button class="bnav-btn" id="bn-learned" onclick="switchTab('learned')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-list"/></svg>Liste</button>
 <button class="bnav-btn" id="bn-stats" onclick="switchTab('stats')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-chart"/></svg>İstatistik</button>
 <button class="bnav-btn" id="bn-ai" onclick="switchTab('ai')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-bot"/></svg>AI</button>
@@ -4620,7 +4620,7 @@ button[style*="position: fixed"]{
 
 
   <script src="js/vocab-data.js"></script>
-  <script src="js/legacy-app.js"></script>
+  <script src="js/legacy-app.js?v=menu-fix-1"></script>
   <script src="js/sentence-mode-core.js"></script>
   <script src="js/app.js"></script>
 <script src="js/free_features.js"></script>
@@ -4632,203 +4632,4 @@ button[style*="position: fixed"]{
 <!-- RIGHT SLIDE PANEL TOOLS FIX -->
 
 <!-- Sentence Mode v1.2 clean: duplicate inline repair blocks removed -->
-
-
-<!-- WORD POPUP EXAMPLES + STARTUP MENU FIX v1 -->
-<script id="word-popup-examples-menu-fix-v1">
-(function(){
-  'use strict';
-
-  const EXCEL_URLS = [
-    'data/TumData_Temiz.xlsx',
-    './data/TumData_Temiz.xlsx',
-    'https://raw.githubusercontent.com/sametegeli-oss/word/main/data/TumData_Temiz.xlsx'
-  ];
-
-  let __wmTumRowsPromise = null;
-  let __lastPopupWord = '';
-
-  function cleanText(v){ return String(v == null ? '' : v).replace(/\s+/g,' ').trim(); }
-  function normKey(k){ return String(k || '').toLowerCase().replace(/[\s_\-.ğüşıöçİĞÜŞÖÇ]/g, function(ch){
-    return {'ğ':'g','ü':'u','ş':'s','ı':'i','ö':'o','ç':'c','İ':'i','Ğ':'g','Ü':'u','Ş':'s','Ö':'o','Ç':'c'}[ch] || '';
-  }); }
-  function escapeHtml(v){
-    return cleanText(v).replace(/[&<>'"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]; });
-  }
-  function getField(row, names){
-    if(!row) return '';
-    for(const n of names){ if(row[n] != null && cleanText(row[n])) return row[n]; }
-    const wanted = names.map(normKey);
-    for(const k of Object.keys(row)){
-      if(wanted.includes(normKey(k)) && cleanText(row[k])) return row[k];
-    }
-    return '';
-  }
-  function wordForms(word){
-    const w = cleanText(word).toLowerCase().replace(/[^a-z]/g,'');
-    const set = new Set();
-    if(!w) return [];
-    set.add(w);
-    if(w.endsWith('ing') && w.length > 5){
-      const b = w.slice(0,-3); set.add(b); set.add(b+'e'); set.add(b+'ed'); set.add(b+'d'); set.add(b+'s');
-    }
-    if(w.endsWith('ed') && w.length > 4){
-      const b = w.slice(0,-2); set.add(b); set.add(b+'e'); set.add(b+'ing'); set.add(b+'s');
-    }
-    if(w.endsWith('s') && w.length > 3){ set.add(w.slice(0,-1)); }
-    return Array.from(set).filter(Boolean);
-  }
-  function sentenceHasWord(sentence, forms){
-    const s = ' ' + cleanText(sentence).toLowerCase().replace(/[^a-z']/g,' ') + ' ';
-    return forms.some(f => new RegExp('(^|\\s)' + f.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + "('s)?(?=\\s|$)").test(s));
-  }
-  async function loadTumRows(){
-    if(__wmTumRowsPromise) return __wmTumRowsPromise;
-    __wmTumRowsPromise = (async function(){
-      if(!window.XLSX){ return []; }
-      let lastErr = null;
-      for(const url of EXCEL_URLS){
-        try{
-          const res = await fetch(url, {cache:'force-cache'});
-          if(!res.ok) throw new Error('HTTP '+res.status+' '+url);
-          const buf = await res.arrayBuffer();
-          const wb = XLSX.read(buf, {type:'array'});
-          const rows = [];
-          wb.SheetNames.forEach(name => {
-            const sh = wb.Sheets[name];
-            const arr = XLSX.utils.sheet_to_json(sh, {defval:''});
-            arr.forEach(r => rows.push(r));
-          });
-          return rows;
-        }catch(e){ lastErr = e; }
-      }
-      console.warn('TumData_Temiz.xlsx örnek cümle için okunamadı:', lastErr);
-      return [];
-    })();
-    return __wmTumRowsPromise;
-  }
-  function getGlobalRows(){
-    const known = ['DATA','data','words','allWords','currentWords','sentences','allSentences','learningData','learningPathData','tumDataRows','TUMDATA','vocabData','vocabulary'];
-    const out=[]; const seen=new Set();
-    function addArray(arr){
-      if(!Array.isArray(arr) || seen.has(arr)) return;
-      seen.add(arr);
-      if(arr.length && typeof arr[0] === 'object') out.push(arr);
-    }
-    known.forEach(k => addArray(window[k]));
-    try{
-      Object.keys(window).slice(0,1500).forEach(k => {
-        const v = window[k];
-        if(Array.isArray(v) && v.length && v.length < 80000 && typeof v[0] === 'object'){
-          const sample = v[0] || {};
-          const keys = Object.keys(sample).map(normKey).join('|');
-          if(/sentence|cumle|english|turkish|translation|word/.test(keys)) addArray(v);
-        }
-      });
-    }catch(e){}
-    return out.flat();
-  }
-  function findPopupWord(popup){
-    const selectors = ['.sp-word-display','.popup-word','.word-title','.word-head','.pron-word','[data-word]','h1','h2','h3','strong'];
-    for(const sel of selectors){
-      const el = popup.querySelector(sel);
-      if(!el) continue;
-      const dataWord = el.getAttribute && el.getAttribute('data-word');
-      const txt = cleanText(dataWord || el.textContent || '');
-      const m = txt.match(/[A-Za-z][A-Za-z'\-]{1,}/);
-      if(m && !/ipa|play|slow|fast|anlam|syllable|kelime|cümle/i.test(m[0])) return m[0].replace(/[^A-Za-z']/g,'');
-    }
-    if(window.currentWord){
-      if(typeof window.currentWord === 'string') return window.currentWord;
-      return cleanText(window.currentWord.word || window.currentWord.Word || window.currentWord.English || window.currentWord.Highlight || '');
-    }
-    return __lastPopupWord;
-  }
-  function candidatePopups(){
-    const list = Array.from(document.querySelectorAll(
-      '.pronunciation-popup, #wm-pronunciation-popup-container .pronunciation-popup, .word-popup, .wm-word-popup, .dict-popup, .popup-card, [id*="pronunciation" i], [id*="popup" i]'
-    ));
-    return list.filter(el => {
-      if(!el || el.id === 'pwaInstallBar') return false;
-      const st = getComputedStyle(el);
-      if(st.display === 'none' || st.visibility === 'hidden') return false;
-      const r = el.getBoundingClientRect();
-      return r.width > 180 && r.height > 120 && (el.textContent || '').length > 20;
-    });
-  }
-  function renderBox(popup, word, rows, loading){
-    if(!word) return;
-    let box = popup.querySelector('.wm-word-sentence-examples');
-    if(!box){
-      box = document.createElement('div');
-      box.className = 'wm-word-sentence-examples';
-      popup.appendChild(box);
-    }
-    box.setAttribute('data-word', word.toLowerCase());
-    if(loading){
-      box.innerHTML = '<div class="wm-wse-title">Bu kelimenin geçtiği cümleler</div><div class="wm-wse-empty">Cümleler yükleniyor...</div>';
-      return;
-    }
-    if(!rows.length){
-      box.innerHTML = '<div class="wm-wse-title">Bu kelimenin geçtiği cümleler</div><div class="wm-wse-empty">Bu kelime için örnek cümle bulunamadı.</div>';
-      return;
-    }
-    box.innerHTML = '<div class="wm-wse-title">Bu kelimenin geçtiği cümleler</div>' + rows.map(r => {
-      const en = escapeHtml(getField(r, ['sentence','Sentence','SENTENCE','SentenceEN','sentenceEN','EnglishSentence','English Sentence','EN','English','CumleEN','Cümle EN']));
-      const tr = escapeHtml(getField(r, ['sentenceTr','SentenceTR','SENTENCETR','SentenceTr','TurkishSentence','Turkish Sentence','TR','Turkish','Translation','translation','Türkçe','Turkce','CumleTR','Cümle TR']));
-      return '<div class="wm-wse-card"><div class="wm-wse-en">'+en+'</div>'+(tr ? '<div class="wm-wse-tr">'+tr+'</div>' : '')+'</div>';
-    }).join('');
-  }
-  async function updatePopup(popup){
-    const word = cleanText(findPopupWord(popup));
-    if(!word || word.length < 2) return;
-    __lastPopupWord = word;
-    const existing = popup.querySelector('.wm-word-sentence-examples');
-    if(existing && existing.getAttribute('data-word') === word.toLowerCase()) return;
-    renderBox(popup, word, [], true);
-    const forms = wordForms(word);
-    let rows = getGlobalRows();
-    let matches = rows.filter(r => sentenceHasWord(getField(r, ['sentence','Sentence','SENTENCE','SentenceEN','sentenceEN','EnglishSentence','English Sentence','EN','English']), forms));
-    if(matches.length < 3){
-      rows = await loadTumRows();
-      matches = rows.filter(r => sentenceHasWord(getField(r, ['sentence','Sentence','SENTENCE','SentenceEN','sentenceEN','EnglishSentence','English Sentence','EN','English']), forms));
-    }
-    const clean = [];
-    const seen = new Set();
-    matches.forEach(r => {
-      const en = cleanText(getField(r, ['sentence','Sentence','SENTENCE','SentenceEN','sentenceEN','EnglishSentence','English Sentence','EN','English']));
-      if(!en || seen.has(en.toLowerCase())) return;
-      seen.add(en.toLowerCase()); clean.push(r);
-    });
-    renderBox(popup, word, clean.slice(0,8), false);
-  }
-  function scanPopups(){ candidatePopups().forEach(p => updatePopup(p)); }
-
-  function forceMenuScreen(){
-    const menu = document.getElementById('sc-menu');
-    if(!menu) return;
-    document.querySelectorAll('.screen').forEach(sc => sc.classList.remove('active'));
-    menu.classList.add('active');
-    document.querySelectorAll('.bnav-btn.active').forEach(b => b.classList.remove('active'));
-    const folder = document.getElementById('folder-selection-screen');
-    if(folder) folder.style.display = 'none';
-  }
-  function startupMenuFix(){
-    if(location.hash && location.hash.length > 1) return;
-    [0, 120, 450, 1000, 1800].forEach(ms => setTimeout(forceMenuScreen, ms));
-  }
-
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', startupMenuFix);
-  }else{
-    startupMenuFix();
-  }
-  window.addEventListener('load', function(){ startupMenuFix(); setTimeout(scanPopups, 300); });
-  const obs = new MutationObserver(function(){ scanPopups(); });
-  if(document.body) obs.observe(document.body, {childList:true, subtree:true});
-  setInterval(scanPopups, 1200);
-})();
-</script>
-<!-- /WORD POPUP EXAMPLES + STARTUP MENU FIX v1 -->
-
 </body></html>
