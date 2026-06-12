@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-<title>Yol Haritası v30 • Stable Click + Groq Lab</title>
+<title>Yol Haritası v31 • Tüm Modüller Açık</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Word reposundaki çalışan özellik köprüleri: sözlük lookup, görsel arama, alternatif seçici, shadow panel -->
 <script src="./fixes.js"></script>
@@ -28,6 +28,28 @@
 .sentence .tok{display:inline-block;transition:.15s;position:relative}
 .sentence .tok:hover{transform:translateY(-1px);text-decoration:underline;text-underline-offset:4px}
 .word-chip.role-chip{border-color:rgba(56,189,248,.25)}
+
+
+/* ROADMAP UNLOCKED LEVEL UI FIX */
+.road-head-card{position:sticky;top:8px;z-index:3}
+.road-levels{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 12px}
+.road-level{border:1px solid rgba(148,163,184,.20);background:#101c2e;color:#dbeafe;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;cursor:pointer}
+.road-level.active{background:linear-gradient(135deg,#334155,#1e293b);border-color:rgba(56,189,248,.55);color:#67e8f9;box-shadow:0 0 0 2px rgba(56,189,248,.08)}
+.road-summary{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut);margin-top:8px}
+.road-progress{height:9px;background:#162033;border-radius:999px;overflow:hidden;margin-top:8px;border:1px solid rgba(148,163,184,.10)}
+.road-progress>div{height:100%;background:linear-gradient(90deg,var(--green),var(--cyan),var(--purple));transition:.25s}
+.road-module{display:block!important;overflow:visible!important;background:rgba(13,23,40,.96)!important}
+.road-module-head{cursor:default!important;position:relative}
+.road-parts{display:block!important;position:relative;margin:0 0 10px 0;padding:0 0 0 6px}
+.road-parts:before{content:"";position:absolute;left:26px;top:4px;bottom:4px;width:2px;background:linear-gradient(180deg,rgba(56,189,248,.45),rgba(139,92,246,.25));border-radius:999px}
+.road-part{display:grid!important;grid-template-columns:34px 1fr;gap:8px;align-items:stretch;opacity:1!important;filter:none!important;cursor:pointer!important;background:#111d30!important}
+.road-part.locked{opacity:1!important;filter:none!important}
+.road-dot{position:relative;z-index:1;width:28px;height:28px;margin-top:2px;border-radius:999px;display:grid;place-items:center;background:#0b1525;border:1px solid rgba(56,189,248,.35);color:#67e8f9;font-weight:950;font-size:13px}
+.road-part.done .road-dot{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.6);color:#86efac}
+.road-part.active .road-dot{background:rgba(56,189,248,.18);border-color:#67e8f9;color:#e0f2fe;box-shadow:0 0 0 4px rgba(56,189,248,.08)}
+.road-part-body{min-width:0}
+@media(max-width:850px){.road-head-card{position:relative;top:auto}.road-levels{gap:6px}.road-level{font-size:11px;padding:7px 9px}}
+
 </style>
 </head>
 <body>
@@ -253,15 +275,46 @@ function buildModules(){const map=new Map();state.rows.forEach(r=>{const mod=r.M
 function partNo(p){const m=String(p).match(/P\s*(\d+)/i);return m?+m[1]:999;}
 function partKey(m,p){return (m.name+'__'+p.name).replace(/\W+/g,'_');}
 function partComplete(p){return p.rows.length>0 && p.rows.every(r=>isKnown(r._id));}
-function partUnlocked(m,p){ return true; }
+function partUnlocked(m,p){return true;}
 function selectFirstAvailable(){for(const m of state.modules){for(const p of m.parts){if(partUnlocked(m,p)&&!partComplete(p)){state.activePart={m,p};buildLessonQueue();return;}}} if(state.modules[0]){state.activePart={m:state.modules[0],p:state.modules[0].parts[0]};buildLessonQueue();}}
-function selectPart(mi,pi){const m=state.modules[mi],p=m.parts[pi]; if(!m||!p){toast('Ders bulunamadı.');return;} if(!partUnlocked(m,p)){toast('Önce önceki parçayı bitirmelisin.');return;} state.activePart={m,p}; state.activeIndex=0; buildLessonQueue(); if(typeof screen==='function') screen('lesson'); renderAll(); setTimeout(()=>{try{document.getElementById('screen-lesson')?.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);}
+function selectPart(mi,pi){const m=state.modules[mi],p=m&&m.parts?m.parts[pi]:null; if(!m||!p){toast('Ders bulunamadı.');return;} state.activePart={m,p}; state.activeIndex=0; buildLessonQueue(); if(typeof screen==='function') screen('lesson'); renderAll(); setTimeout(()=>{try{document.getElementById('screen-lesson')?.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);}
 function buildLessonQueue(){const p=state.activePart?.p;state.lessonQueue=(p?.rows||[]).filter(r=>!isKnown(r._id)).sort((a,b)=>(+a.OrderIndex||0)-(+b.OrderIndex||0));state.activeIndex=Math.min(state.activeIndex,Math.max(0,state.lessonQueue.length-1));}
 function activeRow(){return state.lessonQueue[state.activeIndex];}
 
 function renderAll(){renderHeader();renderLeft();renderLesson();renderDict();renderReview();renderProgress();renderTools();}
 function renderHeader(){const total=state.rows.length, done=state.rows.filter(r=>isKnown(r._id)).length;document.getElementById('overallBar').style.width=total?Math.round(done/total*100)+'%':'0%';document.getElementById('levelPill').textContent=(state.activePart?.m?.level||'A1')+' • '+done+'/'+total;document.getElementById('xpPill').textContent=(state.stats.xp||0)+' XP';document.getElementById('streakPill').textContent='🔥 '+(state.stats.streak||0)+' gün';}
-function renderLeft(){const el=document.getElementById('leftPanel');if(!state.modules.length){el.innerHTML=`<div class="card"><h2>Excel Veri Bankası</h2><p class="muted">Açılışta <span class="kbd">data/TumData_Temiz.xlsx</span> otomatik okunur. İstersen daha sonra Excel Yükle / Excel Değiştir ile manuel dosya seçebilirsin.</p><button class="btn" onclick="bootLoad()">Excel Seç</button></div>`;return;} el.innerHTML=`<div class="card"><h2>🧭 Ders Haritası</h2><p class="muted small">Module → Part yapısı Excel başlıklarından oluşur. İlerleme IndexedDB’dedir.</p></div>`+state.modules.map((m,mi)=>`<div class="module"><div class="module-head"><b>${escapeHTML(m.name)}</b><span class="pill">${m.parts.filter(partComplete).length}/${m.parts.length}</span></div>${m.parts.map((p,pi)=>{const locked=!partUnlocked(m,p),done=partComplete(p),act=state.activePart?.p===p;return `<div class="part ${locked?'locked':''} ${done?'done':''} ${act?'active':''}" onclick="selectPart(${mi},${pi})"><div class="row" style="justify-content:space-between"><b>${done?'✅':locked?'🔒':'🔵'} ${escapeHTML(p.name)}</b><span class="pill">${p.rows.filter(r=>isKnown(r._id)).length}/${p.rows.length}</span></div><div class="muted small">${escapeHTML(p.stage||'')}</div></div>`}).join('')}</div>`).join('');}
+function renderLeft(){
+  const el=document.getElementById('leftPanel');
+  if(!el) return;
+  if(!state.modules.length){
+    el.innerHTML=`<div class="card"><h2>Excel Veri Bankası</h2><p class="muted">Açılışta <span class="kbd">data/TumData_Temiz.xlsx</span> otomatik okunur. İstersen daha sonra Excel Yükle / Excel Değiştir ile manuel dosya seçebilirsin.</p><button class="btn" onclick="bootLoad()">Excel Seç</button></div>`;
+    return;
+  }
+  const allLevels=[...new Set(state.modules.map(m=>cleanText(m.level||'Seviye Yok')).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'tr',{numeric:true}));
+  if(!window.__roadLevel) window.__roadLevel='ALL';
+  const activeLevel=window.__roadLevel||'ALL';
+  const visibleModules=activeLevel==='ALL'?state.modules:state.modules.filter(m=>cleanText(m.level||'Seviye Yok')===activeLevel);
+  const totalRows=visibleModules.reduce((sum,m)=>sum+m.parts.reduce((s,p)=>s+p.rows.length,0),0);
+  const doneRows=visibleModules.reduce((sum,m)=>sum+m.parts.reduce((s,p)=>s+p.rows.filter(r=>isKnown(r._id)).length,0),0);
+  const pct=totalRows?Math.round(doneRows/totalRows*100):0;
+  const levelOptions=`<button class="road-level ${activeLevel==='ALL'?'active':''}" onclick="setRoadLevel('ALL')">Tümü</button>`+
+    allLevels.map(l=>`<button class="road-level ${activeLevel===l?'active':''}" onclick="setRoadLevel('${String(l).replace(/'/g,"\'")}')">${escapeHTML(l)}</button>`).join('');
+  el.innerHTML=`
+    <div class="card road-head-card">
+      <h2>🧭 Ders Haritası</h2>
+      <p class="muted small">Tüm seviyeler ve modüller açıktır. Hiçbir modül kilitli değildir.</p>
+      <div class="road-levels">${levelOptions}</div>
+      <div class="road-summary"><span>${escapeHTML(activeLevel==='ALL'?'Tüm Seviyeler':activeLevel)}</span><b>${doneRows}/${totalRows}</b></div>
+      <div class="road-progress"><div style="width:${pct}%"></div></div>
+    </div>`+
+    (visibleModules.length?visibleModules.map((m,miVisible)=>{
+      const mi=state.modules.indexOf(m);
+      const modDone=m.parts.filter(partComplete).length;
+      return `<div class="module road-module open"><div class="module-head road-module-head"><div><b>${escapeHTML(m.name)}</b><div class="muted small">${escapeHTML(m.level||'')}</div></div><span class="pill">${modDone}/${m.parts.length}</span></div><div class="road-parts">${m.parts.map((p,pi)=>{const done=partComplete(p),act=state.activePart?.p===p;const known=p.rows.filter(r=>isKnown(r._id)).length;return `<div class="part road-part ${done?'done':''} ${act?'active':''}" onclick="selectPart(${mi},${pi})"><div class="road-dot">${done?'✓':act?'●':'○'}</div><div class="road-part-body"><div class="row" style="justify-content:space-between"><b>${escapeHTML(p.name)}</b><span class="pill">${known}/${p.rows.length}</span></div><div class="muted small">${escapeHTML(p.stage||'Seçilebilir')}</div></div></div>`}).join('')}</div></div>`;
+    }).join(''):`<div class="card"><p class="muted">Bu seviyede modül bulunamadı.</p></div>`);
+}
+function setRoadLevel(level){window.__roadLevel=level||'ALL';renderLeft();}
+window.setRoadLevel=setRoadLevel;
 function screen(name){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+name).classList.add('active');document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.screen===name));}
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>screen(t.dataset.screen));
 
