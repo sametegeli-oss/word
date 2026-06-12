@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-<title>Yol Haritası v35 • Modül Haritası Zorunlu</title>
+<title>Yol Haritası v36 • Modüller Ayrı Ekran</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Word reposundaki çalışan özellik köprüleri: sözlük lookup, görsel arama, alternatif seçici, shadow panel -->
 <script src="./fixes.js"></script>
@@ -2790,5 +2790,144 @@ body.yol-lesson-panel-open #yolQuickLessonBtn{display:none!important}
   });
   setTimeout(boot,300);
   setTimeout(boot,1500);
+})();
+</script>
+
+
+<style id="yol-v36-separate-modules-style">
+/* v36: Modüller çalışma ekranından ayrıldı */
+#yolV35Map{
+  display:none !important;
+}
+body.yol-show-modules #yolV35Map{
+  display:block !important;
+}
+body.yol-show-modules .grid{
+  display:none !important;
+}
+body.yol-show-modules .tabs{
+  display:none !important;
+}
+body.yol-show-modules{
+  padding-bottom:20px !important;
+}
+#yolV36BackToLesson{
+  position:sticky;
+  top:8px;
+  z-index:9999;
+  display:none;
+  max-width:1120px;
+  margin:10px auto;
+  padding:0 16px;
+}
+body.yol-show-modules #yolV36BackToLesson{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.yol-v36-back-btn{
+  border:1px solid rgba(148,163,184,.25);
+  background:#101c2e;
+  color:#e0f2fe;
+  border-radius:16px;
+  padding:10px 14px;
+  font-weight:950;
+  cursor:pointer;
+}
+.yol-v36-hint{
+  color:#93a4ba;
+  font-size:12px;
+  font-weight:800;
+}
+.yol-v35-toggle{
+  display:block !important;
+}
+</style>
+
+
+<script id="yol-v36-separate-modules-script">
+/* ============================================================
+   v36: Modül haritası ayrı ekran.
+   - Ders ekranında modül haritası görünmez.
+   - Sağdaki/üstteki "🧭 Modüller" düğmesi modül ekranını açar.
+   - Modül seçince otomatik ders ekranına döner.
+   ============================================================ */
+(function(){
+  console.log('✅ yol.html v36 SEPARATE_MODULE_SCREEN yüklendi');
+
+  function ensureBackBar(){
+    var bar=document.getElementById('yolV36BackToLesson');
+    if(bar) return bar;
+    bar=document.createElement('div');
+    bar.id='yolV36BackToLesson';
+    bar.innerHTML='<button class="yol-v36-back-btn" onclick="window.yolV36ShowLesson()">← Derse Dön</button><span class="yol-v36-hint">Modül seçince çalışma ekranı otomatik açılır.</span>';
+    var map=document.getElementById('yolV35Map');
+    if(map && map.parentNode) map.parentNode.insertBefore(bar,map);
+    else document.body.insertBefore(bar,document.body.firstChild);
+    return bar;
+  }
+
+  window.yolV36ShowModules=function(){
+    ensureBackBar();
+    document.body.classList.add('yol-show-modules');
+    if(typeof window.yolV35RenderMap==='function') window.yolV35RenderMap();
+    setTimeout(function(){
+      var map=document.getElementById('yolV35Map');
+      if(map) map.scrollIntoView({behavior:'smooth',block:'start'});
+    },80);
+  };
+
+  window.yolV36ShowLesson=function(){
+    document.body.classList.remove('yol-show-modules');
+    try{
+      if(typeof screen==='function') screen('lesson');
+      document.querySelector('.grid')?.scrollIntoView({behavior:'smooth',block:'start'});
+    }catch(e){}
+  };
+
+  function patchToggle(){
+    var btn=document.getElementById('yolV35Toggle');
+    if(btn){
+      btn.onclick=function(){
+        window.yolV36ShowModules();
+      };
+      btn.textContent='🧭 Modüller';
+    }
+  }
+
+  function patchSelectPart(){
+    try{
+      if(typeof selectPart==='function' && !window.__yolV36SelectPatched){
+        window.__yolV36SelectPatched=true;
+        var old=selectPart;
+        selectPart=function(mi,pi){
+          var r=old.apply(this,arguments);
+          setTimeout(function(){
+            document.body.classList.remove('yol-show-modules');
+            try{
+              if(typeof screen==='function') screen('lesson');
+              document.querySelector('.grid')?.scrollIntoView({behavior:'smooth',block:'start'});
+            }catch(e){}
+          },120);
+          return r;
+        };
+        window.selectPart=selectPart;
+      }
+    }catch(e){}
+  }
+
+  function boot(){
+    ensureBackBar();
+    patchToggle();
+    patchSelectPart();
+    document.body.classList.remove('yol-show-modules');
+  }
+
+  window.addEventListener('load',function(){
+    setTimeout(boot,300);
+    setTimeout(boot,1200);
+    setTimeout(boot,2500);
+  });
+  setTimeout(boot,500);
 })();
 </script>
