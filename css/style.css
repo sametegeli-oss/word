@@ -1313,3 +1313,170 @@ svg.bico{stroke-width:2}
 /* --- Kelime başlığı hover efekti (JS inline'dan CSS'e taşındı) --- */
 .wc-word{cursor:pointer;transition:transform .2s;}
 .wc-word:hover{transform:scale(1.05);}
+
+
+/* ==== FINAL NO BLUE BUTTON OVERRIDE v1
+   En sonda durmalı. style.css içindeki eski var(--blue) ve btn-blue kurallarını bastırır.
+   Amaç: Tüm ekranlardaki parlak mavi düğmeleri modern koyu kart stile çevirmek.
+   ==== */
+:root{
+  --wm-btn-card-bg:linear-gradient(145deg, rgba(22,31,49,.98), rgba(12,20,34,.98));
+  --wm-btn-card-bg-hover:linear-gradient(145deg, rgba(30,43,68,.98), rgba(16,27,45,.98));
+  --wm-btn-card-border:rgba(148,163,184,.22);
+  --wm-btn-card-border-hover:rgba(148,163,184,.36);
+  --wm-btn-card-text:#f8fafc;
+  --wm-btn-card-muted:#cbd5e1;
+}
+
+/* Genel tüm butonlar */
+#app button,
+button,
+.btn,
+.btn-blue,
+.btn-green,
+.btn-purple,
+.btn-orange,
+.btn-ghost,
+.act-btn,
+.ab-en,
+.ab-sent,
+.ab-tr,
+.ab-gt,
+.ab-ok,
+.nav-btn,
+.filter-btn,
+.category-btn,
+.type-btn,
+.quiz-type-btn,
+.quiz-count-btn,
+.quiz-option,
+.play-btn,
+.smng-btn,
+.vc-btn,
+.wmsw-btn,
+.ff-btn,
+.ff-fab,
+.wm-tool-btn,
+.rlnew-btn,
+.shadow-btn,
+.song-btn,
+.sleep-btn,
+.reader-btn,
+.fc-btn,
+.analyze-btn,
+.compact-btn,
+#wmToolsBtn,
+#pwaInstallBtn,
+#quizGenerateBtn,
+#quizNextBtn,
+#srStartBtn,
+#btnNext,
+#btnReview,
+#btnLearned,
+#featuresToggleBtn,
+#darkModeBtn,
+#notifPermBtn,
+#smngLauncherFixed,
+#voiceCompareLauncher,
+button[style],
+button[class*="btn"],
+button[class*="Btn"],
+button[id*="Btn"],
+button[id*="btn"]{
+  background:var(--wm-btn-card-bg) !important;
+  background-color:transparent !important;
+  border:1px solid var(--wm-btn-card-border) !important;
+  border-radius:16px !important;
+  color:var(--wm-btn-card-text) !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
+  font-weight:800 !important;
+}
+
+#app button:hover,
+button:hover,
+.btn:hover,
+.act-btn:hover,
+.nav-btn:hover,
+.filter-btn:hover,
+.category-btn:hover,
+.quiz-type-btn:hover,
+.quiz-count-btn:hover,
+.quiz-option:hover,
+#wmToolsBtn:hover,
+#pwaInstallBtn:hover,
+button[style]:hover,
+button[class*="btn"]:hover,
+button[class*="Btn"]:hover{
+  background:var(--wm-btn-card-bg-hover) !important;
+  border-color:var(--wm-btn-card-border-hover) !important;
+  filter:none !important;
+}
+
+/* Seçili/aktif butonlar: mavi dolgu yerine ince vurgu */
+#app button.active,
+button.active,
+.btn.active,
+.filter-btn.active,
+.category-btn.active,
+.type-btn.active,
+.quiz-type-btn.active,
+.quiz-count-btn.active,
+.bnav-btn.active,
+.bottom-nav button.active,
+.nav-bottom button.active,
+#bottomNav button.active{
+  background:linear-gradient(145deg, rgba(31,41,68,.98), rgba(16,24,39,.98)) !important;
+  border:1px solid rgba(96,165,250,.36) !important;
+  color:#bfdbfe !important;
+  box-shadow:inset 0 0 0 1px rgba(96,165,250,.08) !important;
+}
+
+/* Geri ve üst sağ ikon düğmeleri */
+.back-btn,
+.top-bar > button,
+[class*="path" i] button,
+[id*="path" i] button,
+[class*="module" i] button,
+[id*="module" i] button{
+  background:var(--wm-btn-card-bg) !important;
+  border:1px solid var(--wm-btn-card-border) !important;
+  color:var(--wm-btn-card-text) !important;
+  border-radius:16px !important;
+  box-shadow:none !important;
+}
+
+/* Mavi gradient taşıyan inline/floating butonları kesin bastır */
+button[style*="#3b82f6"],
+button[style*="#2563eb"],
+button[style*="59,130,246"],
+button[style*="linear-gradient"],
+button[style*="blue" i],
+#wmToolsBtn{
+  background:var(--wm-btn-card-bg) !important;
+  background-image:none !important;
+  border:1px solid var(--wm-btn-card-border) !important;
+  color:var(--wm-btn-card-text) !important;
+  border-radius:16px !important;
+  box-shadow:none !important;
+}
+
+/* Bottom nav temiz kalsın, sadece aktifte koyu kart vurgusu olsun */
+.bottom-nav button,
+.nav-bottom button,
+#bottomNav button,
+.bnav-btn{
+  background:transparent !important;
+  border:1px solid transparent !important;
+  box-shadow:none !important;
+  color:var(--muted) !important;
+}
+.bottom-nav button.active,
+.nav-bottom button.active,
+#bottomNav button.active,
+.bnav-btn.active{
+  background:linear-gradient(145deg, rgba(22,31,49,.98), rgba(12,20,34,.98)) !important;
+  border-color:rgba(96,165,250,.34) !important;
+  color:#bfdbfe !important;
+}
+/* ==== END FINAL NO BLUE BUTTON OVERRIDE v1 ==== */
