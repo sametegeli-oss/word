@@ -42,9 +42,11 @@
     // Otomatik yükleyicinin GERÇEKTEN doldurduğu havuzlar dahil
     function getPools() {
       var pools = [];
+      // Modül ekranının kullandığı asıl veri (öncelikli)
+      try { if (Array.isArray(window.__WM_PATH_DATA__) && window.__WM_PATH_DATA__.length) pools.push(window.__WM_PATH_DATA__); } catch (e) {}
       var names = [
         'TUMDATA_ROWS', 'learningPathRows', 'currentDataRows', 'currentLearningRows',
-        'tumDataRows', 'TumDataRows', 'tumData', 'TumData',
+        'allWords', 'tumDataRows', 'TumDataRows', 'tumData', 'TumData',
         'learningRows', 'allSentences', 'sentences', 'allRows', 'rows'
       ];
       names.forEach(function (k) {
@@ -250,6 +252,28 @@
         setTimeout(function () { window._scrollGuardActive = false; }, 0);
       }
     }, { capture: true, passive: true });
+
+    // EN SAĞLAM ÇÖZÜM: explainWord, scroll guard yüzünden tap'i iptal
+    // ediyordu. explainWord'ü sarıp çağrı anında guard'ı temizliyoruz;
+    // böylece kelimeye dokunulduğunda açıklama her zaman açılır.
+    function wrapExplain() {
+      if (typeof window.explainWord === 'function' && !window.explainWord.__wmTapWrapped) {
+        var orig = window.explainWord;
+        window.explainWord = function () {
+          window._scrollGuardActive = false; // tap'i guard iptal etmesin
+          return orig.apply(this, arguments);
+        };
+        window.explainWord.__wmTapWrapped = true;
+        return true;
+      }
+      return false;
+    }
+    if (!wrapExplain()) {
+      var tries = 0;
+      var iv = setInterval(function () {
+        if (wrapExplain() || ++tries > 60) clearInterval(iv);
+      }, 150);
+    }
   })();
 
   /* ============================================================
@@ -355,8 +379,9 @@
      ============================================================ */
   (function gateMenuUntilDataLoaded() {
     var DONE = false;
-    var HARD_TIMEOUT = 25000; // 25 sn sonra her hâlükârda menüyü aç
+    var HARD_TIMEOUT = 30000; // 30 sn sonra her hâlükârda menüyü aç
     var started = Date.now();
+    var triggered = false;
 
     function makeOverlay() {
       if (document.getElementById('wmDataLoadingOverlay')) return document.getElementById('wmDataLoadingOverlay');
@@ -391,7 +416,8 @@
         retry.addEventListener('click', function () {
           retry.style.display = 'none';
           setSub('Yeniden yükleniyor…');
-          triggerLoad(true);
+          triggered = false;
+          triggerLoad();
         });
       }
       return ov;
@@ -407,25 +433,69 @@
       if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
     }
 
+    // GERÇEK kontrol: modül ekranının (WMPath) okuduğu veri dolu mu?
+    // Yanlış global'lere (TUMDATA_ROWS) değil, __WM_PATH_DATA__ ve
+    // WMPath.data.tree'ye bakıyoruz.
     function dataLooksReady() {
       try {
-        if (window.__tumDataLoadedOnce) return true;
-        if (Array.isArray(window.TUMDATA_ROWS) && window.TUMDATA_ROWS.length) return true;
-        if (Array.isArray(window.learningPathRows) && window.learningPathRows.length) return true;
-        if (Array.isArray(window.currentDataRows) && window.currentDataRows.length) return true;
+        if (Array.isArray(window.__WM_PATH_DATA__) && window.__WM_PATH_DATA__.length) return true;
+      } catch (e) {}
+      try {
+        if (window.WMPath && window.WMPath.data && Array.isArray(window.WMPath.data.tree) && window.WMPath.data.tree.length) return true;
+      } catch (e) {}
+      try {
+        if (Array.isArray(window.allWords) && window.allWords.length) return true;
       } catch (e) {}
       return false;
     }
 
-    function triggerLoad(force) {
+    function rebuildPath() {
       try {
-        if (typeof window.loadTumDataFromGithub === 'function') {
-          var p = window.loadTumDataFromGithub(!!force);
-          if (p && typeof p.then === 'function') {
-            p.then(function () { finish('ok'); }).catch(function () { showRetry(); });
-          }
+        if (window.WMPath && typeof window.WMPath.build === 'function') window.WMPath.build(true);
+      } catch (e) {}
+    }
+
+    // DOĞRU yükleyiciyi kullan: WMPath.autoLoadGitHub veriyi
+    // __WM_PATH_DATA__ + IndexedDB/localStorage'a yazar (modülün okuduğu yer).
+    function triggerLoad() {
+      if (triggered) return;
+      triggered = true;
+      var fired = false;
+
+      function done(ok) {
+        if (fired) return;
+        fired = true;
+        if (ok || dataLooksReady()) { rebuildPath(); finish('loaded'); }
+        else showRetry();
+      }
+
+      // 1) Asıl yükleyici
+      try {
+        if (window.WMPath && typeof window.WMPath.autoLoadGitHub === 'function') {
+          window.WMPath.autoLoadGitHub(function (ok) { done(ok); });
+          return;
         }
-      } catch (e) { showRetry(); }
+      } catch (e) {}
+
+      // 2) WMPath henüz hazır değilse kısa süre bekleyip tekrar dene
+      var waited = 0;
+      var w = setInterval(function () {
+        waited += 250;
+        if (window.WMPath && typeof window.WMPath.autoLoadGitHub === 'function') {
+          clearInterval(w);
+          try { window.WMPath.autoLoadGitHub(function (ok) { done(ok); }); }
+          catch (e) { showRetry(); }
+        } else if (waited > 6000) {
+          clearInterval(w);
+          // son çare: eski yükleyici (en azından bir şey denesin)
+          try {
+            if (typeof window.loadTumDataFromGithub === 'function') {
+              var p = window.loadTumDataFromGithub(true);
+              if (p && p.then) p.then(function () { done(false); }).catch(function () { showRetry(); });
+            } else { showRetry(); }
+          } catch (e) { showRetry(); }
+        }
+      }, 250);
     }
 
     function showRetry() {
@@ -453,13 +523,12 @@
     function start() {
       if (dataLooksReady()) { finish('already'); return; }
       makeOverlay();
-      triggerLoad(false);
-      window.addEventListener('tumdata:loaded', function () { finish('event'); });
+      triggerLoad();
 
       var iv = setInterval(function () {
         if (DONE) { clearInterval(iv); return; }
-        if (dataLooksReady()) { clearInterval(iv); finish('poll'); return; }
-        if (Date.now() - started > 9000) showRetry();
+        if (dataLooksReady()) { clearInterval(iv); rebuildPath(); finish('poll'); return; }
+        if (Date.now() - started > 10000) showRetry();
         if (Date.now() - started > HARD_TIMEOUT) { clearInterval(iv); finish('timeout'); }
       }, 400);
     }
