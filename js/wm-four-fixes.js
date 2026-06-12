@@ -16,6 +16,85 @@
   }
 
   /* ============================================================
+     ORTAK: CÜMLE HAVUZU + KELİME ARAMA (Issue 2 veri kaynağı düzeltmesi)
+     index.html'deki eski wmFindWordExampleSentences yanlış global
+     adlarına bakıyordu (tumDataRows vb.) ve otomatik yükleyici
+     verileri TUMDATA_ROWS / learningPathRows / currentDataRows
+     adlarına yazıyor. Burada DOĞRU globalleri ve alan adlarını
+     kullanan bir sürümle değiştiriyoruz.
+     ============================================================ */
+  (function fixExampleSentenceSource() {
+    function normWord(s) {
+      return String(s || '').toLowerCase().replace(/[^a-z']/g, ' ').trim();
+    }
+    function rowEN(r) {
+      if (!r) return '';
+      return r.SentenceEN || r.sentenceEn || r.Sentence || r.sentence || r.SENTENCE ||
+        r.EnglishSentence || r.English || r.english || r.en || r.EN ||
+        r.Example || r.example || '';
+    }
+    function rowTR(r) {
+      if (!r) return '';
+      return r.SentenceTR || r.sentenceTr || r.SentenceTr || r.SENTENCETR ||
+        r.TurkishSentence || r.Turkish || r.turkish || r.tr || r.TR ||
+        r.ExampleTR || r.exampleTr || '';
+    }
+    // Otomatik yükleyicinin GERÇEKTEN doldurduğu havuzlar dahil
+    function getPools() {
+      var pools = [];
+      var names = [
+        'TUMDATA_ROWS', 'learningPathRows', 'currentDataRows', 'currentLearningRows',
+        'tumDataRows', 'TumDataRows', 'tumData', 'TumData',
+        'learningRows', 'allSentences', 'sentences', 'allRows', 'rows'
+      ];
+      names.forEach(function (k) {
+        try { if (Array.isArray(window[k]) && window[k].length) pools.push(window[k]); } catch (e) {}
+      });
+      try { if (window.WMPath && Array.isArray(window.WMPath.rows) && window.WMPath.rows.length) pools.push(window.WMPath.rows); } catch (e) {}
+      try { if (window.WMPath && Array.isArray(window.WMPath.data) && window.WMPath.data.length) pools.push(window.WMPath.data); } catch (e) {}
+      // TUMDATA_MODULES içindeki rows'ları da ekle
+      try {
+        if (Array.isArray(window.TUMDATA_MODULES)) {
+          window.TUMDATA_MODULES.forEach(function (m) {
+            if (m && Array.isArray(m.rows) && m.rows.length) pools.push(m.rows);
+          });
+        }
+      } catch (e) {}
+      return pools;
+    }
+    function wordInSentence(sentence, word) {
+      var w = normWord(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (!w) return false;
+      try {
+        return new RegExp('(^|\\s)' + w + '(\\s|$)', 'i').test(normWord(sentence));
+      } catch (e) {
+        return normWord(sentence).indexOf(normWord(word)) !== -1;
+      }
+    }
+
+    // yol.html ile aynı mantık: cümle havuzlarını tara, kelimeyi içeren
+    // İngilizce cümleleri Türkçesiyle döndür.
+    window.wmFindWordExampleSentences = function (word, limit) {
+      limit = limit || 6;
+      var seen = {}, out = [];
+      var pools = getPools();
+      for (var p = 0; p < pools.length; p++) {
+        var pool = pools[p];
+        for (var i = 0; i < pool.length; i++) {
+          var en = rowEN(pool[i]);
+          if (!en || !wordInSentence(en, word)) continue;
+          var key = en.toLowerCase();
+          if (seen[key]) continue;
+          seen[key] = 1;
+          out.push({ en: en, tr: rowTR(pool[i]) });
+          if (out.length >= limit) return out;
+        }
+      }
+      return out;
+    };
+  })();
+
+  /* ============================================================
      (1) AÇILIŞTA SADECE MENÜ
      forceMenu, kullanıcı bir butona basana kadar (boot süresinden
      bağımsız) kelime ekranı açılırsa menüye geri döndürür.
@@ -26,6 +105,8 @@
 
     function forceMenu() {
       if (userNavigated) return;
+      // Veri yükleme katmanı açıkken menüyü gösterme (gate bitince açar)
+      if (document.getElementById('wmDataLoadingOverlay')) return;
       var menu = document.getElementById('sc-menu');
       if (!menu) return;
       var active = document.querySelector('.screen.active');
@@ -195,13 +276,36 @@
         }).join('') + '</div>';
     }
 
+    // Modal içeriği bu kaplardan birine render edilir
+    function getModalBox() {
+      return document.getElementById('modalExplanationContent') ||
+        document.querySelector('#wordExplanationModal .modal-content, #wordExplanationModal') ||
+        null;
+    }
+
     function inject(word) {
-      var box = document.getElementById('modalExplanationContent');
-      if (!box) return;
-      if (box.querySelector('.wm-word-examples-box')) return; // zaten eklendi
+      var box = getModalBox();
+      if (!box) return false;
+      if (box.querySelector('.wm-word-examples-box')) return true; // zaten eklendi
       var html = buildBox(word);
-      if (!html) return;
+      if (!html) return false; // veri henüz yoksa daha sonra tekrar denenir
       box.insertAdjacentHTML('beforeend', html);
+      return true;
+    }
+
+    // Modal açıkken örnek cümleleri eklemeyi birkaç kez dene
+    // (veri xlsx'ten async geldiği için ilk denemede boş olabilir).
+    function injectWithRetries(word) {
+      var delays = [0, 60, 200, 500, 1000, 2000, 3500];
+      delays.forEach(function (d) {
+        setTimeout(function () {
+          // Modal kapandıysa boşuna deneme
+          var box = getModalBox();
+          if (!box) return;
+          if (box.querySelector('.wm-word-examples-box')) return;
+          inject(word);
+        }, d);
+      });
     }
 
     function hook() {
@@ -209,10 +313,8 @@
         var orig = window.showWordExplanationModal;
         window.showWordExplanationModal = function (word) {
           var r = orig.apply(this, arguments);
-          var w = word;
-          // modal render'i tamamlandıktan sonra ekle
-          setTimeout(function () { inject(w); }, 0);
-          setTimeout(function () { inject(w); }, 60);
+          window.__wmLastExplainWord = word;
+          injectWithRetries(word);
           return r;
         };
         window.showWordExplanationModal.__wmExHooked = true;
@@ -220,6 +322,11 @@
       }
       return false;
     }
+
+    // Veri sonradan yüklenince, açık modal varsa örnekleri tazele
+    window.addEventListener('tumdata:loaded', function () {
+      if (window.__wmLastExplainWord) injectWithRetries(window.__wmLastExplainWord);
+    });
 
     // Fonksiyon legacy-app yüklendikten sonra hazır olur; birkaç kez dene
     if (!hook()) {
@@ -235,6 +342,132 @@
       css.id = 'wm-word-examples-css';
       css.textContent = '.wm-word-examples-box{margin-top:14px;padding:12px;border:1px solid rgba(148,163,184,.18);border-radius:14px;background:rgba(15,23,42,.62)}.wm-word-examples-box h3{margin:0 0 10px;font-size:14px;font-weight:900;color:#f8fafc}.wm-word-example-item{padding:10px 11px;margin:8px 0;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.72);line-height:1.35}.wm-word-example-item b{font-size:13px;color:#f8fafc}.wm-word-example-item span{font-size:12px;color:#94a3b8}';
       document.head.appendChild(css);
+    }
+  })();
+
+  /* ============================================================
+     (1b) AÇILIŞTA VERİ YÜKLENENE KADAR MENÜYÜ BEKLET
+     Mobilde TumData_Temiz.xlsx geç/başarısız yüklenebiliyordu ve
+     menü boş veriyle açılıyordu. Burada veri yüklenene (veya makul
+     bir zaman aşımına) kadar tam ekran bir yükleme katmanı gösterip
+     menüyü gizliyoruz. Yükleme bitince katman kalkar, menü görünür.
+     Mobilde başarısızlığa karşı yükleyiciyi tekrar tetikleriz.
+     ============================================================ */
+  (function gateMenuUntilDataLoaded() {
+    var DONE = false;
+    var HARD_TIMEOUT = 25000; // 25 sn sonra her hâlükârda menüyü aç
+    var started = Date.now();
+
+    function makeOverlay() {
+      if (document.getElementById('wmDataLoadingOverlay')) return document.getElementById('wmDataLoadingOverlay');
+      var ov = document.createElement('div');
+      ov.id = 'wmDataLoadingOverlay';
+      ov.setAttribute('role', 'status');
+      ov.innerHTML =
+        '<div class="wm-ldg-card">' +
+        '<div class="wm-ldg-spin"></div>' +
+        '<div class="wm-ldg-title">Modül verisi yükleniyor…</div>' +
+        '<div class="wm-ldg-sub" id="wmDataLoadingSub">TumData_Temiz.xlsx hazırlanıyor</div>' +
+        '<button id="wmDataLoadingRetry" class="wm-ldg-retry" style="display:none">Tekrar Dene</button>' +
+        '</div>';
+      var css = document.createElement('style');
+      css.textContent =
+        '#wmDataLoadingOverlay{position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;' +
+        'background:radial-gradient(1200px 600px at 50% -10%,rgba(30,41,59,.96),rgba(2,6,23,.98));backdrop-filter:blur(2px);' +
+        'font-family:system-ui,Arial,sans-serif;padding:24px;}' +
+        '.wm-ldg-card{text-align:center;max-width:340px;width:100%;}' +
+        '.wm-ldg-spin{width:54px;height:54px;margin:0 auto 18px;border-radius:50%;border:4px solid rgba(148,163,184,.25);' +
+        'border-top-color:#38bdf8;animation:wmldgspin 0.9s linear infinite;}' +
+        '@keyframes wmldgspin{to{transform:rotate(360deg)}}' +
+        '.wm-ldg-title{color:#f8fafc;font-weight:900;font-size:17px;margin-bottom:6px;}' +
+        '.wm-ldg-sub{color:#94a3b8;font-size:13px;font-weight:700;line-height:1.4;}' +
+        '.wm-ldg-retry{margin-top:16px;border:0;border-radius:12px;padding:10px 18px;font-weight:900;cursor:pointer;' +
+        'background:#15803d;color:#fff;font-size:14px;}';
+      ov.appendChild(css);
+      (document.body || document.documentElement).appendChild(ov);
+
+      var retry = ov.querySelector('#wmDataLoadingRetry');
+      if (retry) {
+        retry.addEventListener('click', function () {
+          retry.style.display = 'none';
+          setSub('Yeniden yükleniyor…');
+          triggerLoad(true);
+        });
+      }
+      return ov;
+    }
+
+    function setSub(txt) {
+      var el = document.getElementById('wmDataLoadingSub');
+      if (el) el.textContent = txt;
+    }
+
+    function removeOverlay() {
+      var ov = document.getElementById('wmDataLoadingOverlay');
+      if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+    }
+
+    function dataLooksReady() {
+      try {
+        if (window.__tumDataLoadedOnce) return true;
+        if (Array.isArray(window.TUMDATA_ROWS) && window.TUMDATA_ROWS.length) return true;
+        if (Array.isArray(window.learningPathRows) && window.learningPathRows.length) return true;
+        if (Array.isArray(window.currentDataRows) && window.currentDataRows.length) return true;
+      } catch (e) {}
+      return false;
+    }
+
+    function triggerLoad(force) {
+      try {
+        if (typeof window.loadTumDataFromGithub === 'function') {
+          var p = window.loadTumDataFromGithub(!!force);
+          if (p && typeof p.then === 'function') {
+            p.then(function () { finish('ok'); }).catch(function () { showRetry(); });
+          }
+        }
+      } catch (e) { showRetry(); }
+    }
+
+    function showRetry() {
+      var r = document.getElementById('wmDataLoadingRetry');
+      if (r) r.style.display = 'inline-block';
+      setSub('Yükleme gecikti. Bağlantınızı kontrol edip tekrar deneyin.');
+    }
+
+    function finish(reason) {
+      if (DONE) return;
+      DONE = true;
+      removeOverlay();
+      try {
+        var menu = document.getElementById('sc-menu');
+        if (menu) {
+          document.querySelectorAll('.screen').forEach(function (s) {
+            if (s.id !== 'sc-menu') s.classList.remove('active');
+          });
+          menu.classList.add('active');
+          menu.style.display = 'block';
+        }
+      } catch (e) {}
+    }
+
+    function start() {
+      if (dataLooksReady()) { finish('already'); return; }
+      makeOverlay();
+      triggerLoad(false);
+      window.addEventListener('tumdata:loaded', function () { finish('event'); });
+
+      var iv = setInterval(function () {
+        if (DONE) { clearInterval(iv); return; }
+        if (dataLooksReady()) { clearInterval(iv); finish('poll'); return; }
+        if (Date.now() - started > 9000) showRetry();
+        if (Date.now() - started > HARD_TIMEOUT) { clearInterval(iv); finish('timeout'); }
+      }, 400);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start);
+    } else {
+      start();
     }
   })();
 
