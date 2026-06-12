@@ -253,7 +253,7 @@ function buildModules(){const map=new Map();state.rows.forEach(r=>{const mod=r.M
 function partNo(p){const m=String(p).match(/P\s*(\d+)/i);return m?+m[1]:999;}
 function partKey(m,p){return (m.name+'__'+p.name).replace(/\W+/g,'_');}
 function partComplete(p){return p.rows.length>0 && p.rows.every(r=>isKnown(r._id));}
-function partUnlocked(m,p){const idx=m.parts.indexOf(p); if(idx<=0)return true; return partComplete(m.parts[idx-1]);}
+function partUnlocked(m,p){ return true; }
 function selectFirstAvailable(){for(const m of state.modules){for(const p of m.parts){if(partUnlocked(m,p)&&!partComplete(p)){state.activePart={m,p};buildLessonQueue();return;}}} if(state.modules[0]){state.activePart={m:state.modules[0],p:state.modules[0].parts[0]};buildLessonQueue();}}
 function selectPart(mi,pi){const m=state.modules[mi],p=m.parts[pi]; if(!m||!p){toast('Ders bulunamadı.');return;} if(!partUnlocked(m,p)){toast('Önce önceki parçayı bitirmelisin.');return;} state.activePart={m,p}; state.activeIndex=0; buildLessonQueue(); if(typeof screen==='function') screen('lesson'); renderAll(); setTimeout(()=>{try{document.getElementById('screen-lesson')?.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);}
 function buildLessonQueue(){const p=state.activePart?.p;state.lessonQueue=(p?.rows||[]).filter(r=>!isKnown(r._id)).sort((a,b)=>(+a.OrderIndex||0)-(+b.OrderIndex||0));state.activeIndex=Math.min(state.activeIndex,Math.max(0,state.lessonQueue.length-1));}
