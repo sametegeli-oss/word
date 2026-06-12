@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-<title>Yol Haritası v39 • Sabit Modüller Düğmesi</title>
+<title>Yol Haritası v40 • Çalışan Modül Düğmesi</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Word reposundaki çalışan özellik köprüleri: sözlük lookup, görsel arama, alternatif seçici, shadow panel -->
 <script src="./fixes.js"></script>
@@ -3471,5 +3471,221 @@ body.yol-v37-modules-open #yolV35Map *{
     setTimeout(fix,2000);
   });
   setTimeout(fix,300);
+})();
+</script>
+
+
+<style id="yol-v40-standalone-modules-style">
+/* v40: Bağımsız çalışan Modüller düğmesi ve ekranı */
+#yolV40ModulesBtn{
+  position:fixed !important;
+  right:18px !important;
+  top:170px !important;
+  z-index:2147483647 !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:8px !important;
+  border:2px solid rgba(56,189,248,.85) !important;
+  background:#102033 !important;
+  color:#e0f2fe !important;
+  border-radius:18px !important;
+  padding:13px 17px !important;
+  font-size:15px !important;
+  font-weight:950 !important;
+  cursor:pointer !important;
+  box-shadow:0 14px 36px rgba(0,0,0,.48) !important;
+  pointer-events:auto !important;
+  user-select:none !important;
+}
+#yolV40ModulesBtn:hover{background:#132a44 !important}
+#yolV40Overlay{
+  display:none;
+  position:fixed !important;
+  inset:0 !important;
+  z-index:2147483646 !important;
+  background:linear-gradient(180deg,#07111f,#0b1020) !important;
+  color:#eef6ff !important;
+  overflow:auto !important;
+  padding:18px 18px 96px !important;
+  box-sizing:border-box !important;
+}
+#yolV40Overlay.show{display:block !important}
+.yol-v40-wrap{max-width:1120px;margin:0 auto}
+.yol-v40-card{
+  background:rgba(15,23,42,.96);
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:24px;
+  padding:14px;
+  box-shadow:0 16px 40px rgba(0,0,0,.28);
+}
+.yol-v40-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.yol-v40-head h2{margin:0;font-size:22px;color:#eef6ff}
+.yol-v40-close{
+  border:1px solid rgba(148,163,184,.25);
+  background:#101c2e;
+  color:#e0f2fe;
+  border-radius:16px;
+  padding:10px 14px;
+  font-weight:950;
+  cursor:pointer;
+}
+.yol-v40-levels{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px}
+.yol-v40-levels button{
+  border:1px solid rgba(148,163,184,.25);
+  background:#101c2e;
+  color:#dbeafe;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.yol-v40-levels button.active{
+  border-color:rgba(56,189,248,.75);
+  background:rgba(56,189,248,.15);
+  color:#67e8f9;
+}
+.yol-v40-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.yol-v40-module{background:#0d1728;border:1px solid rgba(148,163,184,.18);border-radius:18px;overflow:hidden}
+.yol-v40-module-head{display:flex;justify-content:space-between;align-items:center;padding:11px 12px;background:rgba(17,29,48,.90)}
+.yol-v40-parts{position:relative;padding:8px 10px 10px 16px}
+.yol-v40-parts:before{content:"";position:absolute;left:27px;top:12px;bottom:12px;width:2px;background:linear-gradient(180deg,rgba(56,189,248,.50),rgba(139,92,246,.25))}
+.yol-v40-part{position:relative;z-index:1;display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center;border:1px solid rgba(148,163,184,.16);background:#111d30;border-radius:15px;padding:8px;margin:7px 0;cursor:pointer}
+.yol-v40-part.active{border-color:#67e8f9;box-shadow:0 0 0 2px rgba(56,189,248,.12)}
+.yol-v40-part.done{border-color:rgba(34,197,94,.55);background:rgba(34,197,94,.11)}
+.yol-v40-dot{width:26px;height:26px;border-radius:999px;display:grid;place-items:center;background:#0b1525;border:1px solid rgba(56,189,248,.35);color:#67e8f9;font-size:12px;font-weight:950}
+.yol-v40-small{font-size:11px;color:#93a4ba;margin-top:2px}
+@media(max-width:720px){
+  #yolV40ModulesBtn{right:10px;top:120px;padding:10px 12px;font-size:12px}
+  #yolV40Overlay{padding:10px 10px 96px}
+  .yol-v40-grid{grid-template-columns:1fr}
+}
+</style>
+
+<script id="yol-v40-standalone-modules-script">
+(function(){
+  'use strict';
+  console.log('✅ yol.html v40 STANDALONE_MODULE_BUTTON yüklendi');
+
+  function esc(s){return String(s??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function clean(s){try{return cleanText(s)}catch(e){return String(s??'').trim();}}
+  function levelOf(m){
+    var x=clean(m&&m.level);
+    if(!x && m&&m.name){var mm=String(m.name).match(/[A-C][12]/i); if(mm)x=mm[0];}
+    return (x||'Seviye Yok').toUpperCase();
+  }
+  function known(id){try{return typeof isKnown==='function' && isKnown(id)}catch(e){return false;}}
+  function donePart(p){try{return p&&p.rows&&p.rows.length&&p.rows.every(function(r){return known(r._id)})}catch(e){return false;}}
+  function ensureModules(){
+    try{
+      if(typeof state==='undefined') return false;
+      if((!state.modules||!state.modules.length)&&state.rows&&state.rows.length&&typeof buildModules==='function') buildModules();
+      return !!(state.modules&&state.modules.length);
+    }catch(e){return false;}
+  }
+  function ensureOverlay(){
+    var o=document.getElementById('yolV40Overlay');
+    if(o) return o;
+    o=document.createElement('section');
+    o.id='yolV40Overlay';
+    o.innerHTML='<div class="yol-v40-wrap" id="yolV40Content"></div>';
+    document.body.appendChild(o);
+    return o;
+  }
+  function ensureBtn(){
+    var b=document.getElementById('yolV40ModulesBtn');
+    if(b) return b;
+    b=document.createElement('button');
+    b.id='yolV40ModulesBtn';
+    b.type='button';
+    b.innerHTML='🧭 <span>Modüller</span>';
+    b.addEventListener('click',function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      openOverlay();
+      return false;
+    }, true);
+    document.body.appendChild(b);
+    return b;
+  }
+  function render(){
+    var o=ensureOverlay();
+    var c=document.getElementById('yolV40Content') || o;
+    if(!ensureModules()){
+      c.innerHTML='<div class="yol-v40-card"><div class="yol-v40-head"><h2>🧭 Modüller</h2><button class="yol-v40-close" id="yolV40CloseA">← Derse Dön</button></div><div class="muted small">Modül verisi yükleniyor. Birkaç saniye sonra tekrar dene.</div></div>';
+      setTimeout(bindClose,0);
+      return;
+    }
+    if(!window.__yolV40Level) window.__yolV40Level='ALL';
+    var active=window.__yolV40Level;
+    var modules=state.modules||[];
+    var levels=[...new Set(modules.map(levelOf))].sort(function(a,b){return String(a).localeCompare(String(b),'tr',{numeric:true})});
+    var visible=active==='ALL'?modules:modules.filter(function(m){return levelOf(m)===active});
+    var total=visible.reduce(function(s,m){return s+(m.parts||[]).reduce(function(a,p){return a+(p.rows?p.rows.length:0)},0)},0);
+    var done=visible.reduce(function(s,m){return s+(m.parts||[]).reduce(function(a,p){return a+(p.rows||[]).filter(function(r){return known(r._id)}).length},0)},0);
+    var levelsHtml='<button class="'+(active==='ALL'?'active':'')+'" data-level="ALL">Tümü</button>'+
+      levels.map(function(l){return '<button class="'+(active===l?'active':'')+'" data-level="'+esc(l)+'">'+esc(l)+'</button>';}).join('');
+    c.innerHTML='<div class="yol-v40-card">'+
+      '<div class="yol-v40-head"><h2>🧭 Modüller</h2><div style="display:flex;gap:8px;align-items:center"><span class="pill">'+done+'/'+total+'</span><button class="yol-v40-close" id="yolV40CloseB">← Derse Dön</button></div></div>'+
+      '<div class="yol-v40-levels">'+levelsHtml+'</div>'+
+      '<div class="yol-v40-grid">'+visible.map(function(m){
+        var mi=modules.indexOf(m);
+        var pd=(m.parts||[]).filter(donePart).length;
+        return '<div class="yol-v40-module"><div class="yol-v40-module-head"><div><b>'+esc(m.name)+'</b><div class="yol-v40-small">'+esc(levelOf(m))+'</div></div><span class="pill">'+pd+'/'+(m.parts||[]).length+'</span></div>'+
+          '<div class="yol-v40-parts">'+(m.parts||[]).map(function(p,pi){
+            var d=donePart(p), act=state.activePart&&state.activePart.p===p;
+            var k=(p.rows||[]).filter(function(r){return known(r._id)}).length;
+            return '<div class="yol-v40-part '+(d?'done ':'')+(act?'active':'')+'" data-mi="'+mi+'" data-pi="'+pi+'">'+
+              '<div class="yol-v40-dot">'+(d?'✓':act?'●':'○')+'</div><div><b>'+esc(p.name)+'</b><div class="yol-v40-small">'+esc(p.stage||'Seçilebilir')+' • '+k+'/'+(p.rows?p.rows.length:0)+'</div></div></div>';
+          }).join('')+'</div></div>';
+      }).join('')+'</div></div>';
+    bindEvents();
+  }
+  function bindClose(){
+    ['yolV40CloseA','yolV40CloseB'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.onclick=closeOverlay;
+    });
+  }
+  function bindEvents(){
+    bindClose();
+    document.querySelectorAll('.yol-v40-levels button').forEach(function(btn){
+      btn.onclick=function(){
+        window.__yolV40Level=btn.getAttribute('data-level')||'ALL';
+        render();
+      };
+    });
+    document.querySelectorAll('.yol-v40-part').forEach(function(el){
+      el.onclick=function(){
+        var mi=Number(el.getAttribute('data-mi'));
+        var pi=Number(el.getAttribute('data-pi'));
+        try{ if(typeof selectPart==='function') selectPart(mi,pi); }catch(e){}
+        setTimeout(closeOverlay,120);
+      };
+    });
+  }
+  function openOverlay(){
+    console.log('🧭 v40 Modüller tıklandı');
+    render();
+    ensureOverlay().classList.add('show');
+  }
+  function closeOverlay(){
+    ensureOverlay().classList.remove('show');
+    try{if(typeof screen==='function') screen('lesson')}catch(e){}
+  }
+  window.yolV40OpenModules=openOverlay;
+  window.yolV40CloseModules=closeOverlay;
+  window.yolV40RenderModules=render;
+
+  function boot(){
+    ensureBtn();
+    ensureOverlay();
+    // Eski bozuk düğmeler varsa temizle
+    ['yolV39FixedModulesBtn','yolV38ModuleTab','yolV37ModuleTab','yolV35Toggle'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.remove();
+    });
+  }
+  window.addEventListener('load',function(){setTimeout(boot,200);setTimeout(boot,900);setTimeout(boot,2000);});
+  setTimeout(boot,300);
 })();
 </script>
