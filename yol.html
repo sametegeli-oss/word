@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-<title>Yol Haritası v41 • Modüller Üst Düğme</title>
+<title>Yol Haritası v42 • Kesin Modül Overlay</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Word reposundaki çalışan özellik köprüleri: sözlük lookup, görsel arama, alternatif seçici, shadow panel -->
 <script src="./fixes.js"></script>
@@ -3800,5 +3800,188 @@ body.yol-v37-modules-open #yolV35Map *{
     setTimeout(boot,1500);
   });
   setTimeout(boot,200);
+})();
+</script>
+
+
+<script id="yol-v42-hard-overlay-script">
+(function(){
+  'use strict';
+  console.log('✅ yol.html v42 HARD_OVERLAY_MODULES yüklendi');
+
+  function esc(s){
+    return String(s??'').replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function clean(s){
+    try{return cleanText(s)}catch(e){return String(s??'').replace(/\s+/g,' ').trim();}
+  }
+  function levelOf(m){
+    var x=clean(m && m.level);
+    if(!x && m && m.name){
+      var mm=String(m.name).match(/[A-C][12]/i);
+      if(mm) x=mm[0];
+    }
+    return (x||'Seviye Yok').toUpperCase();
+  }
+  function known(id){
+    try{return typeof isKnown==='function' && isKnown(id)}catch(e){return false;}
+  }
+  function partDone(p){
+    try{return !!(p && p.rows && p.rows.length && p.rows.every(function(r){return known(r._id)}));}catch(e){return false;}
+  }
+  function ensureModules(){
+    try{
+      if(typeof state==='undefined') return false;
+      if((!state.modules || !state.modules.length) && state.rows && state.rows.length && typeof buildModules==='function'){
+        buildModules();
+      }
+      return !!(state.modules && state.modules.length);
+    }catch(e){
+      console.warn('v42 ensureModules hata', e);
+      return false;
+    }
+  }
+  function ensureOverlay(){
+    var o=document.getElementById('yolV42HardOverlay');
+    if(o) return o;
+    o=document.createElement('div');
+    o.id='yolV42HardOverlay';
+    document.body.appendChild(o);
+    return o;
+  }
+  function overlayStyle(o){
+    o.style.cssText = [
+      'display:block',
+      'position:fixed',
+      'left:0',
+      'top:0',
+      'right:0',
+      'bottom:0',
+      'z-index:2147483647',
+      'background:linear-gradient(180deg,#07111f,#0b1020)',
+      'color:#eef6ff',
+      'overflow:auto',
+      'padding:18px',
+      'box-sizing:border-box',
+      'font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif'
+    ].join(';') + ';';
+  }
+  function btnStyle(){
+    return 'border:1px solid rgba(148,163,184,.25);background:#101c2e;color:#e0f2fe;border-radius:16px;padding:10px 14px;font-weight:950;cursor:pointer;';
+  }
+  function levelBtnStyle(active){
+    return 'border:1px solid '+(active?'rgba(56,189,248,.75)':'rgba(148,163,184,.25)')+';background:'+(active?'rgba(56,189,248,.15)':'#101c2e')+';color:'+(active?'#67e8f9':'#dbeafe')+';border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;cursor:pointer;margin:3px;';
+  }
+  function render(){
+    var o=ensureOverlay();
+    overlayStyle(o);
+
+    if(!ensureModules()){
+      o.innerHTML =
+        '<div style="max-width:1120px;margin:0 auto;background:rgba(15,23,42,.96);border:1px solid rgba(148,163,184,.22);border-radius:24px;padding:16px;">' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;"><h2 style="margin:0;font-size:22px">🧭 Modüller</h2><button id="yolV42Close" style="'+btnStyle()+'">← Derse Dön</button></div>' +
+        '<p style="color:#93a4ba;font-size:13px">Modül verisi henüz oluşmadı. Excel yüklendikten sonra tekrar dene.</p>' +
+        '</div>';
+      bindOverlay();
+      return;
+    }
+
+    if(!window.__yolV42Level) window.__yolV42Level='ALL';
+
+    var modules=state.modules || [];
+    var active=window.__yolV42Level;
+    var levels=[...new Set(modules.map(levelOf))].filter(Boolean).sort(function(a,b){return String(a).localeCompare(String(b),'tr',{numeric:true})});
+    var visible=active==='ALL' ? modules : modules.filter(function(m){return levelOf(m)===active});
+
+    var total=visible.reduce(function(s,m){return s+(m.parts||[]).reduce(function(a,p){return a+(p.rows?p.rows.length:0);},0);},0);
+    var done=visible.reduce(function(s,m){return s+(m.parts||[]).reduce(function(a,p){return a+(p.rows||[]).filter(function(r){return known(r._id)}).length;},0);},0);
+
+    var levelsHtml =
+      '<button data-v42-level="ALL" style="'+levelBtnStyle(active==='ALL')+'">Tümü</button>' +
+      levels.map(function(l){
+        return '<button data-v42-level="'+esc(l)+'" style="'+levelBtnStyle(active===l)+'">'+esc(l)+'</button>';
+      }).join('');
+
+    var modsHtml=visible.map(function(m){
+      var mi=modules.indexOf(m);
+      var pd=(m.parts||[]).filter(partDone).length;
+      var parts=(m.parts||[]).map(function(p,pi){
+        var d=partDone(p);
+        var act=state.activePart && state.activePart.p===p;
+        var k=(p.rows||[]).filter(function(r){return known(r._id)}).length;
+        return '<div data-v42-mi="'+mi+'" data-v42-pi="'+pi+'" style="display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center;border:1px solid '+(act?'#67e8f9':d?'rgba(34,197,94,.55)':'rgba(148,163,184,.16)')+';background:'+(d?'rgba(34,197,94,.11)':'#111d30')+';border-radius:15px;padding:8px;margin:7px 0;cursor:pointer;">' +
+          '<div style="width:26px;height:26px;border-radius:999px;display:grid;place-items:center;background:#0b1525;border:1px solid rgba(56,189,248,.35);color:#67e8f9;font-size:12px;font-weight:950;">'+(d?'✓':act?'●':'○')+'</div>' +
+          '<div><b>'+esc(p.name)+'</b><div style="font-size:11px;color:#93a4ba;margin-top:2px;">'+esc(p.stage||'Seçilebilir')+' • '+k+'/'+(p.rows?p.rows.length:0)+'</div></div>' +
+        '</div>';
+      }).join('');
+
+      return '<div style="background:#0d1728;border:1px solid rgba(148,163,184,.18);border-radius:18px;overflow:hidden;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;background:rgba(17,29,48,.90);"><div><b>'+esc(m.name)+'</b><div style="font-size:11px;color:#93a4ba;margin-top:2px;">'+esc(levelOf(m))+'</div></div><span style="border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.6);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:850;color:#cbd5e1;">'+pd+'/'+(m.parts||[]).length+'</span></div>' +
+        '<div style="padding:8px 10px 10px 16px;">'+parts+'</div>' +
+      '</div>';
+    }).join('');
+
+    o.innerHTML =
+      '<div style="max-width:1120px;margin:0 auto;">' +
+        '<div style="background:rgba(15,23,42,.96);border:1px solid rgba(148,163,184,.22);border-radius:24px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.28);">' +
+          '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;"><h2 style="margin:0;font-size:22px">🧭 Modüller</h2><div style="display:flex;gap:8px;align-items:center"><span style="border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.6);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:850;color:#cbd5e1;">'+done+'/'+total+'</span><button id="yolV42Close" style="'+btnStyle()+'">← Derse Dön</button></div></div>' +
+          '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px;">'+levelsHtml+'</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">'+modsHtml+'</div>' +
+        '</div>' +
+      '</div>';
+    bindOverlay();
+  }
+  function close(){
+    var o=document.getElementById('yolV42HardOverlay');
+    if(o) o.style.display='none';
+    try{ if(typeof screen==='function') screen('lesson'); }catch(e){}
+  }
+  function bindOverlay(){
+    var c=document.getElementById('yolV42Close');
+    if(c) c.onclick=close;
+
+    document.querySelectorAll('[data-v42-level]').forEach(function(b){
+      b.onclick=function(){
+        window.__yolV42Level=b.getAttribute('data-v42-level') || 'ALL';
+        render();
+      };
+    });
+
+    document.querySelectorAll('[data-v42-mi]').forEach(function(el){
+      el.onclick=function(){
+        var mi=Number(el.getAttribute('data-v42-mi'));
+        var pi=Number(el.getAttribute('data-v42-pi'));
+        try{ if(typeof selectPart==='function') selectPart(mi,pi); }catch(e){}
+        setTimeout(close,120);
+      };
+    });
+  }
+  function hardOpen(){
+    console.log('🧭 v42 HARD Modüller açılıyor');
+    render();
+  }
+
+  window.yolV42OpenModules=hardOpen;
+  window.yolV40OpenModules=hardOpen;
+  window.yolV38OpenModules=hardOpen;
+  window.yolV37OpenModules=hardOpen;
+  window.yolV36ShowModules=hardOpen;
+
+  document.addEventListener('click',function(e){
+    var b=e.target && e.target.closest && e.target.closest('button');
+    if(!b) return;
+    var txt=(b.textContent||'').toLowerCase();
+    var id=(b.id||'').toLowerCase();
+    if(txt.includes('modül') || id.includes('module') || id.includes('modul')){
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      hardOpen();
+      return false;
+    }
+  }, true);
+
 })();
 </script>
