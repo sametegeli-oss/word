@@ -91,7 +91,7 @@
 
 
 
-  <link rel="stylesheet" href="css/style.css?v=final-safe-20260612-2">
+  <link rel="stylesheet" href="css/style.css?v=no-blue-v1">
 <link rel="manifest" href="manifest.webmanifest">
 
 <!-- MODERN UI PATCH v1 - eski mavi düğmeleri menü kartı tarzına çevirir -->
@@ -308,6 +308,20 @@ button[style*="position: fixed"]{
   .btn,.btn-blue,.act-btn,.nav-btn,.filter-btn,button[class*="btn"],button[class*="Btn"]{min-height:42px;font-size:13px!important;}
   #smngLauncherFixed,#voiceCompareLauncher{right:12px!important;max-width:128px!important;}
 }
+
+/* Bütün düğmeleri yan yana ikişerli yapan modern grid düzenlemesi */
+.menu-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin-top: 14px !important;
+}
+.menu-tile {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
 </style>
 <!-- /MODERN UI PATCH v1 -->
 
@@ -4620,14 +4634,14 @@ button[style*="position: fixed"]{
 
 
   <script src="js/vocab-data.js"></script>
-  <script src="js/legacy-app.js?v=final-menu-safe-20260612-2"></script>
+  <script src="js/legacy-app.js?v=menu-fix-1"></script>
   <script src="js/sentence-mode-core.js"></script>
   <script src="js/app.js"></script>
 <script src="js/free_features.js"></script>
 <script src="js/fixes.js"></script>
 <script src="js/learning-path.js?v=18"></script>
-<script src="./tumdata-github-loader.js?v=final-safe-20260612-2"></script>
-<script src="./tumdata-auto-learningpath-fix.js?v=final-safe-20260612-2"></script>
+<script src="./tumdata-github-loader.js?v=20260612-final"></script>
+<script src="./tumdata-auto-learningpath-fix.js?v=20260612-final"></script>
 
 <!-- RIGHT SLIDE PANEL TOOLS FIX -->
 
@@ -4733,111 +4747,16 @@ html body .wm-card{
 <script id="final-startup-guard-v3">
 (function(){
   function forceMenuOnFirstOpen(){
-    if (sessionStorage.getItem('wm_user_navigated_after_start') === '1') return;
     var screens=document.querySelectorAll('.screen');
-    screens.forEach(function(s){s.classList.remove('active');s.style.display='none';});
+    screens.forEach(function(s){s.classList.remove('active');s.style.setProperty('display', 'none', 'important');});
     var menu=document.getElementById('sc-menu');
-    if(menu){menu.classList.add('active');menu.style.display='block';}
+    if(menu){menu.classList.add('active');menu.style.setProperty('display', 'block', 'important');}
   }
   window.addEventListener('load', function(){
-    setTimeout(forceMenuOnFirstOpen, 350);
-    setTimeout(forceMenuOnFirstOpen, 1200);
+    setTimeout(forceMenuOnFirstOpen, 50);
   });
-  document.addEventListener('click', function(e){
-    if(e.target && e.target.closest && e.target.closest('button,a,.menu-tile,.menu-cta,.bnav-btn')){
-      sessionStorage.setItem('wm_user_navigated_after_start','1');
-    }
-  }, true);
 })();
 </script>
 <!-- /FINAL NO BLUE + TUMDATA SAFETY PATCH v3 -->
-
-
-
-<script id="wm-final-menu-and-word-examples-safe-v2">
-(function(){
-  'use strict';
-  window.WM_START_ON_MENU = true;
-  window.WM_DISABLE_AUTO_WORD_OPEN = true;
-  window.__wmUserNavigatedAfterBoot = false;
-  const bootUntil = Date.now() + 2600;
-  function forceMenu(){
-    if(window.__wmUserNavigatedAfterBoot) return;
-    if(Date.now() > bootUntil) return;
-    const menu = document.getElementById('sc-menu');
-    if(!menu) return;
-    document.querySelectorAll('.screen').forEach(s=>{
-      s.classList.remove('active');
-      s.style.display = 'none';
-    });
-    menu.classList.add('active');
-    menu.style.display = 'block';
-  }
-  function markNav(){ window.__wmUserNavigatedAfterBoot = true; }
-  document.addEventListener('click', function(e){
-    const b = e.target && e.target.closest && e.target.closest('button,a,[role="button"]');
-    if(!b) return;
-    const t=(b.textContent||'').trim();
-    if(t && !/ana menü/i.test(t)) markNav();
-  }, true);
-  document.addEventListener('DOMContentLoaded', ()=>{ forceMenu(); setTimeout(forceMenu,300); setTimeout(forceMenu,900); setTimeout(forceMenu,1800); });
-  window.addEventListener('load', ()=>{ forceMenu(); setTimeout(forceMenu,400); setTimeout(forceMenu,1200); });
-
-  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  function norm(s){return String(s||'').toLowerCase().replace(/[^a-z']/g,' ').trim();}
-  function wordBoundary(sentence, word){
-    const w=norm(word).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    if(!w) return false;
-    return new RegExp('(^|\\s)'+w+'(\\s|$)','i').test(norm(sentence));
-  }
-  function rowEN(r){return r?.Sentence || r?.sentence || r?.SENTENCE || r?.EnglishSentence || r?.English || r?.en || r?.EN || r?.Example || r?.example || '';}
-  function rowTR(r){return r?.SentenceTR || r?.sentenceTr || r?.SENTENCETR || r?.TurkishSentence || r?.Turkish || r?.tr || r?.TR || r?.ExampleTR || r?.exampleTr || '';}
-  function getPools(){
-    const pools=[];
-    ['tumDataRows','TumDataRows','tumData','TumData','learningRows','allSentences','sentences','allWords','words'].forEach(k=>{
-      try{ if(Array.isArray(window[k])) pools.push(window[k]); }catch(e){}
-    });
-    try{ if(window.WMPath && Array.isArray(WMPath.rows)) pools.push(WMPath.rows); }catch(e){}
-    try{ if(window.WMPath && Array.isArray(WMPath.data)) pools.push(WMPath.data); }catch(e){}
-    return pools;
-  }
-  window.wmFindWordExampleSentences = function(word, limit=6){
-    const seen=new Set(), out=[];
-    for(const pool of getPools()){
-      for(const r of pool){
-        const en=rowEN(r); if(!en || !wordBoundary(en, word)) continue;
-        const key=en.toLowerCase(); if(seen.has(key)) continue;
-        seen.add(key); out.push({en, tr: rowTR(r)});
-        if(out.length>=limit) return out;
-      }
-    }
-    return out;
-  };
-  function examplesHTML(word){
-    const rows=window.wmFindWordExampleSentences(word,6);
-    if(!rows.length) return '';
-    return '<div class="wm-word-examples-box"><h3>Bu kelimenin geçtiği cümleler</h3>'+rows.map(r=>
-      '<div class="wm-word-example-item"><b>'+esc(r.en)+'</b><br><span>'+esc(r.tr||'')+'</span></div>'
-    ).join('')+'</div>';
-  }
-  const css=document.createElement('style');
-  css.id='wm-word-examples-css';
-  css.textContent='.wm-word-examples-box{margin-top:14px;padding:12px;border:1px solid rgba(148,163,184,.18);border-radius:14px;background:rgba(15,23,42,.62)}.wm-word-examples-box h3{margin:0 0 10px;font-size:14px;font-weight:900;color:#f8fafc}.wm-word-example-item{padding:10px 11px;margin:8px 0;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.72);line-height:1.35}.wm-word-example-item b{font-size:13px;color:#f8fafc}.wm-word-example-item span{font-size:12px;color:#94a3b8}';
-  document.head.appendChild(css);
-  const oldShowAI = window.showAI;
-  window.showAI = function(title, body){
-    let html = body;
-    try{
-      const m=String(title||'').match(/[—-]\s*([^—-]+)$/);
-      const word=(m&&m[1]||'').trim();
-      if(word && /Kelime Açıklama|Kelime İlişkileri/i.test(String(title||'')) && !String(body||'').includes('wm-word-examples-box')){
-        html = String(body||'') + examplesHTML(word);
-      }
-    }catch(e){}
-    if(typeof oldShowAI==='function') return oldShowAI.call(this,title,html);
-    alert(String(title||'')+'\n\n'+String(html||'').replace(/<[^>]+>/g,''));
-  };
-})();
-</script>
 
 </body></html>
