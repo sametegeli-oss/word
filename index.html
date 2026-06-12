@@ -93,9 +93,227 @@
 
   <link rel="stylesheet" href="css/style.css">
 <link rel="manifest" href="manifest.webmanifest">
+
+<!-- MODERN UI PATCH v1 - eski mavi düğmeleri menü kartı tarzına çevirir -->
+<style id="modern-ui-patch-v1">
+:root{
+  --wm-modern-bg:#070d17;
+  --wm-modern-panel:rgba(15,23,42,.78);
+  --wm-modern-card:linear-gradient(180deg,rgba(22,31,49,.96),rgba(14,21,35,.96));
+  --wm-modern-card-hover:linear-gradient(180deg,rgba(30,43,68,.98),rgba(17,27,45,.98));
+  --wm-modern-border:rgba(148,163,184,.18);
+  --wm-modern-border-strong:rgba(148,163,184,.28);
+  --wm-modern-text:#f8fafc;
+  --wm-modern-muted:#94a3b8;
+  --wm-modern-blue:#3b82f6;
+  --wm-modern-blue-soft:rgba(59,130,246,.14);
+  --wm-modern-radius:18px;
+  --wm-modern-shadow:0 16px 44px rgba(0,0,0,.32);
+}
+
+/* Genel ekran zemini */
+body{background:var(--wm-modern-bg)!important;}
+.screen{background:transparent!important;}
+.card,.upload-hero,.resume-banner,.fmt-guide,.top-bar{
+  border-color:var(--wm-modern-border)!important;
+}
+
+/* Eski mavi butonları tek modern stile bağla */
+.btn,
+.btn-blue,
+.act-btn,
+.nav-btn,
+.filter-btn,
+.play-btn,
+.smng-btn,
+.vc-btn,
+.wmsw-btn,
+.top-bar > button,
+.back-btn,
+#pwaInstallBtn,
+button[class*="btn"],
+button[class*="Btn"]{
+  border:1px solid var(--wm-modern-border)!important;
+  border-radius:var(--wm-modern-radius)!important;
+  background:var(--wm-modern-card)!important;
+  color:var(--wm-modern-text)!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+  font-weight:800!important;
+  letter-spacing:.01em!important;
+  min-height:44px;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease!important;
+}
+
+.btn:hover,
+.btn-blue:hover,
+.act-btn:hover,
+.nav-btn:hover,
+.filter-btn:hover,
+.play-btn:hover,
+.smng-btn:hover,
+.vc-btn:hover,
+.wmsw-btn:hover,
+.top-bar > button:hover,
+.back-btn:hover,
+#pwaInstallBtn:hover,
+button[class*="btn"]:hover,
+button[class*="Btn"]:hover{
+  background:var(--wm-modern-card-hover)!important;
+  border-color:var(--wm-modern-border-strong)!important;
+  transform:translateY(-1px)!important;
+}
+
+.btn:active,
+.btn-blue:active,
+.act-btn:active,
+.nav-btn:active,
+.filter-btn:active,
+.play-btn:active,
+.smng-btn:active,
+.vc-btn:active,
+.wmsw-btn:active,
+.top-bar > button:active,
+.back-btn:active,
+button[class*="btn"]:active,
+button[class*="Btn"]:active{
+  transform:translateY(0)!important;
+}
+
+/* Ana menüdeki modern kart dilini tüm tile/cta öğelerinde güçlendir */
+.menu-cta,
+.menu-tile,
+.pro-feature-card,
+.go-card,
+.wm-pro-card{
+  background:var(--wm-modern-card)!important;
+  border:1px solid var(--wm-modern-border)!important;
+  border-radius:20px!important;
+  box-shadow:none!important;
+}
+.menu-cta:hover,
+.menu-tile:hover,
+.pro-feature-card:hover,
+.go-card:hover,
+.wm-pro-card:hover{
+  background:var(--wm-modern-card-hover)!important;
+  border-color:var(--wm-modern-border-strong)!important;
+}
+
+/* Öğrenme yolu ekranı: sağ üstteki eski yuvarlak mavi ikonları modern kare/pill düğmelere çevir */
+[id*="path" i] button,
+[class*="path" i] button,
+[id*="module" i] button,
+[class*="module" i] button{
+  border-radius:16px!important;
+  background:var(--wm-modern-card)!important;
+  border:1px solid var(--wm-modern-border)!important;
+  color:var(--wm-modern-text)!important;
+  box-shadow:none!important;
+}
+[id*="path" i] button:hover,
+[class*="path" i] button:hover,
+[id*="module" i] button:hover,
+[class*="module" i] button:hover{
+  background:var(--wm-modern-card-hover)!important;
+  border-color:var(--wm-modern-border-strong)!important;
+}
+
+/* Yuvarlak/eski neon görünen butonları zorla modernleştir */
+button[style*="border-radius:50%"],
+button[style*="border-radius: 50%"],
+button[style*="linear-gradient"],
+button[style*="#3b82f6"],
+button[style*="#2563eb"],
+button[style*="blue" i]{
+  border-radius:16px!important;
+  background:var(--wm-modern-card)!important;
+  border:1px solid var(--wm-modern-border)!important;
+  color:var(--wm-modern-text)!important;
+  box-shadow:none!important;
+}
+
+/* Sağda/yanda duran eski Araçlar ve alttaki ekstra floating düğmeler */
+#smngLauncherFixed,
+#voiceCompareLauncher,
+[id*="Launcher"],
+[id*="launcher"],
+[class*="floating"],
+[class*="fab"],
+[class*="tools" i] > button,
+button[style*="position:fixed"],
+button[style*="position: fixed"]{
+  border-radius:18px!important;
+  background:var(--wm-modern-card)!important;
+  color:var(--wm-modern-text)!important;
+  border:1px solid var(--wm-modern-border)!important;
+  box-shadow:var(--wm-modern-shadow)!important;
+}
+
+/* Alt menü: kart stiline yakın, daha sakin */
+.bottom-nav{
+  background:rgba(9,15,27,.92)!important;
+  backdrop-filter:blur(18px)!important;
+  border-top:1px solid var(--wm-modern-border)!important;
+  box-shadow:0 -16px 44px rgba(0,0,0,.26)!important;
+}
+.bnav-btn{
+  border-radius:14px!important;
+  color:var(--wm-modern-muted)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.bnav-btn.active{
+  background:var(--wm-modern-blue-soft)!important;
+  color:#60a5fa!important;
+  border:1px solid rgba(59,130,246,.22)!important;
+}
+
+/* Üst bar ve geri butonu */
+.top-bar{
+  background:transparent!important;
+  gap:10px!important;
+}
+.back-btn,
+.top-bar > button:first-child{
+  min-width:0!important;
+  padding:0 16px!important;
+  height:44px!important;
+}
+
+/* Renkli özel aksiyonlar: modern ama anlamı korunsun */
+.btn-green,.ab-ok,.play,.smng-primary{border-color:rgba(34,197,94,.32)!important;color:#bbf7d0!important;}
+.btn-purple,.smng-purple{border-color:rgba(168,85,247,.32)!important;color:#e9d5ff!important;}
+.btn-orange{border-color:rgba(245,158,11,.32)!important;color:#fde68a!important;}
+.ab-en,.ab-sent,.ab-tr,.vc-blue,.smng-blue{border-color:rgba(59,130,246,.32)!important;color:#bfdbfe!important;}
+.vc-red{border-color:rgba(239,68,68,.32)!important;color:#fecaca!important;}
+
+/* Kart içi küçük buton kümeleri */
+.act-row,
+.smng-row,
+.vc-row{
+  gap:10px!important;
+}
+.feature-category,
+.feature-header,
+.feature-content{
+  border-color:var(--wm-modern-border)!important;
+  background:rgba(15,23,42,.50)!important;
+  border-radius:18px!important;
+}
+
+/* Mobil taşma azaltma */
+@media (max-width:720px){
+  .screen{padding-left:14px!important;padding-right:14px!important;}
+  .btn,.btn-blue,.act-btn,.nav-btn,.filter-btn,button[class*="btn"],button[class*="Btn"]{min-height:42px;font-size:13px!important;}
+  #smngLauncherFixed,#voiceCompareLauncher{right:12px!important;max-width:128px!important;}
+}
+</style>
+<!-- /MODERN UI PATCH v1 -->
+
 </head>
 <body>
-<div id="versionBadge" style="position:fixed;bottom:8px;right:8px;background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;font-family:monospace;z-index:99999;pointer-events:none;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.3)">Sentence Mode v1 · 2026-06-01</div>
+<div id="versionBadge" style="position:fixed;bottom:8px;right:8px;background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;font-family:monospace;z-index:99999;pointer-events:none;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.3)">Sentence Mode v1 · Modern UI Patch</div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <symbol id="i-map" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></symbol>
 <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></g></symbol>
@@ -4409,7 +4627,7 @@
 <script src="js/fixes.js"></script>
 <script src="js/learning-path.js?v=18"></script>
 <script src="./tumdata-github-loader.js?v=1"></script>
-<script src="tumdata-auto-learningpath-fix.js?v=2"></script>
+<script src="tumdata-auto-learningpath-fix.js?v=1"></script>
 
 <!-- RIGHT SLIDE PANEL TOOLS FIX -->
 
