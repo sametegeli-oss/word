@@ -982,7 +982,7 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
       lastScrollTs=Date.now();
       try{
         var t=e.touches&&e.touches[0]; if(t){
-          if(Math.abs(t.screenX-touchStartX)>10 || Math.abs(t.screenY-touchStartY)>10) touchMoved=true;
+          if(Math.abs(t.screenX-touchStartX)>18 || Math.abs(t.screenY-touchStartY)>18) touchMoved=true;
         }
       }catch(_){}
     }, {passive:true,capture:true});
@@ -994,7 +994,7 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
     }, true);
     document.addEventListener('touchend',    function(){ setTimeout(function(){ pointerDown=false; },350); }, true);
 
-    function recentlyScrolled(){ return (Date.now()-lastScrollTs) < 500; }
+    function recentlyScrolled(){ return (Date.now()-lastScrollTs) < 250; }
     function inEditable(){
       var a=document.activeElement;
       return a && (a.tagName==='INPUT' || a.tagName==='TEXTAREA' || a.isContentEditable);
