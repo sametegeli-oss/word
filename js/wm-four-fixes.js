@@ -615,53 +615,55 @@
      Çözüm: geri yükleme sürerken klasöre yazmayı atla — çünkü
      veri zaten o klasörden geliyor.
      ============================================================ */
-  (function skipBookRebackupDuringRestore() {
-    // Açılıştaki geri yükleme penceresi boyunca klasöre yazmayı engelle.
-    // autoRestoreFromBackupFolder leksik olarak çağrıldığı için onu
-    // sarmak güvenilir değil; bunun yerine bayrağı açılışta açıp,
-    // geri yükleme tamamlandıktan kısa süre sonra kapatıyoruz.
-    window.__WM_RESTORING_BOOKS__ = true;
+  (function skipRedundantBookBackup() {
+    // Klasöre-yazma fonksiyonu (saveBookToBackupFolder) içerik
+    // karşılaştırması yapmıyordu: her çağrıda dosyayı koşulsuz üzerine
+    // yazıyordu. Açılışta geri yükleme bu fonksiyonu her kitap için
+    // çağırınca, veri zaten o klasörden gelmesine rağmen tüm kitaplar
+    // tekrar yazılıyordu. Çözüm: yazmadan önce klasördeki dosyanın
+    // içeriği zaten aynıysa ATLA. Bu, zamanlama/bayrak gerektirmez ve
+    // hem açılışta hem normal kullanımda gereksiz yazımı/çoğalmayı önler.
 
-    function wrapSaver() {
+    function wrap() {
       var fn = window.saveBookToBackupFolder;
-      if (typeof fn !== 'function' || fn.__wmRestoreGuard) return false;
-      var wrapped = async function () {
-        if (window.__WM_RESTORING_BOOKS__) {
-          // Veri zaten yedek klasöründen geliyor; tekrar yazma.
-          return false;
-        }
+      if (typeof fn !== 'function' || fn.__wmContentGuard) return false;
+
+      var wrapped = async function (e, t, n) {
+        try {
+          var handle = window.backupFolderHandle;
+          // Klasör seçili ve yeni içerik (n) verilmişse, mevcut dosyayı
+          // okuyup aynıysa yazmayı atla.
+          if (handle && typeof n === 'string') {
+            var fname = 'book_' + e + '_' +
+              String(t || '').replace(/[^a-z0-9]/gi, '_').substring(0, 50) + '.txt';
+            try {
+              var fh = await handle.getFileHandle(fname, { create: false });
+              var file = await fh.getFile();
+              var existing = await file.text();
+              if (existing === n) {
+                // İçerik birebir aynı → tekrar yazma.
+                return false;
+              }
+            } catch (err) {
+              // Dosya yok ya da okunamadı → normal akışa devam (yazsın).
+            }
+          }
+        } catch (e2) { /* sorun olursa orijinale düş */ }
         return fn.apply(this, arguments);
       };
-      wrapped.__wmRestoreGuard = true;
+      wrapped.__wmContentGuard = true;
       try { window.saveBookToBackupFolder = wrapped; } catch (e) { return false; }
       return true;
     }
 
-    // saveBookToBackupFolder, legacy-app içinde v34 sarmalayıcısıyla
-    // window'a atanıyor; hazır olur olmaz saralım. Sonradan yeniden
-    // atanırsa tekrar sar.
-    wrapSaver();
-    var t = 0;
+    // legacy-app v34 sarmalayıcısı window.saveBookToBackupFolder'ı
+    // sonradan atayabilir; hazır olunca ve yeniden atanırsa tekrar sar.
+    wrap();
+    var tries = 0;
     var iv = setInterval(function () {
-      if (window.saveBookToBackupFolder && !window.saveBookToBackupFolder.__wmRestoreGuard) wrapSaver();
-      if (++t > 100) clearInterval(iv);
+      if (window.saveBookToBackupFolder && !window.saveBookToBackupFolder.__wmContentGuard) wrap();
+      if (++tries > 150) clearInterval(iv);
     }, 100);
-
-    // Geri yükleme açılışta `setTimeout` ile tetikleniyor ve kitaplar
-    // arka arkaya yükleniyor. window.load + birkaç saniye sonra burst
-    // bitmiş olur; bayrağı o zaman indir ki normal kullanımda yedekleme
-    // tekrar çalışsın.
-    function releaseSoon() {
-      // Yükleme bittikten 6 sn sonra serbest bırak (burst tamamlanır).
-      setTimeout(function () { window.__WM_RESTORING_BOOKS__ = false; }, 6000);
-    }
-    if (document.readyState === 'complete') {
-      releaseSoon();
-    } else {
-      window.addEventListener('load', releaseSoon);
-    }
-    // Emniyet: en geç 20 sn sonra her hâlükârda serbest bırak.
-    setTimeout(function () { window.__WM_RESTORING_BOOKS__ = false; }, 20000);
   })();
 
 })();
