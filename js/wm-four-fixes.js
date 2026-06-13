@@ -649,25 +649,45 @@
           if (handle && typeof n === 'string') {
             var fname = 'book_' + e + '_' +
               String(t || '').replace(/[^a-z0-9]/gi, '_').substring(0, 50) + '.txt';
+            // Klasörü tarayıp gerçek dosya adını bul. getFileHandle ile
+            // doğrudan isimden aramak, Türkçe/özel karakterlerden doğan
+            // isim üretimi farkları yüzünden tutmuyordu. Aynı kitap kimliği
+            // ('book_' + e + '_') ön ekiyle başlayan gerçek dosyayı buluruz.
+            var prefix = 'book_' + e + '_';
+            var realName = null;
             try {
-              var fh = await handle.getFileHandle(fname, { create: false });
-              var file = await fh.getFile();
-              var existing = await file.text();
-              if (existing === n || norm(existing) === norm(n)) {
-                // İçerik (normalize edilmiş hâliyle) aynı → tekrar yazma.
-                console.log('⏭️ [wm-fix] Kitap zaten güncel, yazma atlandı:', fname);
-                return false;
+              for await (var entry of handle.values()) {
+                if (entry.kind === 'file' &&
+                    entry.name.indexOf(prefix) === 0 &&
+                    /\.txt$/i.test(entry.name)) {
+                  realName = entry.name;
+                  break;
+                }
               }
-              // Neden eşleşmediğini bir kez teşhis et (ilk farkı göster).
-              var a = norm(existing), b = norm(n), i = 0;
-              while (i < a.length && i < b.length && a[i] === b[i]) i++;
-              console.warn('🔎 [wm-fix] İçerik farklı, yazılacak:', fname,
-                '| klasör uzunluk:', a.length, 'IDB uzunluk:', b.length,
-                '| ilk fark @', i,
-                '| klasör:', JSON.stringify(a.slice(i, i + 30)),
-                '| IDB:', JSON.stringify(b.slice(i, i + 30)));
-            } catch (err) {
-              // Dosya yok ya da okunamadı → normal akışa devam (yazsın).
+            } catch (scanErr) {
+              console.warn('🔎 [wm-fix] Klasör taranamadı:', prefix, scanErr && scanErr.message);
+            }
+            if (realName) {
+              try {
+                var fh = await handle.getFileHandle(realName, { create: false });
+                var file = await fh.getFile();
+                var existing = await file.text();
+                if (existing === n || norm(existing) === norm(n)) {
+                  console.log('⏭️ [wm-fix] Kitap zaten güncel, yazma atlandı:', realName);
+                  return false;
+                }
+                var a = norm(existing), b = norm(n), i = 0;
+                while (i < a.length && i < b.length && a[i] === b[i]) i++;
+                console.warn('🔎 [wm-fix] İçerik farklı, yazılacak:', realName,
+                  '| klasör uzunluk:', a.length, 'IDB uzunluk:', b.length,
+                  '| ilk fark @', i,
+                  '| klasör:', JSON.stringify(a.slice(i, i + 40)),
+                  '| IDB:', JSON.stringify(b.slice(i, i + 40)));
+              } catch (readErr) {
+                console.warn('🔎 [wm-fix] Dosya okunamadı:', realName, readErr && readErr.message);
+              }
+            } else {
+              console.warn('🔎 [wm-fix] Klasörde eşleşen dosya yok, yazılacak:', prefix);
             }
           }
         } catch (e2) { /* sorun olursa orijinale düş */ }
@@ -679,7 +699,7 @@
       return true;
     }
 
-    console.log('🟢 [wm-fix] skipRedundantBookBackup yüklendi (v20260613-5)');
+    console.log('🟢 [wm-fix] skipRedundantBookBackup yüklendi (v20260613-6)');
     // legacy-app v34 sarmalayıcısı window.saveBookToBackupFolder'ı
     // sonradan atayabilir; hazır olunca ve yeniden atanırsa tekrar sar.
     wrap();
