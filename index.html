@@ -4430,30 +4430,29 @@ html body .wm-card{
 <script src="js/wm-four-fixes.js?v=20260613-7"></script>
 
 
-<script id="wm-word-examples-clean-final-v1">
+<script id="wm-word-examples-final-v2">
 (function(){
   'use strict';
-  if(window.__wmWordExamplesCleanFinalV1) return;
-  window.__wmWordExamplesCleanFinalV1 = true;
+  if(window.__wmWordExamplesFinalV2) return;
+  window.__wmWordExamplesFinalV2 = true;
 
-  function clean(s){ return String(s ?? '').replace(/\s+/g,' ').trim(); }
-  function esc(s){ return String(s ?? '').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-  function norm(s){ return clean(s).toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9']/g,' ').replace(/\s+/g,' ').trim(); }
-  function baseWord(w){ return norm(w).replace(/^(to|a|an|the)\s+/,'').replace(/(ing|ied|ed|es|s)$/,''); }
+  function clean(s){ return String(s==null?'':s).replace(/\s+/g,' ').trim(); }
+  function esc(s){ return clean(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function norm(s){ return clean(s).toLowerCase().replace(/[’']/g,"'").replace(/^[^a-z]+|[^a-z]+$/g,''); }
+  function baseWord(w){
+    let x=norm(w).replace(/^(to|a|an|the)\s+/,'');
+    if(x.length>4) x=x.replace(/(ing|ied|ed|es|s)$/,'');
+    return x;
+  }
   function isWord(s){ return /^[A-Za-z][A-Za-z'’-]{1,}$/.test(clean(s)); }
-  function rowEN(r){ return clean(r && (r.SentenceEN ?? r.sentenceEN ?? r.Sentence ?? r.sentence ?? r.SENTENCE ?? r.EnglishSentence ?? r.English ?? r.english ?? r.en ?? r.EN ?? r.ExampleEN ?? r.Example ?? r.example ?? r.wordSentence ?? '')); }
-  function rowTR(r){ return clean(r && (r.SentenceTR ?? r.sentenceTr ?? r.SENTENCETR ?? r.TurkishSentence ?? r.Turkish ?? r.turkish ?? r.tr ?? r.TR ?? r.ExampleTR ?? r.exampleTr ?? r.translation ?? r.Translation ?? '')); }
-  function wordBoundary(sentence, word){
-    const bw=baseWord(word), nw=norm(word);
-    if(!bw && !nw) return false;
-    return norm(sentence).split(/\s+/).some(function(t){ return t===nw || t===bw || baseWord(t)===bw || baseWord(t)===nw; });
+  function wordBoundary(text, word){
+    const w=clean(word).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    try{return new RegExp('\\b'+w+'\\b','i').test(clean(text));}catch(e){return clean(text).toLowerCase().includes(clean(word).toLowerCase());}
   }
-  function highlight(sentence, word){
-    const bw=baseWord(word), nw=norm(word);
-    return esc(sentence).replace(/\b([A-Za-z][A-Za-z'’-]*)\b/g,function(m){
-      return (baseWord(m)===bw || norm(m)===nw) ? '<span class="wm-word-hit">'+esc(m)+'</span>' : esc(m);
-    });
-  }
+  function get(o, keys){ for(const k of keys){ if(o && o[k]!=null && clean(o[k])) return clean(o[k]); } return ''; }
+  function rowEN(r){ return get(r,['SentenceEN','sentenceEN','sentence','Sentence','Example EN','exampleEN','en','English','wordSentence','cumle','Cümle']); }
+  function rowTR(r){ return get(r,['SentenceTR','sentenceTR','translation','Translation','Example TR','exampleTR','tr','Turkish','turkish','Turkish meaning','sentence_tr','cumleTr','CümleTR']); }
+  function rowGrammar(r){ return get(r,['GrammarStructure','grammarStructure','Grammar','grammar','Pattern','pattern','Tense','SentenceType','RoleMap','Dependency']); }
   function arr(x){
     if(Array.isArray(x)) return x;
     if(x && Array.isArray(x.rows)) return x.rows;
@@ -4469,7 +4468,7 @@ html body .wm-card{
         const k=localStorage.key(i)||'';
         if(!/(word|sentence|cumle|tumdata|path|data|excel|rows|wm)/i.test(k)) continue;
         const v=localStorage.getItem(k);
-        if(!v || v.length<20 || v[0]!=='[' && v[0]!=='{') continue;
+        if(!v || v.length<20 || (v[0]!=='[' && v[0]!=='{')) continue;
         try{ const a=arr(JSON.parse(v)); if(a.length) pools.push(a); }catch(e){}
       }
     }catch(e){}
@@ -4486,11 +4485,39 @@ html body .wm-card{
         const key=en.toLowerCase();
         if(seen.has(key)) return;
         seen.add(key);
-        out.push({en:en, tr:rowTR(r)});
+        out.push({en:en, tr:rowTR(r), grammar:rowGrammar(r), raw:r});
       });
     });
     return out;
   }
+
+  function roleOfToken(token, sentence, grammar, index){
+    const w=norm(token);
+    const g=clean(grammar).toLowerCase();
+    if(['i','you','he','she','it','we','they','me','him','her','us','them','my','your','his','their','our'].includes(w)) return 'subject';
+    if(['am','is','are','was','were','be','been','being'].includes(w)) return 'be';
+    if(['do','does','did','have','has','had','will','would','can','could','should','must','may','might'].includes(w)) return 'aux';
+    if(['not',"n't",'never','no'].includes(w)) return 'neg';
+    if(['a','an','the'].includes(w)) return 'article';
+    if(['in','on','at','to','for','from','with','by','of','about','into','over','under','after','before','between','through','during','without','within','around'].includes(w)) return 'prep';
+    if(['and','but','or','because','although','however','so','if','when','while','that','which','who'].includes(w)) return 'conn';
+    if(/ly$/.test(w) || ['very','too','also','just','now','then','here','there','probably','really'].includes(w)) return 'adv';
+    if(['good','bad','new','old','big','small','tired','happy','sad','weird','busy','ready','right','wrong'].includes(w) || g.includes('adjective')) return 'adj';
+    if(['am','is','are','was','were'].includes(w)) return 'be';
+    if(['go','come','make','take','get','give','see','want','need','like','work','study','learn','speak','read','write','play','act','sleep','eat','drink','book','call','help','look','feel','have','do','be','been','being','dining'].includes(baseWord(w)) || /ing$|ed$/.test(w) || g.includes('verb') || g.includes('tense')) return 'verb';
+    return 'noun';
+  }
+  function renderGrammarSentence(sentence, focusWord, grammar){
+    const fbase=baseWord(focusWord), fnorm=norm(focusWord);
+    return esc(sentence).replace(/\b([A-Za-z][A-Za-z'’-]*)\b/g,function(m, tok, offset){
+      const before=sentence.slice(0, offset);
+      const idx=(before.match(/\b[A-Za-z][A-Za-z'’-]*\b/g)||[]).length;
+      const role=roleOfToken(tok, sentence, grammar, idx);
+      const hit=(baseWord(tok)===fbase || norm(tok)===fnorm) ? ' wm-word-hit' : '';
+      return '<span class="wm-role wm-role-'+role+hit+'">'+esc(tok)+'</span>';
+    });
+  }
+
   window.wmFindWordExampleSentences=function(word, limit){ return findExamples(word, limit||7); };
   window.wmExamplesHTML=function(word){
     const rows=findExamples(word,7);
@@ -4498,31 +4525,32 @@ html body .wm-card{
       return '<section class="wm-word-examples-box" data-wm-examples="1"><h3>Bu kelimenin geçtiği cümleler</h3><p class="wm-word-no-example">Örnek bulunamadı.</p></section>';
     }
     return '<section class="wm-word-examples-box" data-wm-examples="1"><h3>Bu kelimenin geçtiği cümleler</h3>'+rows.map(function(r){
-      return '<article class="wm-word-example-item"><b>'+highlight(r.en, word)+'</b><span>'+esc(r.tr||'')+'</span></article>';
+      return '<article class="wm-word-example-item"><b>'+renderGrammarSentence(r.en, word, r.grammar)+'</b><span>'+esc(r.tr||'')+'</span></article>';
     }).join('')+'</section>';
   };
 
   function ensureCSS(){
-    if(document.getElementById('wm-word-examples-clean-final-css')) return;
+    if(document.getElementById('wm-word-examples-final-v2-css')) return;
     const st=document.createElement('style');
-    st.id='wm-word-examples-clean-final-css';
+    st.id='wm-word-examples-final-v2-css';
     st.textContent=`
       .wm-examples-btn{display:none!important}
       .wm-word-examples-box{
-        display:block!important;grid-column:1/-1!important;flex:0 0 100%!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;
-        margin:14px 0 0!important;padding:12px!important;border:1px solid rgba(148,163,184,.18)!important;border-radius:18px!important;
-        background:rgba(15,23,42,.72)!important;text-align:left!important;clear:both!important;float:none!important;min-width:0!important;
+        display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;
+        margin:16px 0 0!important;padding:12px!important;border:1px solid rgba(148,163,184,.18)!important;border-radius:18px!important;
+        background:rgba(15,23,42,.78)!important;text-align:left!important;clear:both!important;float:none!important;grid-column:1/-1!important;flex-basis:100%!important;
       }
-      .wm-word-examples-box h3{margin:0 0 12px!important;font-size:24px!important;line-height:1.15!important;font-weight:950!important;color:#f8fafc!important;text-align:left!important;letter-spacing:-.3px!important}
-      .wm-word-example-item{display:block!important;width:100%!important;box-sizing:border-box!important;padding:14px 16px!important;margin:9px 0!important;border:1px solid rgba(148,163,184,.16)!important;border-radius:16px!important;background:#101b2d!important;line-height:1.45!important;text-align:left!important;min-height:0!important;white-space:normal!important}
-      .wm-word-example-item b{display:block!important;font-size:17px!important;line-height:1.45!important;color:#f8fafc!important;text-align:left!important;word-break:normal!important;overflow-wrap:break-word!important;white-space:normal!important}
-      .wm-word-example-item span{display:block!important;font-size:16px!important;line-height:1.45!important;color:#9ec5f0!important;text-align:left!important;word-break:normal!important;overflow-wrap:break-word!important;white-space:normal!important;margin-top:2px!important}
-      .wm-word-hit{color:#fb923c!important;font-weight:950!important}.wm-word-no-example{color:#94a3b8!important;margin:8px 0 0!important;font-size:14px!important;text-align:left!important}
-      .sheet.dict-modal .dict-big-buttons,.sheet.dict-modal .dict-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;align-items:stretch!important}
-      .sheet.dict-modal .dict-big-buttons>button,.sheet.dict-modal .dict-actions>button{width:100%!important;min-width:0!important;min-height:46px!important;touch-action:manipulation!important}
+      .wm-word-examples-box h3{margin:0 0 12px!important;font-size:23px!important;line-height:1.18!important;font-weight:950!important;color:#f8fafc!important;text-align:left!important;letter-spacing:-.25px!important;text-shadow:0 1px 2px rgba(0,0,0,.45)!important}
+      .wm-word-example-item{display:block!important;width:100%!important;box-sizing:border-box!important;padding:13px 15px!important;margin:9px 0!important;border:1px solid rgba(148,163,184,.16)!important;border-radius:16px!important;background:#101b2d!important;line-height:1.45!important;text-align:left!important;white-space:normal!important;min-height:0!important}
+      .wm-word-example-item b{display:block!important;font-size:16.5px!important;line-height:1.45!important;color:#f8fafc!important;text-align:left!important;word-break:normal!important;overflow-wrap:break-word!important;white-space:normal!important}
+      .wm-word-example-item span{display:block!important;font-size:16px!important;line-height:1.45!important;color:#9ec5f0!important;text-align:left!important;word-break:normal!important;overflow-wrap:break-word!important;white-space:normal!important;margin-top:3px!important;font-weight:700!important}
+      .wm-word-no-example{color:#94a3b8!important;margin:8px 0 0!important;font-size:14px!important;text-align:left!important}
+      .wm-role{font-weight:950!important}.wm-role-subject{color:#60a5fa!important}.wm-role-be{color:#fb923c!important}.wm-role-aux{color:#fbbf24!important}.wm-role-neg{color:#f87171!important}.wm-role-article{color:#fde047!important}.wm-role-prep{color:#22c55e!important}.wm-role-conn{color:#f472b6!important}.wm-role-adv{color:#34d399!important}.wm-role-adj{color:#a78bfa!important}.wm-role-verb{color:#ef4444!important}.wm-role-noun{color:#38bdf8!important}.wm-word-hit{color:#fb923c!important;text-shadow:0 0 8px rgba(251,146,60,.25)!important}
+      .sheet.dict-modal .dict-big-buttons,.sheet.dict-modal .dict-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;align-items:stretch!important;width:100%!important}
+      .sheet.dict-modal .dict-big-buttons>button,.sheet.dict-modal .dict-actions>button{width:100%!important;min-width:0!important;min-height:46px!important;touch-action:manipulation!important;pointer-events:auto!important;position:relative!important;z-index:5!important}
       @media(max-width:720px){
-        .sheet.dict-modal,.sheet,.modal,.popup,[role="dialog"]{max-width:min(94vw,560px)!important;width:min(94vw,560px)!important;box-sizing:border-box!important}
-        .sheet.dict-modal .dict-big-buttons,.sheet.dict-modal .dict-actions{grid-template-columns:1fr!important}
+        .sheet.dict-modal,.sheet,.modal,.popup,[role="dialog"]{max-width:min(94vw,560px)!important;width:min(94vw,560px)!important;box-sizing:border-box!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important}
+        .sheet.dict-modal .dict-big-buttons,.sheet.dict-modal .dict-actions{grid-template-columns:1fr 1fr!important}
         .wm-word-examples-box{padding:12px!important;margin-top:14px!important}
         .wm-word-examples-box h3{font-size:22px!important}
         .wm-word-example-item{padding:13px 14px!important}.wm-word-example-item b{font-size:16px!important}.wm-word-example-item span{font-size:15px!important}
@@ -4539,6 +4567,7 @@ html body .wm-card{
     if(isWord(t) && !/^(play|slow|fast|speed|ipa|syllables|kelime|açıklama|ilişkileri|kaydı|başlat)$/i.test(t)) window.__wmLastClickedWord=t;
   }
   document.addEventListener('pointerdown', rememberWord, true);
+  document.addEventListener('touchstart', rememberWord, true);
   document.addEventListener('click', rememberWord, true);
 
   function wordFromGlobals(){
@@ -4577,21 +4606,9 @@ html body .wm-card{
     list.sort((a,b)=>(a.textContent||'').length-(b.textContent||'').length);
     return list[0] || null;
   }
-  function findAnchor(panel){
-    const nodes=[...panel.querySelectorAll('*')];
-    const record=nodes.reverse().find(el=>/Kaydı Başlat/i.test(el.textContent||''));
-    if(record){
-      let a=record;
-      for(let i=0;a && i<4;i++,a=a.parentElement){
-        if(a.parentElement===panel || /pron-section|dict-box|card|panel/i.test(String(a.className||''))) return a;
-      }
-      return record;
-    }
-    return panel.querySelector('.pron-section') || panel.querySelector('.dict-big-buttons') || panel.querySelector('.dict-actions') || panel.lastElementChild;
-  }
   function addExamples(panel){
     ensureCSS();
-    if(!panel || panel.dataset.wmExamplesReady==='1') return;
+    if(!panel || panel.dataset.wmExamplesReadyV2==='1') return;
     const word=wordFromPanel(panel);
     if(!isWord(word)) return;
     panel.querySelectorAll('.wm-examples-btn').forEach(x=>x.remove());
@@ -4601,10 +4618,10 @@ html body .wm-card{
     const box=tmp.firstElementChild;
     if(!box) return;
     box.setAttribute('data-wm-for-word', word);
-    const anchor=findAnchor(panel);
-    if(anchor && anchor.parentNode && anchor!==panel){ anchor.parentNode.insertBefore(box, anchor.nextSibling); }
-    else panel.appendChild(box);
-    panel.dataset.wmExamplesReady='1';
+    // ÖNEMLİ: yol.html'deki gibi tam genişlik için kutuyu panelin ana gövdesine ekle.
+    // Grid / iki sütunlu buton grubunun içine sokma; masaüstündeki dar-kötü tasarım buradan geliyordu.
+    panel.appendChild(box);
+    panel.dataset.wmExamplesReadyV2='1';
   }
   function scan(){
     ensureCSS();
@@ -4613,10 +4630,24 @@ html body .wm-card{
       if(!(el instanceof HTMLElement)) return false;
       const txt=el.textContent||'';
       return /Kelime Açıklama|Kelime İlişkileri|Syllables|Kaydı Başlat|Türkçe okunuş/i.test(txt);
-    }).slice(-100);
+    }).slice(-120);
     const seen=new Set();
     seeds.forEach(function(s){ const p=bestPanel(s); if(p && !seen.has(p)){ seen.add(p); addExamples(p); } });
   }
+
+  // Mobilde bazı tarayıcılarda kelimeye dokunma click'e dönüşmüyor. Zorla click fallback.
+  document.addEventListener('touchend', function(e){
+    const t=e.target && e.target.closest && e.target.closest('.tok,.word-chip,[data-word],[data-wm-word]');
+    if(!t) return;
+    rememberWord(e);
+    const before=document.querySelectorAll('.sheet.dict-modal,.sheet,.modal,.popup,[role="dialog"]').length;
+    setTimeout(function(){
+      const after=document.querySelectorAll('.sheet.dict-modal,.sheet,.modal,.popup,[role="dialog"]').length;
+      if(after<=before){ try{ t.click(); }catch(_){} }
+      setTimeout(scan,120);
+    },80);
+  }, true);
+
   function start(){ ensureCSS(); scan(); new MutationObserver(function(){ setTimeout(scan,50); }).observe(document.body||document.documentElement,{childList:true,subtree:true,characterData:true}); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', start); else start();
   document.addEventListener('click', function(){ setTimeout(scan,80); setTimeout(scan,350); }, true);
