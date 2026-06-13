@@ -628,6 +628,19 @@
       var fn = window.saveBookToBackupFolder;
       if (typeof fn !== 'function' || fn.__wmContentGuard) return false;
 
+      // İçerik karşılaştırmasını dayanıklı kıl: BOM, satır sonu (CRLF/CR),
+      // ve baştaki/sondaki boşluk farkları "aynı" sayılsın. Klasördeki eski
+      // dosyalar (guard'dan önce yazılanlar) ile IDB metni arasında görünmez
+      // bayt farkları (özellikle Türkçe karakterli/uzun PDF'lerde) yüzünden
+      // tam eşitlik tutmuyordu; bu yüzden normalize ediyoruz.
+      function norm(s) {
+        return String(s)
+          .replace(/^\uFEFF/, '')      // baştaki BOM
+          .replace(/\r\n?/g, '\n')      // CRLF / CR -> LF
+          .replace(/[ \t]+\n/g, '\n')  // satır sonu boşlukları
+          .replace(/\s+$/, '');         // sondaki boşluk/yeni satırlar
+      }
+
       var wrapped = async function (e, t, n) {
         try {
           var handle = window.backupFolderHandle;
@@ -640,11 +653,19 @@
               var fh = await handle.getFileHandle(fname, { create: false });
               var file = await fh.getFile();
               var existing = await file.text();
-              if (existing === n) {
-                // İçerik birebir aynı → tekrar yazma.
+              if (existing === n || norm(existing) === norm(n)) {
+                // İçerik (normalize edilmiş hâliyle) aynı → tekrar yazma.
                 console.log('⏭️ [wm-fix] Kitap zaten güncel, yazma atlandı:', fname);
                 return false;
               }
+              // Neden eşleşmediğini bir kez teşhis et (ilk farkı göster).
+              var a = norm(existing), b = norm(n), i = 0;
+              while (i < a.length && i < b.length && a[i] === b[i]) i++;
+              console.warn('🔎 [wm-fix] İçerik farklı, yazılacak:', fname,
+                '| klasör uzunluk:', a.length, 'IDB uzunluk:', b.length,
+                '| ilk fark @', i,
+                '| klasör:', JSON.stringify(a.slice(i, i + 30)),
+                '| IDB:', JSON.stringify(b.slice(i, i + 30)));
             } catch (err) {
               // Dosya yok ya da okunamadı → normal akışa devam (yazsın).
             }
@@ -658,7 +679,7 @@
       return true;
     }
 
-    console.log('🟢 [wm-fix] skipRedundantBookBackup yüklendi (v20260613-4)');
+    console.log('🟢 [wm-fix] skipRedundantBookBackup yüklendi (v20260613-5)');
     // legacy-app v34 sarmalayıcısı window.saveBookToBackupFolder'ı
     // sonradan atayabilir; hazır olunca ve yeniden atanırsa tekrar sar.
     wrap();
