@@ -4754,9 +4754,11 @@ html body .wm-card{
 
 
 
-<script id="wm-final-menu-and-word-examples-safe-v2">
+<script id="wm-final-menu-and-word-examples-safe-v3">
 (function(){
   'use strict';
+
+  /* Açılışta otomatik kelime ekranına düşmeyi engelle */
   window.WM_START_ON_MENU = true;
   window.WM_DISABLE_AUTO_WORD_OPEN = true;
   window.__wmUserNavigatedAfterBoot = false;
@@ -4783,25 +4785,55 @@ html body .wm-card{
   document.addEventListener('DOMContentLoaded', ()=>{ forceMenu(); setTimeout(forceMenu,300); setTimeout(forceMenu,900); setTimeout(forceMenu,1800); });
   window.addEventListener('load', ()=>{ forceMenu(); setTimeout(forceMenu,400); setTimeout(forceMenu,1200); });
 
+  /* ==========================================================
+     KELİMENİN GEÇTİĞİ CÜMLELER - INDEX ENTEGRASYONU
+     Bu blok Yol Haritası'ndaki çalışan mantığı index.html içine taşır.
+     Kelime Açıklama / Kelime İlişkileri modalının altına örnekleri basar.
+     ========================================================== */
   function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  function norm(s){return String(s||'').toLowerCase().replace(/[^a-z']/g,' ').trim();}
-  function wordBoundary(sentence, word){
-    const w=norm(word).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    if(!w) return false;
-    return new RegExp('(^|\\s)'+w+'(\\s|$)','i').test(norm(sentence));
+  function clean(s){return String(s??'').replace(/\s+/g,' ').trim();}
+  function norm(s){return clean(s).toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9']/g,' ').replace(/\s+/g,' ').trim();}
+  function baseWord(w){
+    return norm(w).replace(/^(to|a|an|the)\s+/,'').replace(/(ing|ed|es|s)$/,'');
   }
-  function rowEN(r){return r?.Sentence || r?.sentence || r?.SENTENCE || r?.EnglishSentence || r?.English || r?.en || r?.EN || r?.Example || r?.example || '';}
-  function rowTR(r){return r?.SentenceTR || r?.sentenceTr || r?.SENTENCETR || r?.TurkishSentence || r?.Turkish || r?.tr || r?.TR || r?.ExampleTR || r?.exampleTr || '';}
+  function wordBoundary(sentence, word){
+    const nw=norm(word), bw=baseWord(word);
+    if(!nw && !bw) return false;
+    const tokens = norm(sentence).split(/\s+/).filter(Boolean);
+    return tokens.some(t=> t===nw || t===bw || baseWord(t)===bw || baseWord(t)===nw);
+  }
+  function rowEN(r){return clean(r?.SentenceEN ?? r?.Sentence ?? r?.sentence ?? r?.SENTENCE ?? r?.EnglishSentence ?? r?.English ?? r?.english ?? r?.en ?? r?.EN ?? r?.ExampleEN ?? r?.Example ?? r?.example ?? '');}
+  function rowTR(r){return clean(r?.SentenceTR ?? r?.sentenceTr ?? r?.SENTENCETR ?? r?.TurkishSentence ?? r?.Turkish ?? r?.turkish ?? r?.tr ?? r?.TR ?? r?.ExampleTR ?? r?.exampleTr ?? '');}
+  function arrayFromStorageValue(v){
+    try{
+      const parsed = typeof v === 'string' ? JSON.parse(v) : v;
+      if(Array.isArray(parsed)) return parsed;
+      if(parsed && Array.isArray(parsed.rows)) return parsed.rows;
+      if(parsed && Array.isArray(parsed.data)) return parsed.data;
+      if(parsed && Array.isArray(parsed.items)) return parsed.items;
+    }catch(e){}
+    return null;
+  }
   function getPools(){
     const pools=[];
-    ['tumDataRows','TumDataRows','tumData','TumData','learningRows','allSentences','sentences','allWords','words'].forEach(k=>{
-      try{ if(Array.isArray(window[k])) pools.push(window[k]); }catch(e){}
-    });
+    const names=['tumDataRows','TumDataRows','tumData','TumData','learningRows','allRows','allData','excelData','dataRows','sentenceRows','allSentences','sentences','currentRows','currentList','allWords','words'];
+    names.forEach(k=>{ try{ if(Array.isArray(window[k])) pools.push(window[k]); }catch(e){} });
     try{ if(window.WMPath && Array.isArray(WMPath.rows)) pools.push(WMPath.rows); }catch(e){}
     try{ if(window.WMPath && Array.isArray(WMPath.data)) pools.push(WMPath.data); }catch(e){}
+    try{ if(window.appState && Array.isArray(appState.rows)) pools.push(appState.rows); }catch(e){}
+    try{ if(window.state && Array.isArray(state.rows)) pools.push(state.rows); }catch(e){}
+    // localStorage içinde kayıtlı veri varsa onu da tarar
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i)||'';
+        if(!/(row|data|sentence|word|tum|excel|cumle)/i.test(k)) continue;
+        const arr=arrayFromStorageValue(localStorage.getItem(k));
+        if(Array.isArray(arr) && arr.length) pools.push(arr);
+      }
+    }catch(e){}
     return pools;
   }
-  window.wmFindWordExampleSentences = function(word, limit=6){
+  window.wmFindWordExampleSentences = function(word, limit=7){
     const seen=new Set(), out=[];
     for(const pool of getPools()){
       for(const r of pool){
@@ -4813,25 +4845,53 @@ html body .wm-card{
     }
     return out;
   };
-  function examplesHTML(word){
-    const rows=window.wmFindWordExampleSentences(word,6);
-    if(!rows.length) return '';
-    return '<div class="wm-word-examples-box"><h3>Bu kelimenin geçtiği cümleler</h3>'+rows.map(r=>
-      '<div class="wm-word-example-item"><b>'+esc(r.en)+'</b><br><span>'+esc(r.tr||'')+'</span></div>'
-    ).join('')+'</div>';
+  function highlightWord(sentence, word){
+    const bw=baseWord(word);
+    return esc(sentence).replace(/\b([A-Za-z][A-Za-z'’-]*)\b/g, function(m){
+      const bm=baseWord(m);
+      if(bm===bw || norm(m)===norm(word)) return '<span class="wm-word-hit">'+esc(m)+'</span>';
+      return esc(m);
+    });
   }
+  function examplesHTML(word){
+    const rows=window.wmFindWordExampleSentences(word,7);
+    return '<div class="wm-word-examples-box"><h3>Bu kelimenin geçtiği cümleler</h3>'+
+      (rows.length ? rows.map(r=>
+        '<div class="wm-word-example-item"><b>'+highlightWord(r.en, word)+'</b><br><span>'+esc(r.tr||'')+'</span></div>'
+      ).join('') : '<p class="wm-word-no-example">Örnek bulunamadı.</p>')+
+      '</div>';
+  }
+  window.wmExamplesHTML = examplesHTML;
+  const oldCss=document.getElementById('wm-word-examples-css');
+  if(oldCss) oldCss.remove();
   const css=document.createElement('style');
   css.id='wm-word-examples-css';
-  css.textContent='.wm-word-examples-box{margin-top:14px;padding:12px;border:1px solid rgba(148,163,184,.18);border-radius:14px;background:rgba(15,23,42,.62)}.wm-word-examples-box h3{margin:0 0 10px;font-size:14px;font-weight:900;color:#f8fafc}.wm-word-example-item{padding:10px 11px;margin:8px 0;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.72);line-height:1.35}.wm-word-example-item b{font-size:13px;color:#f8fafc}.wm-word-example-item span{font-size:12px;color:#94a3b8}';
+  css.textContent=`
+    .wm-word-examples-box{margin-top:16px;padding:14px;border:1px solid rgba(148,163,184,.18);border-radius:18px;background:rgba(15,23,42,.62)}
+    .wm-word-examples-box h3{margin:0 0 12px;font-size:24px;line-height:1.15;font-weight:950;color:#f8fafc}
+    .wm-word-example-item{padding:14px 16px;margin:9px 0;border:1px solid rgba(148,163,184,.16);border-radius:16px;background:rgba(15,23,42,.72);line-height:1.45}
+    .wm-word-example-item b{font-size:17px;color:#f8fafc}.wm-word-example-item span{font-size:16px;color:#9ec5f0}
+    .wm-word-hit{color:#fb923c;font-weight:950}.wm-word-no-example{color:#94a3b8;margin:8px 0 0;font-size:14px}
+    @media(max-width:720px){.wm-word-examples-box h3{font-size:22px}.wm-word-example-item b{font-size:16px}.wm-word-example-item span{font-size:15px}}
+  `;
   document.head.appendChild(css);
+  function getWordFromTitle(title, body){
+    const t=clean(title);
+    let m=t.match(/[—-]\s*([^—-]+)$/);
+    if(m && m[1]) return clean(m[1]).replace(/^[:：]/,'');
+    m=t.match(/(?:Kelime Açıklama|Kelime İlişkileri|Kelime)\s*[:：]?\s*([A-Za-z][A-Za-z'’-]*)/i);
+    if(m && m[1]) return m[1];
+    m=String(body||'').match(/<b>\s*([A-Za-z][A-Za-z'’-]*)\s*<\/b>/i);
+    if(m && m[1]) return m[1];
+    return '';
+  }
   const oldShowAI = window.showAI;
   window.showAI = function(title, body){
-    let html = body;
+    let html = String(body ?? '');
     try{
-      const m=String(title||'').match(/[—-]\s*([^—-]+)$/);
-      const word=(m&&m[1]||'').trim();
-      if(word && /Kelime Açıklama|Kelime İlişkileri/i.test(String(title||'')) && !String(body||'').includes('wm-word-examples-box')){
-        html = String(body||'') + examplesHTML(word);
+      const word=getWordFromTitle(title, html);
+      if(word && /Kelime Açıklama|Kelime İlişkileri|Kelime/i.test(String(title||'')) && !html.includes('wm-word-examples-box')){
+        html += examplesHTML(word);
       }
     }catch(e){}
     if(typeof oldShowAI==='function') return oldShowAI.call(this,title,html);
