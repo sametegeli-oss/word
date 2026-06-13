@@ -159,7 +159,16 @@
 
     // Kullanıcı gerçek bir gezinme yaptığında koruma serbest
     function markNav(reason) { window.__WM_USER_NAV__ = true; }
+    var __navStart = Date.now();
     document.addEventListener('click', function (e) {
+      // Açılıştan hemen sonra gelen (parmak değmesi / otomatik) tıklamaları
+      // gezinme sayma — menü daha yerleşmeden gelen dokunuşlar bozmasın.
+      if (Date.now() - __navStart < 1200) return;
+      // Yükleme katmanı açıkken gelen tıklama gezinme değildir.
+      if (document.getElementById('wmDataLoadingOverlay')) return;
+      // Sadece menü ekranı aktifken yapılan tıklama gerçek gezinme sayılır.
+      var active = document.querySelector('.screen.active');
+      if (!active || active.id !== 'sc-menu') return;
       var b = e.target && e.target.closest && e.target.closest('button,a,[role="button"],.menu-tile,.menu-cta,.bnav-btn,.wp-card');
       if (!b) return;
       var t = (b.textContent || '').trim();
@@ -169,7 +178,7 @@
     }, true);
 
     // Güvenlik ağı: kullanıcı gezinmeden menü dışı aktif olduysa menüye çek
-    var ticks = [0, 150, 350, 600, 1000, 1600, 2500, 4000, 6000, 9000];
+    var ticks = [0, 150, 350, 600, 1000, 1600, 2500, 4000, 6000, 9000, 12000, 16000];
     function schedule() { ticks.forEach(function (ms) { setTimeout(forceMenu, ms); }); }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule);
     else schedule();
@@ -490,7 +499,7 @@
       try {
         var card = container.querySelector('.pronunciation-popup') || container;
         // Legacy popup'ta kelime başlığı sınıfları: sp-word / pron-word
-        var cand = card.querySelector('.sp-word,.pron-word,.word-title,[data-word],h1,h2');
+        var cand = card.querySelector('.sp-word,.pron-word,.word-title,[data-word],h3,h1,h2');
         if (cand) {
           var w = (cand.getAttribute && cand.getAttribute('data-word')) || cand.textContent || '';
           w = String(w).trim().split(/\s+/)[0];
