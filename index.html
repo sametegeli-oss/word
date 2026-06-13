@@ -17,23 +17,83 @@
 <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;rect width='100' height='100' fill='%230ea5e9'/&gt;&lt;text x='50' y='70' font-size='60' text-anchor='middle' fill='white' font-family='Arial, sans-serif' font-weight='bold'&gt;W&lt;/text&gt;&lt;/svg&gt;" rel="icon" sizes="192x192" type="image/png"/>
 <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;rect width='100' height='100' rx='20' fill='%230ea5e9'/&gt;&lt;text x='50' y='70' font-size='60' text-anchor='middle' fill='white' font-family='Arial, sans-serif' font-weight='bold'&gt;W&lt;/text&gt;&lt;/svg&gt;" rel="apple-touch-icon"/>
 <!-- Prevent iOS bounce -->
+
 <title>Sentence Mode - WordMode Koruyucu Geçiş</title>
 <!-- ════════════════════════════════════════════════════════════
      SECURITY IMPROVEMENTS APPLIED ✅
      - CryptoJS for API key encryption
      - DOMPurify for XSS protection
      ════════════════════════════════════════════════════════════ -->
-<script crossorigin="anonymous" defer="" integrity="sha512-a+SUDuwNzXDvz4XrIcXHuCf089/iJAoN4lmrXJg18XnduKK6YlDHNRalv4yd1N40OKI80tFidF+rqTFKGPoWFQ==" referrerpolicy="no-referrer" src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-<script crossorigin="anonymous" defer="" referrerpolicy="no-referrer" src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
-<script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js" 
+        integrity="sha512-a+SUDuwNzXDvz4XrIcXHuCf089/iJAoN4lmrXJg18XnduKK6YlDHNRalv4yd1N40OKI80tFidF+rqTFKGPoWFQ==" 
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
-<script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script defer="" src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-<script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <!-- Google Drive API -->
-<script defer="" src="https://apis.google.com/js/api.js"></script>
-<link href="css/style.css?v=final-safe-20260612-2" rel="stylesheet"/>
-<link href="manifest.webmanifest" rel="manifest"/>
+<script defer src="https://apis.google.com/js/api.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="css/style.css?v=final-safe-20260612-2">
+<link rel="manifest" href="manifest.webmanifest">
+
 <!-- MODERN UI PATCH v1 - eski mavi düğmeleri menü kartı tarzına çevirir -->
 <style id="modern-ui-patch-v1">
 :root{
@@ -250,51 +310,52 @@ button[style*="position: fixed"]{
 }
 </style>
 <!-- /MODERN UI PATCH v1 -->
+
 </head>
 <body>
 <div id="versionBadge" style="position:fixed;bottom:8px;right:8px;background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;font-family:monospace;z-index:99999;pointer-events:none;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.3)">Sentence Mode v1 · Modern UI Patch</div>
-<svg aria-hidden="true" height="0" style="position:absolute" width="0"><defs>
-<symbol id="i-map" viewbox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></symbol>
-<symbol id="i-sun" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"></path></g></symbol>
-<symbol id="i-book" viewbox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h6v16H6a2 2 0 0 0-2 2zM20 5a2 2 0 0 0-2-2h-6v16h6a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></symbol>
-<symbol id="i-list" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"></path><path d="m4 6 1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"></path></g></symbol>
-<symbol id="i-chart" viewbox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></symbol>
-<symbol id="i-bot" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect height="11" rx="2" width="16" x="4" y="8"></rect><path d="M12 3v5M8 13h.01M16 13h.01M9 17h6"></path></g></symbol>
-<symbol id="i-cog" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H7a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1 1.6 1.6 0 0 0 .3-1.8z"></path></g></symbol>
-<symbol id="i-volume" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"></path></g></symbol>
-<symbol id="i-mic" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect height="12" rx="3" width="6" x="9" y="2"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v4"></path></g></symbol>
-<symbol id="i-camera" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><circle cx="12" cy="13" r="3.5"></circle></g></symbol>
-<symbol id="i-check" viewbox="0 0 24 24"><path d="m4 12 5 5L20 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></symbol>
-<symbol id="i-star" viewbox="0 0 24 24"><path d="m12 3 2.9 6 6.4.9-4.7 4.5 1.1 6.4L12 18.8 6.3 20.8l1.1-6.4L2.7 9.9 9.1 9z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></symbol>
-<symbol id="i-refresh" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><path d="M21 3v6h-6"></path></g></symbol>
-<symbol id="i-pencil" viewbox="0 0 24 24"><path d="M16 3 21 8 8 21H3v-5zM14 5l5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></symbol>
-<symbol id="i-bell" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18 9a6 6 0 1 0-12 0c0 6-3 8-3 8h18s-3-2-3-8"></path><path d="M10.5 21a2 2 0 0 0 3 0"></path></g></symbol>
-<symbol id="i-upload" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M12 3v13M7 8l5-5 5 5"></path></g></symbol>
-<symbol id="i-flame" viewbox="0 0 24 24"><path d="M12 3c3 4 5 6 5 9a5 5 0 0 1-10 0c0-1.5.5-2.5 1.5-3.5C9 10 9 8 9 7c1 1 2 2 3 2 0-2 0-4 0-6z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></symbol>
-<symbol id="i-help" viewbox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M9.2 9a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2.2-2.6 4"></path><path d="M12 17h.01"></path></g></symbol>
-<symbol id="i-chevron-left" viewbox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></symbol>
-<symbol id="i-chevron-right" viewbox="0 0 24 24"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></symbol>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-map" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></g></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 5a2 2 0 0 1 2-2h6v16H6a2 2 0 0 0-2 2zM20 5a2 2 0 0 0-2-2h-6v16h6a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m4 6 1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></g></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+<symbol id="i-bot" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="2"/><path d="M12 3v5M8 13h.01M16 13h.01M9 17h6"/></g></symbol>
+<symbol id="i-cog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H7a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1 1.6 1.6 0 0 0 .3-1.8z"/></g></symbol>
+<symbol id="i-volume" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></g></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></g></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></g></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4 12 5 5L20 6"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m12 3 2.9 6 6.4.9-4.7 4.5 1.1 6.4L12 18.8 6.3 20.8l1.1-6.4L2.7 9.9 9.1 9z"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></g></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 3 21 8 8 21H3v-5zM14 5l5 5"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 1 0-12 0c0 6-3 8-3 8h18s-3-2-3-8"/><path d="M10.5 21a2 2 0 0 0 3 0"/></g></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M12 3v13M7 8l5-5 5 5"/></g></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3c3 4 5 6 5 9a5 5 0 0 1-10 0c0-1.5.5-2.5 1.5-3.5C9 10 9 8 9 7c1 1 2 2 3 2 0-2 0-4 0-6z"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2.2-2.6 4"/><path d="M12 17h.01"/></g></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></symbol>
 </defs></svg>
 <!-- Klasör Seçim Ekranı -->
 <div id="folder-selection-screen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:99999;display:none;align-items:center;justify-content:center;padding:20px">
-<div style="max-width:400px;width:100%;background:var(--card);border-radius:24px;padding:32px;box-shadow:var(--shadow);border:1px solid var(--border)">
-<div style="text-align:center;margin-bottom:24px">
-<div style="font-size:64px;margin-bottom:16px">📁</div>
-<h2 style="margin-bottom:8px">Yedekleme Klasörü Seçin</h2>
-<p>
+  <div style="max-width:400px;width:100%;background:var(--card);border-radius:24px;padding:32px;box-shadow:var(--shadow);border:1px solid var(--border)">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:64px;margin-bottom:16px">📁</div>
+      <h2 style="margin-bottom:8px">Yedekleme Klasörü Seçin</h2>
+      <p>
         Programı kullanmaya başlamadan önce verilerinizin yedekleneceği bir klasör seçmeniz gerekiyor. Bu klasörde kullanıcı verileri ve <b>sozluk.json</b> saklanacak. sozluk.json yoksa program aynı GitHub/proje klasöründen indirip buraya kaydeder.
       </p>
-</div>
-<button class="btn btn-blue" onclick="selectBackupFolder()" style="width:100%;margin-bottom:12px">
+    </div>
+    <button onclick="selectBackupFolder()" class="btn btn-blue" style="width:100%;margin-bottom:12px">
       📁 Klasör Seç ve Başla
     </button>
-<div id="startupDictStatus" style="display:none;margin:10px 0 12px 0;padding:10px 12px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);font-size:12px;color:var(--sub);line-height:1.5;text-align:left">
+    <div id="startupDictStatus" style="display:none;margin:10px 0 12px 0;padding:10px 12px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);font-size:12px;color:var(--sub);line-height:1.5;text-align:left">
       📦 Sözlük kontrol ediliyor...
     </div>
-<div style="font-size:12px;color:var(--muted);text-align:center;line-height:1.5">
+    <div style="font-size:12px;color:var(--muted);text-align:center;line-height:1.5">
       💡 İpucu: Bilgisayarınızda kolay erişebileceğiniz bir klasör seçin (örn: Belgeler/WordMode)
     </div>
-</div>
+  </div>
 </div>
 <!-- Offline Banner -->
 <div id="offlineBanner" style="display:none;position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:8px 16px;z-index:10000;text-align:center;font-size:13px;font-weight:700">
@@ -316,22 +377,22 @@ button[style*="position: fixed"]{
      ══════════════════════════════════════════════════════════ -->
 <div class="screen active" id="sc-menu">
 <div class="menu-hero">
-<div class="menu-logo"><svg height="24" viewbox="0 0 24 24" width="24"><use href="#i-book"></use></svg></div>
+<div class="menu-logo"><svg viewBox="0 0 24 24" width="24" height="24"><use href="#i-book"/></svg></div>
 <h1 class="menu-title">Sentence Mode</h1>
 <p class="menu-sub">Cümle Tabanlı İngilizce Öğrenme Platformu</p>
 </div>
 <button class="menu-cta" onclick="WMPath.open()">
-<svg class="ico" viewbox="0 0 24 24"><use href="#i-map"></use></svg>
+<svg class="ico" viewBox="0 0 24 24"><use href="#i-map"/></svg>
 <span>Modüllere Git</span>
-<svg class="ico-r" viewbox="0 0 24 24"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<svg class="ico-r" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"/></svg>
 </button>
 <div class="menu-grid">
-<button aria-label="Bugün" class="menu-tile" onclick="switchTab('daily')"><svg class="ico" viewbox="0 0 24 24"><use href="#i-sun"></use></svg><span class="t">Bugün</span><span class="s">Günlük plan</span></button>
-<button aria-label="Kelime" class="menu-tile" onclick="switchTab('word')"><svg class="ico" viewbox="0 0 24 24"><use href="#i-book"></use></svg><span class="t">Kelime</span><span class="s">Kart çalışması</span></button>
-<button aria-label="Liste" class="menu-tile" onclick="switchTab('learned')"><svg class="ico" viewbox="0 0 24 24"><use href="#i-list"></use></svg><span class="t">Liste</span><span class="s">Öğrenilenler</span></button>
-<button aria-label="İstatistik" class="menu-tile" onclick="switchTab('stats')"><svg class="ico" viewbox="0 0 24 24"><use href="#i-chart"></use></svg><span class="t">İstatistik</span><span class="s">İlerlemen</span></button>
-<button aria-label="AI Koç" class="menu-tile" onclick="switchTab('ai')"><svg class="ico" viewbox="0 0 24 24"><use href="#i-bot"></use></svg><span class="t">AI Koç</span><span class="s">Konuşma pratiği</span></button>
-<button aria-label="Ayarlar" class="menu-tile" onclick="switchTab('settings')"><svg class="ico" viewbox="0 0 24 24"><use href="#i-cog"></use></svg><span class="t">Ayarlar</span><span class="s">Tercihler</span></button>
+<button class="menu-tile" onclick="switchTab('daily')" aria-label="Bugün"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sun"/></svg><span class="t">Bugün</span><span class="s">Günlük plan</span></button>
+<button class="menu-tile" onclick="switchTab('word')" aria-label="Kelime"><svg class="ico" viewBox="0 0 24 24"><use href="#i-book"/></svg><span class="t">Kelime</span><span class="s">Kart çalışması</span></button>
+<button class="menu-tile" onclick="switchTab('learned')" aria-label="Liste"><svg class="ico" viewBox="0 0 24 24"><use href="#i-list"/></svg><span class="t">Liste</span><span class="s">Öğrenilenler</span></button>
+<button class="menu-tile" onclick="switchTab('stats')" aria-label="İstatistik"><svg class="ico" viewBox="0 0 24 24"><use href="#i-chart"/></svg><span class="t">İstatistik</span><span class="s">İlerlemen</span></button>
+<button class="menu-tile" onclick="switchTab('ai')" aria-label="AI Koç"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bot"/></svg><span class="t">AI Koç</span><span class="s">Konuşma pratiği</span></button>
+<button class="menu-tile" onclick="switchTab('settings')" aria-label="Ayarlar"><svg class="ico" viewBox="0 0 24 24"><use href="#i-cog"/></svg><span class="t">Ayarlar</span><span class="s">Tercihler</span></button>
 </div>
 </div>
 <!-- ══ UPLOAD SCREEN ══ -->
@@ -387,7 +448,7 @@ button[style*="position: fixed"]{
 <!-- ══ HATIRLATMA AYARLARI EKRANI ══ -->
 <div class="screen" id="sc-reminder">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🔔 Hatırlatmalar</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -437,7 +498,7 @@ button[style*="position: fixed"]{
 <!-- ══ SPACED REPETITION EKRANI ══ -->
 <div class="screen" id="sc-srs">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🔄 Akıllı Tekrar</h2>
 <span id="srsProgress"></span>
 </div>
@@ -504,7 +565,7 @@ button[style*="position: fixed"]{
 </div>
 <div class="screen" id="sc-word">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="goHome()">←</button>
 <button onclick="showListSelector()" style="display:flex;align-items:center;gap:6px">
 <h2 id="currentListName" style="margin:0">Ana Liste</h2>
 <span>▼</span>
@@ -512,7 +573,7 @@ button[style*="position: fixed"]{
 <div style="font-size:9px;color:var(--muted);font-weight:600;margin-left:8px">
       🔨 15 May 2026, 06:38
     </div>
-<button aria-label="Tema değiştir" id="darkModeBtn" onclick="toggleDarkMode()" style="margin-left:auto">🌙</button>
+<button id="darkModeBtn" aria-label="Tema değiştir" onclick="toggleDarkMode()" style="margin-left:auto">🌙</button>
 <span class="streak-badge" id="streakBadge" style="display:none"></span>
 </div>
 <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
@@ -672,7 +733,7 @@ button[style*="position: fixed"]{
 <!-- ══ SENTENCE MODE SCREEN ══ -->
 <div class="screen" id="sc-sent">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>Cümle Modu</h2>
 <span id="smCounter"></span>
 </div>
@@ -696,7 +757,7 @@ button[style*="position: fixed"]{
 </div>
 </div>
 <div id="smPronunResult" style="display:none;margin-top:8px"></div>
-<div class="sm-compact-buttons" style="display:flex;gap:8px;margin-top:12px">
+<div style="display:flex;gap:8px;margin-top:12px" class="sm-compact-buttons">
 <button class="btn btn-blue" onclick="checkSentence()" style="flex:1">✅ Kontrol Et</button>
 <button class="btn btn-ghost btn-sm" onclick="resetSentMode()">🔄</button>
 </div>
@@ -707,7 +768,7 @@ button[style*="position: fixed"]{
 <!-- ÖZELLİK 2: Kendi Telaffuzunu Konuş -->
 <button class="btn btn-green btn-sm sm-compact-btn" id="recordSelfBtn" onclick="recordSelfPronunciation()" style="margin-top:6px;width:100%">🎤 Kendi Telaffuzunu Kaydet &amp; Konuş</button>
 <!-- ÖZELLİK 3-7: Cümle Modu Ekstra Özellikler -->
-<div class="sm-compact-buttons" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px" class="sm-compact-buttons">
 <button class="btn btn-blue btn-sm" onclick="speakCurrentSentence()">🔊 Seslendir</button>
 <button class="btn btn-orange btn-sm" onclick="checkVoicePronunciation()">🗣️ Konuşarak</button>
 <button class="btn btn-ghost btn-sm" onclick="openHandwritingModal()">✍️ El Yazısı</button>
@@ -722,7 +783,7 @@ button[style*="position: fixed"]{
 <!-- ══ LETTER MODE SCREEN ══ -->
 <div class="screen" id="sc-letter">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>Harf Sırala</h2>
 <span id="lmCounter"></span>
 </div>
@@ -756,7 +817,7 @@ button[style*="position: fixed"]{
 <!-- ══ WORD LIST SCREEN ══ -->
 <div class="screen" id="sc-list">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📋 Kelime Listesi</h2>
 </div>
 <!-- Kategori Filtreleri -->
@@ -780,7 +841,7 @@ button[style*="position: fixed"]{
 <!-- ══ STATS SCREEN ══ -->
 <div class="screen" id="sc-stats">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="goHome()">←</button>
 <h2>📊 İstatistikler</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -832,6 +893,7 @@ button[style*="position: fixed"]{
 <div class="card" style="margin-top:12px">
 <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">🤖 AI Özellikleri</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+
 <button class="btn btn-ghost btn-sm" onclick="showScreen('sc-analytics')" style="display:flex;align-items:center;justify-content:center;gap:6px">
         📊 Derin Analitik
       </button>
@@ -1020,7 +1082,7 @@ button[style*="position: fixed"]{
 <!-- ══ FLASHCARD MODE SCREEN ══ -->
 <div class="screen" id="sc-flashcard">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎴 Flashcard</h2>
 <span id="fcCounter"></span>
 </div>
@@ -1069,44 +1131,45 @@ button[style*="position: fixed"]{
 <!-- ══ AI PRONUNCIATION COACH SCREEN ══ -->
 <div class="screen" id="sc-proncoach">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎤 Telaffuz Koçu</h2>
 </div>
 <div class="card">
 <div id="pronCoachWordBox" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px">
-<div style="font-size:12px;font-weight:900;color:var(--purple);letter-spacing:.5px;margin-bottom:8px">✍️ CANLI KOÇ HEDEFİ</div>
-<label style="display:block;margin-bottom:6px">Çalışmak istediğin kelime / kısa ifade</label>
-<input id="pronCoachTargetInput" list="pronCoachWordSuggestions" placeholder="Örn: think, enough, comfortable..." style="width:100%;margin-bottom:10px"/>
-<datalist id="pronCoachWordSuggestions"></datalist>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-<button class="btn btn-green" onclick="setPronCoachTargetFromInput()">✅ Kelimeyi Ayarla</button>
-<button class="btn btn-ghost" onclick="setRandomPronCoachTarget()">🎲 Rastgele</button>
-</div>
-<div id="pronCoachSelectedWord" style="font-size:13px;color:var(--sub);line-height:1.5">Seçili kelime: <b style="color:var(--green)">-</b></div>
+  <div style="font-size:12px;font-weight:900;color:var(--purple);letter-spacing:.5px;margin-bottom:8px">✍️ CANLI KOÇ HEDEFİ</div>
+  <label style="display:block;margin-bottom:6px">Çalışmak istediğin kelime / kısa ifade</label>
+  <input id="pronCoachTargetInput" list="pronCoachWordSuggestions" placeholder="Örn: think, enough, comfortable..."
+    style="width:100%;margin-bottom:10px" />
+  <datalist id="pronCoachWordSuggestions"></datalist>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+    <button class="btn btn-green" onclick="setPronCoachTargetFromInput()">✅ Kelimeyi Ayarla</button>
+    <button class="btn btn-ghost" onclick="setRandomPronCoachTarget()">🎲 Rastgele</button>
+  </div>
+  <div id="pronCoachSelectedWord" style="font-size:13px;color:var(--sub);line-height:1.5">Seçili kelime: <b style="color:var(--green)">-</b></div>
 </div>
 <div class="pfc-panel" id="pronFaceCoachPanel">
-<div class="pfc-title">🧬 Pronunciation Face Coach v1</div>
-<div class="pfc-mode-row">
-<button class="pfc-mode active" id="pfcModeWord" onclick="setPFCMode('word')">Kelime</button>
-<button class="pfc-mode" id="pfcModePhrase" onclick="setPFCMode('phrase')">Phrase</button>
-<button class="pfc-mode" id="pfcModeSentence" onclick="setPFCMode('sentence')">Cümle</button>
-</div>
-<div class="pfc-face-wrap">
-<div class="pfc-face" id="pfcFaceSvg"></div>
-<div>
-<div class="pfc-current-sound" id="pfcCurrentSound">—</div>
-<div class="pfc-current-label" id="pfcCurrentLabel">Hedef ses</div>
-<div class="pfc-tip" id="pfcTip">Kelime yazıp “Kelimeyi Ayarla” dediğinde dudak/dil pozisyonu ve fonem haritası burada görünecek.</div>
-</div>
-</div>
-<div id="pfcIPA" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:9px 10px;font-size:13px;color:var(--sub);line-height:1.5;margin-bottom:8px"><span class="tr-pron-label">Türkçe telaffuz:</span> <span class="tr-pron-missing">Kelime seçilmedi</span></div>
-<div class="pfc-heatmap" id="pfcHeatmap"></div>
-<div class="pfc-stats">
-<div class="pfc-stat"><div class="num" id="pfcScore">—</div><div class="txt">Fonem Skoru</div></div>
-<div class="pfc-stat"><div class="num" id="pfcWeakCount">—</div><div class="txt">Zayıf Ses</div></div>
-</div>
-<div class="pfc-title" style="margin-top:10px">🎯 Bu kelime için gerekli ses açıklamaları</div>
-<div class="pfc-sound-grid" id="pfcProblemCards"></div>
+  <div class="pfc-title">🧬 Pronunciation Face Coach v1</div>
+  <div class="pfc-mode-row">
+    <button class="pfc-mode active" id="pfcModeWord" onclick="setPFCMode('word')">Kelime</button>
+    <button class="pfc-mode" id="pfcModePhrase" onclick="setPFCMode('phrase')">Phrase</button>
+    <button class="pfc-mode" id="pfcModeSentence" onclick="setPFCMode('sentence')">Cümle</button>
+  </div>
+  <div class="pfc-face-wrap">
+    <div class="pfc-face" id="pfcFaceSvg"></div>
+    <div>
+      <div class="pfc-current-sound" id="pfcCurrentSound">—</div>
+      <div class="pfc-current-label" id="pfcCurrentLabel">Hedef ses</div>
+      <div class="pfc-tip" id="pfcTip">Kelime yazıp “Kelimeyi Ayarla” dediğinde dudak/dil pozisyonu ve fonem haritası burada görünecek.</div>
+    </div>
+  </div>
+  <div id="pfcIPA" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:9px 10px;font-size:13px;color:var(--sub);line-height:1.5;margin-bottom:8px"><span class="tr-pron-label">Türkçe telaffuz:</span> <span class="tr-pron-missing">Kelime seçilmedi</span></div>
+  <div class="pfc-heatmap" id="pfcHeatmap"></div>
+  <div class="pfc-stats">
+    <div class="pfc-stat"><div class="num" id="pfcScore">—</div><div class="txt">Fonem Skoru</div></div>
+    <div class="pfc-stat"><div class="num" id="pfcWeakCount">—</div><div class="txt">Zayıf Ses</div></div>
+  </div>
+  <div class="pfc-title" style="margin-top:10px">🎯 Bu kelime için gerekli ses açıklamaları</div>
+  <div class="pfc-sound-grid" id="pfcProblemCards"></div>
 </div>
 <div class="coach-status" id="coachStatus">
 <div style="text-align:center;padding:20px">
@@ -1125,7 +1188,7 @@ button[style*="position: fixed"]{
 <!-- ══ AI CONTEXT ANALYSIS SCREEN ══ -->
 <div class="screen" id="sc-context">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🧠 Bağlam Analizi</h2>
 <button onclick="showPromptEditor('context')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -1157,7 +1220,7 @@ button[style*="position: fixed"]{
 <!-- ══ AI STORY GENERATOR SCREEN ══ -->
 <div class="screen" id="sc-story">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📖 AI Hikaye Üretici</h2>
 <button onclick="showPromptEditor('story')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -1211,7 +1274,7 @@ button[style*="position: fixed"]{
 <!-- ══ AI CONVERSATION SIMULATION SCREEN ══ -->
 <div class="screen" id="sc-conversation">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🗣️ Konuşma Simülasyonu</h2>
 <button onclick="showPromptEditor('conversation')" style="margin-right:8px">📝 Prompt</button>
 <button onclick="clearConvChat()">🗑️ Temizle</button>
@@ -1222,7 +1285,7 @@ button[style*="position: fixed"]{
 <button onclick="createListFromConv()" style="flex:1">
       📚 Seçilen Senaryodan Çalışma Listesi Oluştur
     </button>
-<button onclick="showPromptEditor('convList')" style="white-space:nowrap" title="Prompt'u Düzenle">📝</button>
+<button onclick="showPromptEditor('convList')" title="Prompt'u Düzenle" style="white-space:nowrap">📝</button>
 </div>
 <!-- AI Model Seçimi -->
 <div style="margin-bottom:16px">
@@ -1283,7 +1346,7 @@ button[style*="position: fixed"]{
 <!-- ══ AI SENTENCE CORRECTOR SCREEN ══ -->
 <div class="screen" id="sc-corrector">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>✍️ Cümle Düzeltme</h2>
 <button onclick="showPromptEditor('corrector')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -1304,7 +1367,7 @@ button[style*="position: fixed"]{
 <!-- ══ AI CHAT SCREEN (GELİŞMİŞ - GROQ API) ══ -->
 <div class="screen" id="sc-ai">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" id="aiBackBtn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" id="aiBackBtn" onclick="goHome()">←</button>
 <h2>🤖 AI Analiz</h2>
 <button onclick="clearAIChat()" style="margin-left:auto">🗑️ Temizle</button>
 </div>
@@ -1354,245 +1417,264 @@ button[style*="position: fixed"]{
 <div id="chatVoiceStatus" style="display:none;padding:8px;background:var(--bg3);border-radius:8px;margin-top:8px;text-align:center;font-size:12px;color:var(--muted)"></div>
 </div>
 </div>
+
 <!-- ══ YAPAY ZEKAYA SOR SCREEN ══ -->
 <div class="screen" id="sc-askai">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="switchTab('word')">←</button>
-<h2>❓ Yapay Zekaya Sor</h2>
-<button onclick="clearAskAI()" style="margin-left:auto">🗑️ Temizle</button>
-</div>
-<div class="card" style="margin-bottom:12px">
-<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px">
+  <div class="top-bar">
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
+    <h2>❓ Yapay Zekaya Sor</h2>
+    <button onclick="clearAskAI()" style="margin-left:auto">🗑️ Temizle</button>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px">
       Hazır prompt yok. Sistem promptunu ve sorunu tamamen sen yazarsın. Token maksimumunu buradan ayarlayabilirsin.
     </div>
-<label style="display:block;margin-bottom:6px">🤖 AI Model</label>
-<select class="sentence-input" id="askAIModel" style="resize:none;margin-bottom:10px">
-<option value="groq">Groq Llama 3.3</option>
-<option value="openai">OpenAI GPT-4o-mini</option>
-<option value="claude">Claude 3.5 Sonnet</option>
-<option value="gemini">Gemini 2.5 Flash</option>
-<option value="openrouter">OpenRouter Ücretsiz</option>
-</select>
-<label style="display:block;margin-bottom:6px">🔢 Maksimum Token</label>
-<input class="sentence-input" id="askAIToken" max="15000" min="100" step="100" style="resize:none;margin-bottom:10px" type="number" value="4000"/>
-<label style="display:block;margin-bottom:6px">🧠 Sistem Promptu</label>
-<textarea class="sentence-input" id="askAISystem" placeholder="Örnek: Sen yardımcı bir İngilizce öğretmenisin. Cevapları Türkçe ve anlaşılır ver." rows="5"></textarea>
-<label style="display:block;margin-bottom:6px">💬 Sorun / İsteğin</label>
-<textarea class="sentence-input" id="askAIUser" placeholder="Ne sormak istiyorsan buraya yaz..." rows="7"></textarea>
-<button class="btn btn-blue" id="askAISendBtn" onclick="sendAskAI()">🚀 Yapay Zekaya Sor</button>
+    <label style="display:block;margin-bottom:6px">🤖 AI Model</label>
+    <select id="askAIModel" class="sentence-input" style="resize:none;margin-bottom:10px">
+      <option value="groq">Groq Llama 3.3</option>
+      <option value="openai">OpenAI GPT-4o-mini</option>
+      <option value="claude">Claude 3.5 Sonnet</option>
+      <option value="gemini">Gemini 2.5 Flash</option>
+      <option value="openrouter">OpenRouter Ücretsiz</option>
+    </select>
+    <label style="display:block;margin-bottom:6px">🔢 Maksimum Token</label>
+    <input id="askAIToken" type="number" min="100" max="15000" step="100" value="4000" class="sentence-input" style="resize:none;margin-bottom:10px" />
+    <label style="display:block;margin-bottom:6px">🧠 Sistem Promptu</label>
+    <textarea id="askAISystem" class="sentence-input" rows="5" placeholder="Örnek: Sen yardımcı bir İngilizce öğretmenisin. Cevapları Türkçe ve anlaşılır ver."></textarea>
+    <label style="display:block;margin-bottom:6px">💬 Sorun / İsteğin</label>
+    <textarea id="askAIUser" class="sentence-input" rows="7" placeholder="Ne sormak istiyorsan buraya yaz..."></textarea>
+    <button class="btn btn-blue" id="askAISendBtn" onclick="sendAskAI()">🚀 Yapay Zekaya Sor</button>
+  </div>
+  <div class="card" id="askAIResultCard" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:800;color:var(--purple)">AI Yanıtı</div>
+      <button onclick="copyAskAIResult()">📋 Kopyala</button>
+    </div>
+    <div id="askAIResult" class="ai-response" style="font-size:var(--ai-text-size,15px);line-height:1.75;color:var(--text);white-space:pre-wrap;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px"></div>
+    <div id="askAIMeta" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+  </div>
 </div>
-<div class="card" id="askAIResultCard" style="display:none">
-<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
-<div style="font-size:13px;font-weight:800;color:var(--purple)">AI Yanıtı</div>
-<button onclick="copyAskAIResult()">📋 Kopyala</button>
-</div>
-<div class="ai-response" id="askAIResult" style="font-size:var(--ai-text-size,15px);line-height:1.75;color:var(--text);white-space:pre-wrap;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px"></div>
-<div id="askAIMeta" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
-</div>
-</div>
+
+
 <!-- ══ İNGİLİZCE-TÜRKÇE SÖZLÜK HAZIRLAYICI SCREEN ══ -->
 <div class="screen" id="sc-dictbuilder">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="switchTab('word')">←</button>
-<h2>📘 Sözlük Hazırlayıcı</h2>
-</div>
-<div class="card" style="margin-bottom:12px">
-<div style="font-size:13px;color:var(--sub);line-height:1.65;margin-bottom:12px">
+  <div class="top-bar">
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
+    <h2>📘 Sözlük Hazırlayıcı</h2>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;color:var(--sub);line-height:1.65;margin-bottom:12px">
       Kaynak mantığı: <b>CEFR</b> için EVP/Cambridge yaklaşımı, <b>frekans</b> için Zipf tahmini, <b>telaffuz</b> için IPA mantığına yakın Türkçe fonetik dönüşüm, <b>anlam ve cümle</b> için yerel sözlük + istersen AI tamamlama.
     </div>
-<label style="display:block;margin-bottom:6px">Kelimeleri gir</label>
-<textarea class="sentence-input" id="dictInput" placeholder="Her satıra veya virgülle kelime yaz:\nabout\nbecause\nthrough" rows="7"></textarea>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-<button class="btn btn-blue" onclick="generateDictionaryLocal()">⚙️ Yerel Oluştur</button>
-<button class="btn btn-purple" id="dictAIBtn" onclick="generateDictionaryAI()">🤖 AI ile Tamamla</button>
+    <label style="display:block;margin-bottom:6px">Kelimeleri gir</label>
+    <textarea id="dictInput" class="sentence-input" rows="7" placeholder="Her satıra veya virgülle kelime yaz:\nabout\nbecause\nthrough"></textarea>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <button class="btn btn-blue" onclick="generateDictionaryLocal()">⚙️ Yerel Oluştur</button>
+      <button class="btn btn-purple" id="dictAIBtn" onclick="generateDictionaryAI()">🤖 AI ile Tamamla</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-ghost" onclick="copyDictionaryTable()">📋 Tabloyu Kopyala</button>
+      <button class="btn btn-green" onclick="downloadDictionaryCSV()">⬇️ CSV İndir</button>
+    </div>
+  </div>
+  <div class="card" id="dictResultCard" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px">
+      <div style="font-size:13px;font-weight:800;color:var(--purple)">Sözlük Tablosu</div>
+      <button onclick="clearDictionaryBuilder()">Temizle</button>
+    </div>
+    <div style="overflow:auto;max-height:520px;border:1px solid var(--border);border-radius:12px">
+      <table id="dictTable" style="width:100%;border-collapse:collapse;font-size:12px;min-width:980px">
+        <thead>
+          <tr style="background:var(--bg3);color:var(--text)">
+            <th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">English</th>
+            <th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Turkish meaning</th>
+            <th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Turkish pronunciation</th>
+            <th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">CEFR</th>
+            <th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Zipf</th>
+            <th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Example English sentence</th>
+            <th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Turkish translation</th>
+          </tr>
+        </thead>
+        <tbody id="dictTbody"></tbody>
+      </table>
+    </div>
+    <div id="dictStatus" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+  </div>
 </div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-<button class="btn btn-ghost" onclick="copyDictionaryTable()">📋 Tabloyu Kopyala</button>
-<button class="btn btn-green" onclick="downloadDictionaryCSV()">⬇️ CSV İndir</button>
-</div>
-</div>
-<div class="card" id="dictResultCard" style="display:none">
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px">
-<div style="font-size:13px;font-weight:800;color:var(--purple)">Sözlük Tablosu</div>
-<button onclick="clearDictionaryBuilder()">Temizle</button>
-</div>
-<div style="overflow:auto;max-height:520px;border:1px solid var(--border);border-radius:12px">
-<table id="dictTable" style="width:100%;border-collapse:collapse;font-size:12px;min-width:980px">
-<thead>
-<tr style="background:var(--bg3);color:var(--text)">
-<th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">English</th>
-<th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Turkish meaning</th>
-<th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Turkish pronunciation</th>
-<th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">CEFR</th>
-<th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Zipf</th>
-<th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Example English sentence</th>
-<th style="padding:8px;border-bottom:1px solid var(--border);text-align:left">Turkish translation</th>
-</tr>
-</thead>
-<tbody id="dictTbody"></tbody>
-</table>
-</div>
-<div id="dictStatus" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
-</div>
-</div>
+
+
 <!-- ══ SÖZLÜĞÜM SCREEN: sozluk.json verilerini gösterir ══ -->
 <div class="screen" id="sc-my-dictionary">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="switchTab('word')">←</button>
-<h2>📚 Sözlüğüm</h2>
-</div>
-<div class="card" style="margin-bottom:12px">
-<div style="font-size:13px;color:var(--sub);line-height:1.65;margin-bottom:12px">
+  <div class="top-bar">
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
+    <h2>📚 Sözlüğüm</h2>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;color:var(--sub);line-height:1.65;margin-bottom:12px">
       Bu sayfa aynı klasördeki <b>sozluk.json</b> dosyasını veya yüklenmiş kullanıcı sözlüğünü gösterir.
     </div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-<button class="btn btn-blue" onclick="loadMyDictionaryPage(true)">🔄 Yenile</button>
-<button class="btn btn-ghost" onclick="document.getElementById('myDictJsonInput').click()">📂 JSON Yükle</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <button class="btn btn-blue" onclick="loadMyDictionaryPage(true)">🔄 Yenile</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('myDictJsonInput').click()">📂 JSON Yükle</button>
+    </div>
+    <input id="myDictJsonInput" type="file" accept=".json,application/json" style="display:none" onchange="handleMyDictionaryUpload(event)">
+    <input id="myDictSearch" class="sentence-input" style="resize:none;margin-bottom:8px" placeholder="Kelime veya Türkçe anlam ara..." oninput="renderMyDictionaryPage()">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <select id="myDictCefr" class="sentence-input" style="resize:none;margin-bottom:0" onchange="renderMyDictionaryPage()">
+        <option value="">Tüm CEFR</option>
+        <option value="A1">A1</option><option value="A2">A2</option><option value="B1">B1</option>
+        <option value="B2">B2</option><option value="C1">C1</option><option value="C2">C2</option>
+      </select>
+      <select id="myDictSort" class="sentence-input" style="resize:none;margin-bottom:0" onchange="renderMyDictionaryPage()">
+        <option value="az">A-Z sırala</option>
+        <option value="za">Z-A sırala</option>
+        <option value="zipf">Zipf yüksekten</option>
+        <option value="cefr">CEFR sırala</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-green" onclick="copyMyDictionaryVisible()">📋 Görünenleri Kopyala</button>
+      <button class="btn btn-purple" onclick="downloadMyDictionaryVisibleCSV()">⬇️ CSV İndir</button>
+    </div>
+    <div id="myDictStatus" style="font-size:11px;color:var(--muted);margin-top:10px"></div>
+  </div>
+  <div id="myDictList" class="word-list"></div>
 </div>
-<input accept=".json,application/json" id="myDictJsonInput" onchange="handleMyDictionaryUpload(event)" style="display:none" type="file"/>
-<input class="sentence-input" id="myDictSearch" oninput="renderMyDictionaryPage()" placeholder="Kelime veya Türkçe anlam ara..." style="resize:none;margin-bottom:8px"/>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-<select class="sentence-input" id="myDictCefr" onchange="renderMyDictionaryPage()" style="resize:none;margin-bottom:0">
-<option value="">Tüm CEFR</option>
-<option value="A1">A1</option><option value="A2">A2</option><option value="B1">B1</option>
-<option value="B2">B2</option><option value="C1">C1</option><option value="C2">C2</option>
-</select>
-<select class="sentence-input" id="myDictSort" onchange="renderMyDictionaryPage()" style="resize:none;margin-bottom:0">
-<option value="az">A-Z sırala</option>
-<option value="za">Z-A sırala</option>
-<option value="zipf">Zipf yüksekten</option>
-<option value="cefr">CEFR sırala</option>
-</select>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-<button class="btn btn-green" onclick="copyMyDictionaryVisible()">📋 Görünenleri Kopyala</button>
-<button class="btn btn-purple" onclick="downloadMyDictionaryVisibleCSV()">⬇️ CSV İndir</button>
-</div>
-<div id="myDictStatus" style="font-size:11px;color:var(--muted);margin-top:10px"></div>
-</div>
-<div class="word-list" id="myDictList"></div>
-</div>
+
+
 <!-- ══ AI CONTEXT TEACHER SCREEN ══ -->
 <div class="screen" id="sc-context-teacher">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
-<h2>🧠 AI Context Teacher</h2>
-</div>
-<div class="card" style="margin-bottom:12px">
-<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:10px">
+  <div class="top-bar">
+    <button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
+    <h2>🧠 AI Context Teacher</h2>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:10px">
       Bir kelimenin farklı gerçek kullanım anlamlarını gösterir. Özellikle <b>run, get, take, make, set</b> gibi çok anlamlı kelimelerde işe yarar.
     </div>
-<input class="sentence-input" id="ctxWordInput" placeholder="Örnek: run, get, take, set, make" style="resize:none;margin-bottom:8px"/>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-<button class="btn btn-blue" onclick="renderContextTeacher()">🔍 Anlam Kümelerini Göster</button>
-<button class="btn btn-ghost" onclick="ctxUseCurrentWord()">📌 Mevcut Kelimeyi Kullan</button>
+    <input id="ctxWordInput" class="sentence-input" style="resize:none;margin-bottom:8px" placeholder="Örnek: run, get, take, set, make">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <button class="btn btn-blue" onclick="renderContextTeacher()">🔍 Anlam Kümelerini Göster</button>
+      <button class="btn btn-ghost" onclick="ctxUseCurrentWord()">📌 Mevcut Kelimeyi Kullan</button>
+    </div>
+    <button class="btn btn-purple" onclick="ctxExplainWithAI()">🤖 AI ile Detaylı Açıkla</button>
+  </div>
+  <div id="ctxTeacherResult"></div>
 </div>
-<button class="btn btn-purple" onclick="ctxExplainWithAI()">🤖 AI ile Detaylı Açıkla</button>
-</div>
-<div id="ctxTeacherResult"></div>
-</div>
+
 <!-- ══ WORD FAMILY TREE SCREEN ══ -->
 <div class="screen" id="sc-word-family-tree">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
-<h2>🌳 Kelime Ağacı</h2>
-</div>
-<div class="card" style="margin-bottom:12px">
-<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:10px">
+  <div class="top-bar">
+    <button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
+    <h2>🌳 Kelime Ağacı</h2>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:10px">
       Aynı kökten gelen kelimeleri bulur ve aile halinde gösterir. Geniş sözlük yüklüyse daha fazla sonuç çıkar.
     </div>
-<input class="sentence-input" id="treeRootInput" placeholder="Örnek: act, form, port, view, press" style="resize:none;margin-bottom:8px"/>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-<button class="btn btn-green" onclick="renderWordFamilyTree()">🌳 Ağacı Oluştur</button>
-<button class="btn btn-ghost" onclick="treeUseCurrentWord()">📌 Mevcut Kelimeyi Kullan</button>
+    <input id="treeRootInput" class="sentence-input" style="resize:none;margin-bottom:8px" placeholder="Örnek: act, form, port, view, press">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-green" onclick="renderWordFamilyTree()">🌳 Ağacı Oluştur</button>
+      <button class="btn btn-ghost" onclick="treeUseCurrentWord()">📌 Mevcut Kelimeyi Kullan</button>
+    </div>
+  </div>
+  <div id="wordFamilyTreeResult"></div>
 </div>
-</div>
-<div id="wordFamilyTreeResult"></div>
-</div>
+
 <!-- ══ GENİŞ SÖZLÜK SCREEN: firatkaya_simple.json verilerini gösterir ══ -->
 <div class="screen" id="sc-broad-dictionary">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="switchTab('word')">←</button>
-<h2>🌍 Geniş Sözlük</h2>
-</div>
-<div class="card" style="margin-bottom:12px">
-<div style="font-size:13px;color:var(--sub);line-height:1.65;margin-bottom:12px">
+  <div class="top-bar">
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
+    <h2>🌍 Geniş Sözlük</h2>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;color:var(--sub);line-height:1.65;margin-bottom:12px">
       Bu sayfa seçtiğin <b>yedekleme klasöründeki</b> verileri kullanır. Önerilen yapı: <b>WordModeData/dictionary/firatkaya_simple.json</b> ve <b>WordModeData/user/*.json</b>.
     </div>
-<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
-<div style="font-size:12px;font-weight:900;color:var(--green);margin-bottom:8px">💾 Yedekleme Klasörü</div>
-<div id="wmBackupFolderStatus" style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px">Klasör seçilmedi. Seçersen tüm kalıcı veriler dosya olarak bu klasöre yazılır.</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-<button class="btn btn-green" onclick="chooseWordModeDataFolder()">📁 Klasör Seç</button>
-<button class="btn btn-ghost" onclick="syncWordModeDataFolder()">🔄 Klasörü Oku</button>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:900;color:var(--green);margin-bottom:8px">💾 Yedekleme Klasörü</div>
+      <div id="wmBackupFolderStatus" style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px">Klasör seçilmedi. Seçersen tüm kalıcı veriler dosya olarak bu klasöre yazılır.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn btn-green" onclick="chooseWordModeDataFolder()">📁 Klasör Seç</button>
+        <button class="btn btn-ghost" onclick="syncWordModeDataFolder()">🔄 Klasörü Oku</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <button class="btn btn-blue" onclick="loadBroadDictionaryPage(true)">🔄 Yenile</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('broadDictJsonInput').click()">📂 JSON Yükle</button>
+    </div>
+    <input id="broadDictJsonInput" type="file" accept=".json,application/json" style="display:none" onchange="handleBroadDictionaryUpload(event)">
+    <input id="broadDictSearch" class="sentence-input" style="resize:none;margin-bottom:8px" placeholder="İngilizce kelime veya Türkçe anlam ara..." oninput="renderBroadDictionaryPage()">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <button class="btn btn-ghost" onclick="toggleBroadFavoriteFilter()" id="broadFavFilterBtn">⭐ Sadece Favoriler</button>
+      <button class="btn btn-ghost" onclick="showBroadStudyWords()">🎯 Çalışılacaklar</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <select id="broadDictSort" class="sentence-input" style="resize:none;margin-bottom:0" onchange="renderBroadDictionaryPage()">
+        <option value="az">A-Z sırala</option>
+        <option value="za">Z-A sırala</option>
+        <option value="meaningCount">Anlam sayısı yüksekten</option>
+      </select>
+      <select id="broadDictLimit" class="sentence-input" style="resize:none;margin-bottom:0" onchange="renderBroadDictionaryPage()">
+        <option value="200">İlk 200 sonuç</option>
+        <option value="500">İlk 500 sonuç</option>
+        <option value="1000">İlk 1000 sonuç</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-green" onclick="copyBroadDictionaryVisible()">📋 Görünenleri Kopyala</button>
+      <button class="btn btn-purple" onclick="downloadBroadDictionaryVisibleCSV()">⬇️ CSV İndir</button>
+    </div>
+    <div id="broadDictStatus" style="font-size:11px;color:var(--muted);margin-top:10px"></div>
+  </div>
+  <div id="broadDictList" class="word-list"></div>
 </div>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-<button class="btn btn-blue" onclick="loadBroadDictionaryPage(true)">🔄 Yenile</button>
-<button class="btn btn-ghost" onclick="document.getElementById('broadDictJsonInput').click()">📂 JSON Yükle</button>
-</div>
-<input accept=".json,application/json" id="broadDictJsonInput" onchange="handleBroadDictionaryUpload(event)" style="display:none" type="file"/>
-<input class="sentence-input" id="broadDictSearch" oninput="renderBroadDictionaryPage()" placeholder="İngilizce kelime veya Türkçe anlam ara..." style="resize:none;margin-bottom:8px"/>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-<button class="btn btn-ghost" id="broadFavFilterBtn" onclick="toggleBroadFavoriteFilter()">⭐ Sadece Favoriler</button>
-<button class="btn btn-ghost" onclick="showBroadStudyWords()">🎯 Çalışılacaklar</button>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-<select class="sentence-input" id="broadDictSort" onchange="renderBroadDictionaryPage()" style="resize:none;margin-bottom:0">
-<option value="az">A-Z sırala</option>
-<option value="za">Z-A sırala</option>
-<option value="meaningCount">Anlam sayısı yüksekten</option>
-</select>
-<select class="sentence-input" id="broadDictLimit" onchange="renderBroadDictionaryPage()" style="resize:none;margin-bottom:0">
-<option value="200">İlk 200 sonuç</option>
-<option value="500">İlk 500 sonuç</option>
-<option value="1000">İlk 1000 sonuç</option>
-</select>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-<button class="btn btn-green" onclick="copyBroadDictionaryVisible()">📋 Görünenleri Kopyala</button>
-<button class="btn btn-purple" onclick="downloadBroadDictionaryVisibleCSV()">⬇️ CSV İndir</button>
-</div>
-<div id="broadDictStatus" style="font-size:11px;color:var(--muted);margin-top:10px"></div>
-</div>
-<div class="word-list" id="broadDictList"></div>
-</div>
+
 <!-- ══ GENİŞ SÖZLÜK DETAY MODAL ══ -->
 <div id="broadDictModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100000;align-items:flex-end;justify-content:center;padding:12px">
-<div style="width:100%;max-width:480px;max-height:88vh;overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:22px 22px 14px 14px;box-shadow:var(--shadow);padding:16px">
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-<div style="font-size:28px">🌍</div>
-<div style="flex:1;min-width:0">
-<div id="bdModalWord" style="font-size:28px;font-weight:900;color:var(--green);line-height:1.1;word-break:break-word"></div>
-<div id="bdModalMeta" style="font-size:11px;color:var(--muted);font-weight:800;margin-top:4px"></div>
+  <div style="width:100%;max-width:480px;max-height:88vh;overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:22px 22px 14px 14px;box-shadow:var(--shadow);padding:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-size:28px">🌍</div>
+      <div style="flex:1;min-width:0">
+        <div id="bdModalWord" style="font-size:28px;font-weight:900;color:var(--green);line-height:1.1;word-break:break-word"></div>
+        <div id="bdModalMeta" style="font-size:11px;color:var(--muted);font-weight:800;margin-top:4px"></div>
+      </div>
+      <button onclick="closeBroadDictModal()" style="width:38px;height:38px">✕</button>
+    </div>
+
+    <div id="bdModalBadges" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <button class="btn btn-blue" onclick="speakBroadDictWord()">🔊 Sesli Telaffuz</button>
+      <button class="btn btn-green" onclick="toggleBroadFavorite()" id="bdFavBtn">⭐ Favoriye Ekle</button>
+      <button class="btn btn-purple" onclick="addBroadWordToStudy()">🎯 Bu Kelimeyi Çalış</button>
+      <button class="btn btn-ghost" onclick="addBroadWordToMyDictionary()">📚 Sözlüğüme Ekle</button>
+    </div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:900;color:var(--purple);margin-bottom:8px">🇹🇷 Anlamlar</div>
+      <div id="bdModalMeanings" style="font-size:14px;color:var(--sub);line-height:1.75"></div>
+    </div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:900;color:var(--blue);margin-bottom:8px">🧠 Kök / Ek Analizi</div>
+      <div id="bdMorphology" style="font-size:13px;color:var(--sub);line-height:1.65"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <button class="btn btn-ghost" onclick="loadBroadSynAnt()">🔁 Synonym / Antonym</button>
+      <button class="btn btn-ghost" onclick="generateBroadExample()">✍️ Örnek Cümle</button>
+    </div>
+
+    <div id="bdSynAntBox" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;font-size:13px;color:var(--sub);line-height:1.65"></div>
+    <div id="bdExampleBox" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;font-size:13px;color:var(--sub);line-height:1.65"></div>
+
+    <button class="btn btn-blue" onclick="explainBroadWordAI()" style="margin-bottom:10px">🤖 AI Açıklama</button>
+    <div id="bdAIBox" style="display:none;background:#1c0a00;border:1.5px solid #7c2d12;border-radius:14px;padding:12px;font-size:13px;color:#fed7aa;line-height:1.65"></div>
+  </div>
 </div>
-<button onclick="closeBroadDictModal()" style="width:38px;height:38px">✕</button>
-</div>
-<div id="bdModalBadges" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-<button class="btn btn-blue" onclick="speakBroadDictWord()">🔊 Sesli Telaffuz</button>
-<button class="btn btn-green" id="bdFavBtn" onclick="toggleBroadFavorite()">⭐ Favoriye Ekle</button>
-<button class="btn btn-purple" onclick="addBroadWordToStudy()">🎯 Bu Kelimeyi Çalış</button>
-<button class="btn btn-ghost" onclick="addBroadWordToMyDictionary()">📚 Sözlüğüme Ekle</button>
-</div>
-<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
-<div style="font-size:12px;font-weight:900;color:var(--purple);margin-bottom:8px">🇹🇷 Anlamlar</div>
-<div id="bdModalMeanings" style="font-size:14px;color:var(--sub);line-height:1.75"></div>
-</div>
-<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
-<div style="font-size:12px;font-weight:900;color:var(--blue);margin-bottom:8px">🧠 Kök / Ek Analizi</div>
-<div id="bdMorphology" style="font-size:13px;color:var(--sub);line-height:1.65"></div>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-<button class="btn btn-ghost" onclick="loadBroadSynAnt()">🔁 Synonym / Antonym</button>
-<button class="btn btn-ghost" onclick="generateBroadExample()">✍️ Örnek Cümle</button>
-</div>
-<div id="bdSynAntBox" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;font-size:13px;color:var(--sub);line-height:1.65"></div>
-<div id="bdExampleBox" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;font-size:13px;color:var(--sub);line-height:1.65"></div>
-<button class="btn btn-blue" onclick="explainBroadWordAI()" style="margin-bottom:10px">🤖 AI Açıklama</button>
-<div id="bdAIBox" style="display:none;background:#1c0a00;border:1.5px solid #7c2d12;border-radius:14px;padding:12px;font-size:13px;color:#fed7aa;line-height:1.65"></div>
-</div>
-</div>
+
+
 <!-- ══ DONE SCREEN ══ -->
 <div class="screen" id="sc-done">
 <div class="done-screen">
@@ -1611,7 +1693,7 @@ button[style*="position: fixed"]{
 <!-- ══ KELIME OYUNLARI SCREEN ══ -->
 <div class="screen" id="sc-games">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎮 Kelime Oyunları</h2>
 </div>
 <!-- Oyun Seçim -->
@@ -1883,7 +1965,7 @@ button[style*="position: fixed"]{
 <!-- ══ 27. AI KONUŞMA PARTNERİ ══ -->
 <div class="screen" id="sc-partner">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🗨️ Konuşma Partneri</h2>
 <button onclick="clearPartnerChat()" style="margin-left:auto">🗑️</button>
 </div>
@@ -1916,10 +1998,10 @@ button[style*="position: fixed"]{
 <!-- ✅ YENİ: Custom Partner Oluştur -->
 <div style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.1));border:1.5px solid var(--purple);border-radius:14px;padding:12px;margin-top:12px">
 <div style="font-size:12px;font-weight:800;color:var(--purple);margin-bottom:8px">✨ Yeni Partner Oluştur</div>
-<input id="customPartnerDesc" onkeydown="if(event.key==='Enter') generateCustomPartner()" placeholder="Örn: 25 yaşında İngiliz doktor, arkadaşça ve yardımsever..." style="width:100%;margin-bottom:8px" type="text">
+<input id="customPartnerDesc" onkeydown="if(event.key==='Enter') generateCustomPartner()" placeholder="Örn: 25 yaşında İngiliz doktor, arkadaşça ve yardımsever..." style="width:100%;margin-bottom:8px" type="text"/>
 <button onclick="generateCustomPartner()" style="width:100%">✨ Partneri Oluştur</button>
 <div id="customPartnerPreview" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
-</input></div>
+</div>
 <div style="font-size:13px;font-weight:800;color:var(--text);margin:16px 0 8px">💬 Konu Seç:</div>
 <div class="topic-pills" id="topicPills">
 <div class="topic-pill" onclick="startPartnerChat('günlük hayat')">🌅 Günlük Hayat</div>
@@ -1961,7 +2043,7 @@ button[style*="position: fixed"]{
 <!-- ══ 16. SHADOWING MODU ══ -->
 <div class="screen" id="sc-shadow">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>👥 Shadowing Modu</h2>
 </div>
 <div class="card">
@@ -1987,9 +2069,9 @@ button[style*="position: fixed"]{
 </div>
 <div class="shadow-speed-control">
 <span>Hız:</span>
-<input id="shadowSpeedSlider" max="1.5" min="0.5" oninput="updateShadowSpeed(this.value)" step="0.1" style="flex:1" type="range" value="1">
+<input id="shadowSpeedSlider" max="1.5" min="0.5" oninput="updateShadowSpeed(this.value)" step="0.1" style="flex:1" type="range" value="1"/>
 <span id="shadowSpeedVal" style="min-width:30px">1.0x</span>
-</input></div>
+</div>
 <div class="shadow-controls">
 <button class="shadow-btn" id="shadowPlayBtn" onclick="playShadowAudio()">▶ Konuş</button>
 <button class="shadow-btn" id="shadowRecBtn" onclick="startShadowing()">🎤 Tekrar Et</button>
@@ -2012,7 +2094,7 @@ button[style*="position: fixed"]{
 <!-- ══ 25. AI ÖĞRETMEN KİŞİSELLEŞTİRME ══ -->
 <div class="screen" id="sc-teacher">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>🤖 AI Öğretmenim</h2>
 <button onclick="showPromptEditor('teacher')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -2085,7 +2167,7 @@ button[style*="position: fixed"]{
 <!-- ══ 15. ACCENT COACH ══ -->
 <div class="screen" id="sc-accent">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🗣️ Accent Coach</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2135,7 +2217,7 @@ button[style*="position: fixed"]{
 <!-- ══ 8. PODCAST ENTEGRASYONu ══ -->
 <div class="screen" id="sc-podcast">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎧 Podcast</h2>
 <button onclick="showPromptEditor('podcast')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -2281,7 +2363,7 @@ button[style*="position: fixed"]{
 <!-- ══ 20. OFFLİNE MODU ══ -->
 <div class="screen" id="sc-offline">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>📴 Offline Modu</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2345,15 +2427,15 @@ button[style*="position: fixed"]{
 <div style="font-size:13px;font-weight:700">Otomatik Önbellekleme</div>
 <div style="font-size:11px;color:var(--muted)">Uygulama açıldığında önbellekle</div>
 </div>
-<input checked="" id="autoCache" onchange="saveOfflineSettings()" style="width:20px;height:20px" type="checkbox">
-</input></label>
+<input checked="" id="autoCache" onchange="saveOfflineSettings()" style="width:20px;height:20px" type="checkbox"/>
+</label>
 <label style="display:flex;align-items:center;justify-content:space-between">
 <div>
 <div style="font-size:13px;font-weight:700">AI Yanıt Önbellekleme</div>
 <div style="font-size:11px;color:var(--muted)">Sık sorulan sorular için sakla</div>
 </div>
-<input id="cacheAI" onchange="saveOfflineSettings()" style="width:20px;height:20px" type="checkbox">
-</input></label>
+<input id="cacheAI" onchange="saveOfflineSettings()" style="width:20px;height:20px" type="checkbox"/>
+</label>
 <button onclick="clearAllAICaches()" style="margin-top:6px;text-align:left">
   🗑️ Tüm AI Önbelleklerini Temizle
   <div style="font-size:11px;color:var(--muted);font-weight:500;margin-top:2px">Kelime açıklama, ilişkiler, OCR, görsel, örnek cümleler</div>
@@ -2363,8 +2445,8 @@ button[style*="position: fixed"]{
 <div style="font-size:13px;font-weight:700">Telaffuz Puanlamasında AI Analizi</div>
 <div style="font-size:11px;color:var(--muted)">Açıksa her denemede AI çağrısı yapılır (token harcar)</div>
 </div>
-<input id="pronunAIAnalysis" onchange="savePronunAIAnalysisSetting()" style="width:20px;height:20px" type="checkbox">
-</input></label>
+<input id="pronunAIAnalysis" onchange="savePronunAIAnalysisSetting()" style="width:20px;height:20px" type="checkbox"/>
+</label>
 </div>
 </div>
 <div class="card">
@@ -2372,7 +2454,7 @@ button[style*="position: fixed"]{
 <div id="dictStatusBox" style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;padding:10px;background:var(--bg2);border-radius:10px">
   Yükleniyor...
 </div>
-<input accept=".json,application/json" id="dictFileInput" onchange="handleDictionaryUpload(event)" style="display:none" type="file">
+<input id="dictFileInput" type="file" accept=".json,application/json" onchange="handleDictionaryUpload(event)" style="display:none"/>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
 <button class="btn btn-blue btn-sm" onclick="document.getElementById('dictFileInput').click()">📂 Sözlük Yükle</button>
 <button class="btn btn-ghost btn-sm" onclick="downloadCurrentDictionary()">💾 İndir</button>
@@ -2381,7 +2463,7 @@ button[style*="position: fixed"]{
 <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">
   ℹ️ Öncelik: <b>sozluk.json</b> (server) → kullanıcı yüklediği → boş. Yüklediğin sözlük yedeğe dahil edilir.
 </div>
-</input></div>
+</div>
 <div class="card">
 <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:12px">📱 PWA Kurulum</div>
 <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6">
@@ -2392,33 +2474,33 @@ button[style*="position: fixed"]{
 </div>
 <div class="card">
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-<div style="font-size:14px;font-weight:800;color:var(--text)">ℹ️ Sürüm ve Özellikler</div>
-<span>v9 · Sentence Stable 2026</span>
+  <div style="font-size:14px;font-weight:800;color:var(--text)">ℹ️ Sürüm ve Özellikler</div>
+  <span>v9 · Sentence Stable 2026</span>
 </div>
 <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
   📚 Yerel sözlük: <b id="dictWordCount">~4943</b> kelime · Türkçe okunuş + 3 anlam + CEFR + Zipf sıklık
 </div>
 <div style="font-size:12px;color:var(--text);line-height:1.8">
-<b style="color:var(--green)">📖 Kelime Çalışma</b><br/>
-  • Yerel sözlükten anlık popup (4943 kelime)<br/>
-  • SRS aralıklı tekrar sistemi · Ezberlenecekler · Multi-list<br/>
-  • Kelime / Cümle / Harf modları · El yazısı<br/>
-<br/>
-<b style="color:#3b82f6">🎤 Telaffuz</b><br/>
-  • IPA + Türkçe okunuş · Hız ayarı · Konuşarak kontrol<br/>
-  • Aksan egzersizleri · Kendi sesini kaydetme<br/>
-<br/>
-<b style="color:#8b5cf6">🤖 AI Özellikleri</b><br/>
-  • Kelime Açıklama · Kelime İlişkileri · Görsel Hafıza<br/>
-  • Hikaye / Podcast üretimi · Konuşma senaryoları<br/>
-  • Düzenlenebilir prompt'lar · 4 AI sağlayıcı<br/>
-<br/>
-<b style="color:#f59e0b">💾 Veri Yönetimi</b><br/>
-  • Otomatik klasör yedekleme · AI cache (token tasarrufu)<br/>
-  • Kullanıcı sözlüğü yükleme/indirme · PWA offline<br/>
-<br/>
-<b style="color:#ef4444">📊 Diğer</b><br/>
-  • OCR ile fotoğraftan kelime · PDF okuyucu<br/>
+  <b style="color:var(--green)">📖 Kelime Çalışma</b><br>
+  • Yerel sözlükten anlık popup (4943 kelime)<br>
+  • SRS aralıklı tekrar sistemi · Ezberlenecekler · Multi-list<br>
+  • Kelime / Cümle / Harf modları · El yazısı<br>
+  <br>
+  <b style="color:#3b82f6">🎤 Telaffuz</b><br>
+  • IPA + Türkçe okunuş · Hız ayarı · Konuşarak kontrol<br>
+  • Aksan egzersizleri · Kendi sesini kaydetme<br>
+  <br>
+  <b style="color:#8b5cf6">🤖 AI Özellikleri</b><br>
+  • Kelime Açıklama · Kelime İlişkileri · Görsel Hafıza<br>
+  • Hikaye / Podcast üretimi · Konuşma senaryoları<br>
+  • Düzenlenebilir prompt'lar · 4 AI sağlayıcı<br>
+  <br>
+  <b style="color:#f59e0b">💾 Veri Yönetimi</b><br>
+  • Otomatik klasör yedekleme · AI cache (token tasarrufu)<br>
+  • Kullanıcı sözlüğü yükleme/indirme · PWA offline<br>
+  <br>
+  <b style="color:#ef4444">📊 Diğer</b><br>
+  • OCR ile fotoğraftan kelime · PDF okuyucu<br>
   • Hatırlatmalar · Word Graph · İstatistikler
 </div>
 <div style="font-size:11px;color:var(--muted);margin-top:12px;padding:8px;background:var(--bg2);border-radius:8px;line-height:1.5">
@@ -2429,7 +2511,7 @@ button[style*="position: fixed"]{
 <!-- ══ 17. KONUŞMA ODALARI ══ -->
 <div class="screen" id="sc-rooms">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>💬 Konuşma Odaları</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2461,7 +2543,7 @@ button[style*="position: fixed"]{
 <!-- ══ AI GÖRSEL AÇIKLAMA ══ -->
 <div class="screen" id="sc-visual">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🖼️ Görsel Açıklama</h2>
 <button onclick="showPromptEditor('visual')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -2484,7 +2566,7 @@ button[style*="position: fixed"]{
 <!-- ══ KELİME ŞARKISI ══ -->
 <div class="screen" id="sc-song">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🎵 Kelime Şarkısı</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2534,7 +2616,7 @@ button[style*="position: fixed"]{
 <!-- ══ ÇOKLU LİSTE YÖNETİCİ ══ -->
 <div class="screen" id="sc-lists">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📋 Listelerim</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2562,7 +2644,7 @@ button[style*="position: fixed"]{
 <!-- ══ BULUT YEDEK ══ -->
 <div class="screen" id="sc-cloud">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>☁️ Bulut Yedek</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -2626,7 +2708,7 @@ button[style*="position: fixed"]{
 <!-- ══ GÜNLÜK PLAN DASHBOARD ══ -->
 <div class="screen" id="sc-daily">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="goHome()">←</button>
 <h2>🌅 Günlük Plan</h2>
 <button onclick="refreshDailyPlan()" style="margin-left:auto">🔄</button>
 </div>
@@ -2637,7 +2719,7 @@ button[style*="position: fixed"]{
 <div class="daily-streak-row">
 <div class="streak-flame">🔥</div>
 <div class="streak-count" id="dailyStreakCount">0</div>
-<div class="streak-label">günlük seri<br><span id="dailyStreakMsg"></span></br></div>
+<div class="streak-label">günlük seri<br/><span id="dailyStreakMsg"></span></div>
 <div style="margin-left:auto;text-align:center">
 <div id="dailyXP" style="font-size:28px;font-weight:900;color:var(--purple)">0</div>
 <div style="font-size:10px;color:var(--muted)">XP bugün</div>
@@ -2691,7 +2773,7 @@ button[style*="position: fixed"]{
 <!-- ══ STREAK & ROZETLER EKRANI ══ -->
 <div class="screen" id="sc-streak">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>🏆 Streak &amp; Rozetler</h2>
 </div>
 <div class="scr-con" style="padding-bottom:80px">
@@ -2745,7 +2827,7 @@ button[style*="position: fixed"]{
 <!-- ══ ZAYIF NOKTA ANALİZİ EKRANI ══ -->
 <div class="screen" id="sc-weakness">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>🎯 Zayıf Nokta Analizi</h2>
 </div>
 <div class="scr-con" style="padding-bottom:100px">
@@ -2801,7 +2883,7 @@ button[style*="position: fixed"]{
 </div>
 <div class="screen" id="sc-analytics">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>📊 Analitikler</h2>
 </div>
 <!-- Genel İstatistikler -->
@@ -2888,7 +2970,7 @@ button[style*="position: fixed"]{
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-library">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <span class="top-title">📚 Kütüphane</span>
 <button onclick="openCameraOCR()" style="margin-left:auto">📸 OCR</button>
 </div>
@@ -2979,7 +3061,7 @@ button[style*="position: fixed"]{
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-reader">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-library')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-library')">←</button>
 <span class="top-title" id="readerTitle">📖 Kitap</span>
 </div>
 <div class="scr-con" style="padding:0;padding-bottom:80px">
@@ -3019,41 +3101,43 @@ button[style*="position: fixed"]{
 <!-- ══ WORD GRAPH SCREEN ══ -->
 <div class="screen" id="sc-wordgraph">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-stats')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-stats')">←</button>
 <h2>🕸️ Kelime Grafiği</h2>
 <button onclick="buildWordGraph()" style="margin-left:auto">🔄 Yenile</button>
 </div>
 <div style="padding:0 12px 8px">
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-<button id="wg-filter-all" onclick="wgSetFilter('all')">Tümü</button>
-<button id="wg-filter-learned" onclick="wgSetFilter('learned')">✅ Öğrenilen</button>
-<button id="wg-filter-topic" onclick="wgSetFilter('topic')">📂 Konuya Göre</button>
-</div>
-<div id="wg-search-wrap" style="position:relative">
-<input id="wgSearch" oninput="wgHighlightSearch(this.value)" placeholder="🔍 Kelime ara..." style="width:100%;box-sizing:border-box"/>
-</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+    <button id="wg-filter-all" onclick="wgSetFilter('all')">Tümü</button>
+    <button id="wg-filter-learned" onclick="wgSetFilter('learned')">✅ Öğrenilen</button>
+    <button id="wg-filter-topic" onclick="wgSetFilter('topic')">📂 Konuya Göre</button>
+  </div>
+  <div id="wg-search-wrap" style="position:relative">
+    <input id="wgSearch" placeholder="🔍 Kelime ara..." oninput="wgHighlightSearch(this.value)"
+      style="width:100%;box-sizing:border-box"/>
+  </div>
 </div>
 <div id="wg-loading" style="display:none;text-align:center;padding:40px;color:var(--muted)">
-<div style="font-size:32px;margin-bottom:8px">🕸️</div>
-<div id="wg-loading-text" style="font-size:13px">Graf oluşturuluyor...</div>
-<div style="width:200px;height:4px;background:var(--bg3);border-radius:4px;margin:12px auto;overflow:hidden">
-<div id="wg-progress" style="height:100%;width:0%;background:var(--purple);border-radius:4px;transition:width .3s"></div>
-</div>
+  <div style="font-size:32px;margin-bottom:8px">🕸️</div>
+  <div id="wg-loading-text" style="font-size:13px">Graf oluşturuluyor...</div>
+  <div style="width:200px;height:4px;background:var(--bg3);border-radius:4px;margin:12px auto;overflow:hidden">
+    <div id="wg-progress" style="height:100%;width:0%;background:var(--purple);border-radius:4px;transition:width .3s"></div>
+  </div>
 </div>
 <div id="wg-container" style="width:100%;height:calc(100vh - 180px);position:relative;overflow:hidden;background:var(--bg2);border-radius:12px;margin:0 12px;width:calc(100% - 24px)">
-<svg id="wg-svg" style="width:100%;height:100%"></svg>
-<div id="wg-tooltip" style="position:absolute;display:none;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:12px;max-width:200px;font-size:12px;pointer-events:none;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.4)"></div>
+  <svg id="wg-svg" style="width:100%;height:100%"></svg>
+  <div id="wg-tooltip" style="position:absolute;display:none;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:12px;max-width:200px;font-size:12px;pointer-events:none;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.4)"></div>
 </div>
 <div id="wg-legend" style="display:flex;gap:12px;padding:8px 12px;flex-wrap:wrap">
-<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:#22c55e"></div>Öğrenildi</div>
-<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:#3b82f6"></div>Öğreniliyor</div>
-<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:#6366f1"></div>Yeni</div>
-<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2)"></div>İlişkili</div>
+  <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:#22c55e"></div>Öğrenildi</div>
+  <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:#3b82f6"></div>Öğreniliyor</div>
+  <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:#6366f1"></div>Yeni</div>
+  <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2)"></div>İlişkili</div>
 </div>
 </div>
+
 <div class="screen" id="sc-learned">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="goHome()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="goHome()">←</button>
 <h2>📚 Öğrendiklerim</h2>
 </div>
 <div class="card" style="margin-bottom:12px">
@@ -3079,7 +3163,7 @@ button[style*="position: fixed"]{
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-settings">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="switchTab('word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
 <h2>⚙️ Ayarlar</h2>
 <button onclick="showTokenStats()" style="margin-left:auto;display:flex;align-items:center;gap:4px">
 <span>📊</span>
@@ -3145,9 +3229,9 @@ button[style*="position: fixed"]{
         Tek API ile 200+ model!
       </div>
 <div style="font-size:11px;color:#22c55e;margin-top:6px;font-weight:700;line-height:1.5">
-        💰 %100 ÜCRETSİZ: Gemini 2.0, Llama 3.3 70B, Mistral 7B<br>
+        💰 %100 ÜCRETSİZ: Gemini 2.0, Llama 3.3 70B, Mistral 7B<br/>
         🔄 Akıllı Fallback: Diğer servisler hata verince otomatik devreye girer
-      </br></div>
+      </div>
 </div>
 <button class="btn btn-blue" onclick="saveAPIKeysSettings()" style="width:100%">
       💾 API Anahtarlarını Kaydet
@@ -3514,9 +3598,9 @@ button[style*="position: fixed"]{
 <div style="margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:12px">
 <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text)">✨ Yöntem 1: Panoya Kopyala (Kolay)</div>
 <p style="margin-bottom:10px">
-        1. Web'de kelime seç ve kopyala (Ctrl+C)<br>
+        1. Web'de kelime seç ve kopyala (Ctrl+C)<br/>
         2. Aşağıdaki butona tıkla → Kelime otomatik açılır!
-      </br></p>
+      </p>
 <button onclick="openWordFromClipboard()" style="width:100%">
         📋 Panodaki Kelimeyi Aç
       </button>
@@ -3538,7 +3622,7 @@ button[style*="position: fixed"]{
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-quiz" style="width:100%">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📝 AI Test</h2>
 <button onclick="showPromptEditor('test')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -3630,7 +3714,7 @@ button[style*="position: fixed"]{
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-grammar">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📚 Gramer Rehberi</h2>
 <button onclick="showPromptEditor('grammar')" style="margin-left:auto">📝 Prompt</button>
 </div>
@@ -3654,7 +3738,7 @@ button[style*="position: fixed"]{
 <!-- ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-videos">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button>
+<button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button>
 <h2>📺 Video ile Öğren</h2>
 </div>
 <div class="card">
@@ -3735,7 +3819,7 @@ button[style*="position: fixed"]{
 <div class="screen" id="sc-camera-ocr">
 <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:10000;overflow-y:auto">
 <div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="closeCameraOCR()">←</button>
+<button class="back-btn" aria-label="Geri" onclick="closeCameraOCR()">←</button>
 <h2>📸 Kamera OCR</h2>
 </div>
 <div class="card" style="margin:12px">
@@ -3808,505 +3892,747 @@ button[style*="position: fixed"]{
 </div>
 </div>
 </div>
+
+
 <!-- ══════════════════════════════════════════════════════════
      NEXT-GEN COACH HUB — Added by ChatGPT
      ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-nextgen">
-<div class="top-bar"><button aria-label="Geri" class="back-btn" onclick="showScreen('sc-menu')">←</button><h2>🚀 Premium Koç</h2><span class="streak-badge">Yeni</span></div>
-<div class="card">
-<div style="font-size:20px;font-weight:900;margin-bottom:4px">Akıllı Öğrenme Merkezi</div>
-<div class="wmng-mini" style="margin-bottom:12px">Bu bölüm SRS 2.0, kritik kelimeler, cümle iyileştirici, ilerleme zekâsı, gerçek hayat konuşmaları ve telaffuz haritasını tek yerde toplar.</div>
-<div class="wmng-panel" id="wmngSummary"></div>
-<div class="wmng-grid">
-<div class="wmng-card" onclick="showScreen('sc-critical'); WMNG.renderCriticalWords();"><div><div class="ico">🔥</div><div class="title">Kritik 5 Kelime</div><div class="desc">Unutulma riski yüksek kelimeleri çalış.</div></div></div>
-<div class="wmng-card" onclick="showScreen('sc-intelligence'); WMNG.renderIntelligence();"><div><div class="ico">🧠</div><div class="title">İlerleme Zekâsı</div><div class="desc">Zayıf yönlerini otomatik analiz eder.</div></div></div>
-<div class="wmng-card" onclick="showScreen('sc-rewriter');"><div><div class="ico">✍️</div><div class="title">AI Cümle İyileştirici</div><div class="desc">Basic, natural, native cümle üretir.</div></div></div>
-<div class="wmng-card" onclick="showScreen('sc-realnew');"><div><div class="ico">🎭</div><div class="title">Gerçek Hayat Modu</div><div class="desc">Airport, hotel, cafe gibi senaryolar.</div></div></div>
-<div class="wmng-card" onclick="showScreen('sc-pronmap'); WMNG.fillCurrentPronMap();"><div><div class="ico">🗣️</div><div class="title">Telaffuz Haritası</div><div class="desc">Hangi seslerde hata yaptığını gösterir.</div></div></div>
-<div class="wmng-card" onclick="showScreen('sc-srs'); if(typeof showSRSSummary==='function')showSRSSummary();"><div><div class="ico">🔄</div><div class="title">SRS Tekrar</div><div class="desc">Aralıklı tekrar sistemini açar.</div></div></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-menu')">←</button><h2>🚀 Premium Koç</h2><span class="streak-badge">Yeni</span></div>
+  <div class="card">
+    <div style="font-size:20px;font-weight:900;margin-bottom:4px">Akıllı Öğrenme Merkezi</div>
+    <div class="wmng-mini" style="margin-bottom:12px">Bu bölüm SRS 2.0, kritik kelimeler, cümle iyileştirici, ilerleme zekâsı, gerçek hayat konuşmaları ve telaffuz haritasını tek yerde toplar.</div>
+    <div id="wmngSummary" class="wmng-panel"></div>
+    <div class="wmng-grid">
+      <div class="wmng-card" onclick="showScreen('sc-critical'); WMNG.renderCriticalWords();"><div><div class="ico">🔥</div><div class="title">Kritik 5 Kelime</div><div class="desc">Unutulma riski yüksek kelimeleri çalış.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-intelligence'); WMNG.renderIntelligence();"><div><div class="ico">🧠</div><div class="title">İlerleme Zekâsı</div><div class="desc">Zayıf yönlerini otomatik analiz eder.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-rewriter');"><div><div class="ico">✍️</div><div class="title">AI Cümle İyileştirici</div><div class="desc">Basic, natural, native cümle üretir.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-realnew');"><div><div class="ico">🎭</div><div class="title">Gerçek Hayat Modu</div><div class="desc">Airport, hotel, cafe gibi senaryolar.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-pronmap'); WMNG.fillCurrentPronMap();"><div><div class="ico">🗣️</div><div class="title">Telaffuz Haritası</div><div class="desc">Hangi seslerde hata yaptığını gösterir.</div></div></div>
+      <div class="wmng-card" onclick="showScreen('sc-srs'); if(typeof showSRSSummary==='function')showSRSSummary();"><div><div class="ico">🔄</div><div class="title">SRS Tekrar</div><div class="desc">Aralıklı tekrar sistemini açar.</div></div></div>
+    </div>
+  </div>
 </div>
-</div>
-</div>
+
 <div class="screen" id="sc-critical">
-<div class="top-bar"><button aria-label="Geri" class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🔥 Bugünün Kritik Kelimeleri</h2></div>
-<div class="card">
-<div class="wmng-mini" style="margin-bottom:10px">Risk; hata sayısı, SRS gecikmesi, öğrenilme durumu ve zipf değerine göre hesaplanır.</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-<button class="btn btn-blue" onclick="WMNG.loadDefaultDictionaryAsList(true)">📚 Varsayılan Sözlüğü Yükle</button>
-<button class="btn btn-purple" onclick="document.getElementById('fileInput')?.click()">➕ Özel Liste Ekle</button>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>🔥 Bugünün Kritik Kelimeleri</h2></div>
+  <div class="card">
+    <div class="wmng-mini" style="margin-bottom:10px">Risk; hata sayısı, SRS gecikmesi, öğrenilme durumu ve zipf değerine göre hesaplanır.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <button class="btn btn-blue" onclick="WMNG.loadDefaultDictionaryAsList(true)">📚 Varsayılan Sözlüğü Yükle</button>
+      <button class="btn btn-purple" onclick="document.getElementById('fileInput')?.click()">➕ Özel Liste Ekle</button>
+    </div>
+    <div class="wmng-mini" style="margin-bottom:10px">Özel liste için Excel yükleyebilirsin. Varsayılan liste ise paketteki <b>sozluk.json</b> dosyasından otomatik gelir.</div>
+    <div id="wmngCriticalList" class="wmng-list"></div>
+  </div>
 </div>
-<div class="wmng-mini" style="margin-bottom:10px">Özel liste için Excel yükleyebilirsin. Varsayılan liste ise paketteki <b>sozluk.json</b> dosyasından otomatik gelir.</div>
-<div class="wmng-list" id="wmngCriticalList"></div>
-</div>
-</div>
+
 <div class="screen" id="sc-intelligence">
-<div class="top-bar"><button aria-label="Geri" class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🧠 İlerleme Zekâsı</h2></div>
-<div class="card" id="wmngIntelligence"></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>🧠 İlerleme Zekâsı</h2></div>
+  <div class="card" id="wmngIntelligence"></div>
 </div>
+
 <div class="screen" id="sc-rewriter">
-<div class="top-bar"><button aria-label="Geri" class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>✍️ AI Cümle İyileştirici</h2></div>
-<div class="card">
-<div class="wmng-mini" style="margin-bottom:8px">Cümleni yazabilir veya mikrofona söyleyebilirsin. Konuşma otomatik olarak kutuya aktarılır.</div>
-<textarea class="wmng-textarea" id="wmngRewriteInput" placeholder="İngilizce cümleni yaz veya söyle: I very like this movie..." rows="4"></textarea>
-<div class="wmng-mini" id="wmngRewriteVoiceStatus" style="display:none;margin-top:8px;background:var(--bg2);border:1px dashed var(--border);border-radius:10px;padding:8px">🎧 Dinleniyor...</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-<button class="btn btn-purple" onclick="WMNG.startRewriteVoiceInput()">🎤 Sesle Gir</button>
-<button class="btn btn-ghost" onclick="WMNG.stopRewriteVoiceInput()">⏹ Durdur</button>
-<button class="btn btn-blue" onclick="WMNG.rewriteSentence()">✨ İyileştir</button>
-<button class="btn btn-ghost" onclick="WMNG.useCurrentSentence()">📖 Mevcut cümle</button>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>✍️ AI Cümle İyileştirici</h2></div>
+  <div class="card">
+    <div class="wmng-mini" style="margin-bottom:8px">Cümleni yazabilir veya mikrofona söyleyebilirsin. Konuşma otomatik olarak kutuya aktarılır.</div>
+    <textarea id="wmngRewriteInput" class="wmng-textarea" rows="4" placeholder="İngilizce cümleni yaz veya söyle: I very like this movie..."></textarea>
+    <div id="wmngRewriteVoiceStatus" class="wmng-mini" style="display:none;margin-top:8px;background:var(--bg2);border:1px dashed var(--border);border-radius:10px;padding:8px">🎧 Dinleniyor...</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <button class="btn btn-purple" onclick="WMNG.startRewriteVoiceInput()">🎤 Sesle Gir</button>
+      <button class="btn btn-ghost" onclick="WMNG.stopRewriteVoiceInput()">⏹ Durdur</button>
+      <button class="btn btn-blue" onclick="WMNG.rewriteSentence()">✨ İyileştir</button>
+      <button class="btn btn-ghost" onclick="WMNG.useCurrentSentence()">📖 Mevcut cümle</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-ghost" onclick="WMNG.speakRewriteInput()" style="flex:1">🔊 Girdiği Oku</button>
+      <button class="btn btn-ghost" onclick="WMNG.speakRewriteResult()" style="flex:1">🔊 Sonucu Oku</button>
+    </div>
+    <div id="wmngRewriteResult" class="wmng-result" style="display:none"></div>
+  </div>
 </div>
-<div style="display:flex;gap:8px;margin-top:8px">
-<button class="btn btn-ghost" onclick="WMNG.speakRewriteInput()" style="flex:1">🔊 Girdiği Oku</button>
-<button class="btn btn-ghost" onclick="WMNG.speakRewriteResult()" style="flex:1">🔊 Sonucu Oku</button>
-</div>
-<div class="wmng-result" id="wmngRewriteResult" style="display:none"></div>
-</div>
-</div>
+
 <div class="screen" id="sc-life">
-<div class="top-bar"><button aria-label="Geri" class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🎭 Gerçek Hayat Konuşması</h2></div>
-<div class="card">
-<div class="chat-input-row">
-<textarea class="chat-input" id="wmngLifeInput" placeholder="Cevabını İngilizce yaz..." rows="2"></textarea>
-<button class="chat-send" onclick="WMNG.sendLifeMessage()">➤</button>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>🎭 Gerçek Hayat Konuşması</h2></div>
+  <div class="card">
+    <div class="chat-input-row">
+      <textarea id="wmngLifeInput" class="chat-input" rows="2" placeholder="Cevabını İngilizce yaz..."></textarea>
+      <button class="chat-send" onclick="WMNG.sendLifeMessage()">➤</button>
+    </div>
+    <div class="wmng-chat" id="wmngLifeChat" style="margin-top:14px"></div>
+  </div>
 </div>
-<div class="wmng-chat" id="wmngLifeChat" style="margin-top:14px"></div>
-</div>
-</div>
+
 <div class="screen" id="sc-pronmap">
-<div class="top-bar"><button aria-label="Geri" class="back-btn" onclick="showScreen('sc-nextgen')">←</button><h2>🗣️ Telaffuz Haritası</h2></div>
-<div class="card">
-<input class="wmng-input" id="wmngPronTarget" placeholder="Hedef kelime: volunteer"/>
-<input class="wmng-input" id="wmngPronSpoken" placeholder="Duyulan/okunan kelime: volintir" style="margin-top:8px"/>
-<div style="display:flex;gap:8px;margin-top:10px">
-<button class="btn btn-purple" onclick="WMNG.listenPronMap()" style="flex:1">🎙️ Konuş</button>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-nextgen')">←</button><h2>🗣️ Telaffuz Haritası</h2></div>
+  <div class="card">
+    <input id="wmngPronTarget" class="wmng-input" placeholder="Hedef kelime: volunteer" />
+    <input id="wmngPronSpoken" class="wmng-input" style="margin-top:8px" placeholder="Duyulan/okunan kelime: volintir" />
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-purple" onclick="WMNG.listenPronMap()" style="flex:1">🎙️ Konuş</button>
+      
+    </div>
+    <div class="wmng-audio-box">
+      <div style="font-size:14px;font-weight:900;margin-bottom:8px">🎧 Kendi Ses Kaydın + Grafik Karşılaştırma</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="wmngRecordBtn" class="btn btn-green btn-sm" onclick="WMNG.toggleVoiceRecord()">● Kayıt Başlat</button>
+        <button class="btn btn-blue btn-sm" onclick="WMNG.playUserRecord()">▶ Kaydımı Konuş</button>
+        <button class="btn btn-purple btn-sm" onclick="WMNG.speakTargetAndDraw()">🔊 Doğru Sesi Konuş</button>
+      </div>
+      <div class="wmng-wave-grid">
+        <div class="wmng-wave-card"><div class="wmng-wave-label">Doğru ses / hedef model</div><canvas id="wmngRefWave" class="wmng-wave"></canvas></div>
+        <div class="wmng-wave-card"><div class="wmng-wave-label">Benim ses kaydım</div><canvas id="wmngUserWave" class="wmng-wave"></canvas></div>
+      </div>
+      <div id="wmngVoiceCompare" class="wmng-mini" style="margin-top:8px">Kayıt başlat, kelimeyi söyle, sonra grafikte doğru modelle kendi sesini karşılaştır.</div>
+    </div>
+    <div id="wmngPronResult" class="wmng-result" style="display:none"></div>
+  </div>
 </div>
-<div class="wmng-audio-box">
-<div style="font-size:14px;font-weight:900;margin-bottom:8px">🎧 Kendi Ses Kaydın + Grafik Karşılaştırma</div>
-<div style="display:flex;gap:8px;flex-wrap:wrap">
-<button class="btn btn-green btn-sm" id="wmngRecordBtn" onclick="WMNG.toggleVoiceRecord()">● Kayıt Başlat</button>
-<button class="btn btn-blue btn-sm" onclick="WMNG.playUserRecord()">▶ Kaydımı Konuş</button>
-<button class="btn btn-purple btn-sm" onclick="WMNG.speakTargetAndDraw()">🔊 Doğru Sesi Konuş</button>
-</div>
-<div class="wmng-wave-grid">
-<div class="wmng-wave-card"><div class="wmng-wave-label">Doğru ses / hedef model</div><canvas class="wmng-wave" id="wmngRefWave"></canvas></div>
-<div class="wmng-wave-card"><div class="wmng-wave-label">Benim ses kaydım</div><canvas class="wmng-wave" id="wmngUserWave"></canvas></div>
-</div>
-<div class="wmng-mini" id="wmngVoiceCompare" style="margin-top:8px">Kayıt başlat, kelimeyi söyle, sonra grafikte doğru modelle kendi sesini karşılaştır.</div>
-</div>
-<div class="wmng-result" id="wmngPronResult" style="display:none"></div>
-</div>
-</div>
+
+
 <!-- ══════════════════════════════════════════════════════════
      YENİ GERÇEK HAYAT KONUŞMA SAYFASI - SIFIRDAN YAZILDI
      Accent seçimi yoktur.
      ══════════════════════════════════════════════════════════ -->
 <div class="screen" id="sc-realnew">
-<div class="rlnew-wrap">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('sc-menu')">←</button>
-<h2>Yeni Gerçek Hayat</h2>
-<span class="streak-badge">AI</span>
-</div>
-<section class="rlnew-hero">
-<div class="rlnew-kicker">Real Life Speaking</div>
-<div class="rlnew-title">Gerçek hayatta konuşur gibi pratik yap</div>
-<div class="rlnew-sub">Seviye, senaryo ve konuşma partnerini seç. İstersen kendi görselli senaryonu üret.</div>
-</section>
-<section class="rlnew-card">
-<div class="rlnew-label">🤖 AI Motoru ve Prompt</div>
-<div class="rlnew-ai-info" id="rlnewAiInfo">
-<b>Kullanılan sistem:</b> Mevcut proje AI altyapısı varsa <b>callAI()</b>; API anahtarı yoksa gelişmiş yerel konuşma motoru.
+  <div class="rlnew-wrap">
+    <div class="top-bar">
+      <button class="back-btn" aria-label="Geri" onclick="showScreen('sc-menu')">←</button>
+      <h2>Yeni Gerçek Hayat</h2>
+      <span class="streak-badge">AI</span>
+    </div>
+
+    <section class="rlnew-hero">
+      <div class="rlnew-kicker">Real Life Speaking</div>
+      <div class="rlnew-title">Gerçek hayatta konuşur gibi pratik yap</div>
+      <div class="rlnew-sub">Seviye, senaryo ve konuşma partnerini seç. İstersen kendi görselli senaryonu üret.</div>
+    </section>
+
+    <section class="rlnew-card">
+      <div class="rlnew-label">🤖 AI Motoru ve Prompt</div>
+      <div class="rlnew-ai-info" id="rlnewAiInfo">
+        <b>Kullanılan sistem:</b> Mevcut proje AI altyapısı varsa <b>callAI()</b>; API anahtarı yoksa gelişmiş yerel konuşma motoru.
       </div>
-<button class="rlnew-prompt-toggle" id="rlnewPromptToggle">✏️ Promptu Göster / Düzenle</button>
-<div class="rlnew-prompt-editor" id="rlnewPromptEditor">
-<textarea id="rlnewSystemPrompt"></textarea>
-<div class="rlnew-actions">
-<button class="rlnew-btn rlnew-primary" id="rlnewSavePromptBtn">💾 Promptu Kaydet</button>
-<button class="rlnew-btn rlnew-secondary" id="rlnewResetPromptBtn">↩️ Varsayılana Dön</button>
+      <button class="rlnew-prompt-toggle" id="rlnewPromptToggle">✏️ Promptu Göster / Düzenle</button>
+      <div class="rlnew-prompt-editor" id="rlnewPromptEditor">
+        <textarea id="rlnewSystemPrompt"></textarea>
+        <div class="rlnew-actions">
+          <button class="rlnew-btn rlnew-primary" id="rlnewSavePromptBtn">💾 Promptu Kaydet</button>
+          <button class="rlnew-btn rlnew-secondary" id="rlnewResetPromptBtn">↩️ Varsayılana Dön</button>
+        </div>
+        <div class="rlnew-mini-status" id="rlnewPromptStatus">Prompt değişiklikleri bu ekrandaki yeni AI cevaplarında kullanılır.</div>
+      </div>
+    </section>
+
+
+    <section class="rlnew-card">
+      <div class="rlnew-label">🎚️ Seviye</div>
+      <div class="rlnew-levels" id="rlnewLevels">
+        <button class="rlnew-level active" data-level="A1">A1</button>
+        <button class="rlnew-level" data-level="A2">A2</button>
+        <button class="rlnew-level" data-level="B1">B1</button>
+        <button class="rlnew-level" data-level="B2">B2</button>
+        <button class="rlnew-level" data-level="C1">C1</button>
+      </div>
+    </section>
+
+    <section class="rlnew-card">
+      <div class="rlnew-label">🎬 Hazır Senaryo</div>
+      <select class="rlnew-select" id="rlnewScenarioSelect">
+        <option value="taxi">Taxi Ride - Taksi Yolculuğu</option>
+        <option value="hotel">Hotel Check-in - Otele Giriş</option>
+        <option value="restaurant">Restaurant Order - Restoranda Sipariş</option>
+        <option value="airport">Airport Help - Havalimanında Yardım</option>
+        <option value="shopping">Shopping - Alışveriş</option>
+        <option value="doctor">Doctor Visit - Doktor Randevusu</option>
+        <option value="job">Job Interview - İş Görüşmesi</option>
+        <option value="school">School Talk - Okulda Konuşma</option>
+      </select>
+
+      <div class="rlnew-scene">
+        <div class="rlnew-scene-img" id="rlnewSceneImage">🚕</div>
+        <div class="rlnew-scene-body">
+          <div class="rlnew-scene-title" id="rlnewSceneTitle">Taxi Ride</div>
+          <div class="rlnew-scene-desc" id="rlnewSceneDesc">Taksiye bindin. Gideceğin yeri söyle, süre ve ücret hakkında soru sor.</div>
+        </div>
+      </div>
+
+      <div class="rlnew-actions">
+        <button class="rlnew-btn rlnew-primary" id="rlnewStartBtn">▶️ Konuşmayı Başlat</button>
+        <button class="rlnew-btn rlnew-secondary" id="rlnewUseScenarioBtn">🔄 Senaryoyu Uygula</button>
+      </div>
+    </section>
+
+    <section class="rlnew-card">
+      <div class="rlnew-label">🖼️ Yeni Senaryo Oluştur</div>
+      <textarea class="rlnew-input" id="rlnewCustomPrompt" placeholder="Örnek: Londra’da bir kafede kahve sipariş etmek istiyorum. Barista hızlı konuşsun ama yardımcı olsun."></textarea>
+      <div class="rlnew-actions">
+        <button class="rlnew-btn rlnew-primary" id="rlnewGenerateBtn">✨ Görselli Senaryo Üret</button>
+        <button class="rlnew-btn rlnew-secondary" id="rlnewClearPromptBtn">Temizle</button>
+      </div>
+    </section>
+
+    <section class="rlnew-card">
+      <div class="rlnew-label">🧑‍🏫 Konuşma Partneri</div>
+      <div class="rlnew-personas" id="rlnewPersonas">
+        <div class="rlnew-persona active" data-persona="Emma" data-style="sabırlı ve öğretici">
+          <div class="rlnew-p-emoji">👩‍🏫</div><div class="rlnew-p-name">Emma</div><div class="rlnew-p-style">Sabırlı öğretmen</div>
+        </div>
+        <div class="rlnew-persona" data-persona="Mike" data-style="samimi ve günlük">
+          <div class="rlnew-p-emoji">👨‍💼</div><div class="rlnew-p-name">Mike</div><div class="rlnew-p-style">Günlük konuşma</div>
+        </div>
+        <div class="rlnew-persona" data-persona="Sophia" data-style="resmi ve profesyonel">
+          <div class="rlnew-p-emoji">👩‍💼</div><div class="rlnew-p-name">Sophia</div><div class="rlnew-p-style">Resmi/profesyonel</div>
+        </div>
+        <div class="rlnew-persona" data-persona="Jack" data-style="enerjik ve esprili">
+          <div class="rlnew-p-emoji">🧑‍🎤</div><div class="rlnew-p-name">Jack</div><div class="rlnew-p-style">Rahat ve enerjik</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rlnew-card">
+      <div class="rlnew-label">💬 Sohbet</div>
+      <div class="rlnew-chat" id="rlnewChat">
+        <div class="rlnew-msg system">Seviye, senaryo ve partner seç. Sonra konuşmayı başlat.</div>
+      </div>
+      <div class="rlnew-input-row">
+        <button class="rlnew-iconbtn" id="rlnewMicBtn" title="Sesli yazdır">🎙️</button>
+        <textarea class="rlnew-message" id="rlnewMessageInput" placeholder="Mesajını İngilizce yaz veya mikrofona bas..."></textarea>
+        <button class="rlnew-iconbtn" id="rlnewSendBtn" title="Gönder">➤</button>
+      </div>
+      <div class="rlnew-footer-actions">
+        <button class="rlnew-btn rlnew-danger" id="rlnewClearChatBtn">🗑️ Sohbeti Sil</button>
+        <button class="rlnew-btn rlnew-secondary" id="rlnewHintBtn">💡 Cevap Öner</button>
+        <button class="rlnew-btn rlnew-secondary" id="rlnewTranslateBtn">🇹🇷 Türkçeye Çevir</button>
+      </div>
+      <div class="rlnew-translate-box" id="rlnewTranslateBox"></div>
+    </section>
+  </div>
 </div>
-<div class="rlnew-mini-status" id="rlnewPromptStatus">Prompt değişiklikleri bu ekrandaki yeni AI cevaplarında kullanılır.</div>
-</div>
-</section>
-<section class="rlnew-card">
-<div class="rlnew-label">🎚️ Seviye</div>
-<div class="rlnew-levels" id="rlnewLevels">
-<button class="rlnew-level active" data-level="A1">A1</button>
-<button class="rlnew-level" data-level="A2">A2</button>
-<button class="rlnew-level" data-level="B1">B1</button>
-<button class="rlnew-level" data-level="B2">B2</button>
-<button class="rlnew-level" data-level="C1">C1</button>
-</div>
-</section>
-<section class="rlnew-card">
-<div class="rlnew-label">🎬 Hazır Senaryo</div>
-<select class="rlnew-select" id="rlnewScenarioSelect">
-<option value="taxi">Taxi Ride - Taksi Yolculuğu</option>
-<option value="hotel">Hotel Check-in - Otele Giriş</option>
-<option value="restaurant">Restaurant Order - Restoranda Sipariş</option>
-<option value="airport">Airport Help - Havalimanında Yardım</option>
-<option value="shopping">Shopping - Alışveriş</option>
-<option value="doctor">Doctor Visit - Doktor Randevusu</option>
-<option value="job">Job Interview - İş Görüşmesi</option>
-<option value="school">School Talk - Okulda Konuşma</option>
-</select>
-<div class="rlnew-scene">
-<div class="rlnew-scene-img" id="rlnewSceneImage">🚕</div>
-<div class="rlnew-scene-body">
-<div class="rlnew-scene-title" id="rlnewSceneTitle">Taxi Ride</div>
-<div class="rlnew-scene-desc" id="rlnewSceneDesc">Taksiye bindin. Gideceğin yeri söyle, süre ve ücret hakkında soru sor.</div>
-</div>
-</div>
-<div class="rlnew-actions">
-<button class="rlnew-btn rlnew-primary" id="rlnewStartBtn">▶️ Konuşmayı Başlat</button>
-<button class="rlnew-btn rlnew-secondary" id="rlnewUseScenarioBtn">🔄 Senaryoyu Uygula</button>
-</div>
-</section>
-<section class="rlnew-card">
-<div class="rlnew-label">🖼️ Yeni Senaryo Oluştur</div>
-<textarea class="rlnew-input" id="rlnewCustomPrompt" placeholder="Örnek: Londra’da bir kafede kahve sipariş etmek istiyorum. Barista hızlı konuşsun ama yardımcı olsun."></textarea>
-<div class="rlnew-actions">
-<button class="rlnew-btn rlnew-primary" id="rlnewGenerateBtn">✨ Görselli Senaryo Üret</button>
-<button class="rlnew-btn rlnew-secondary" id="rlnewClearPromptBtn">Temizle</button>
-</div>
-</section>
-<section class="rlnew-card">
-<div class="rlnew-label">🧑‍🏫 Konuşma Partneri</div>
-<div class="rlnew-personas" id="rlnewPersonas">
-<div class="rlnew-persona active" data-persona="Emma" data-style="sabırlı ve öğretici">
-<div class="rlnew-p-emoji">👩‍🏫</div><div class="rlnew-p-name">Emma</div><div class="rlnew-p-style">Sabırlı öğretmen</div>
-</div>
-<div class="rlnew-persona" data-persona="Mike" data-style="samimi ve günlük">
-<div class="rlnew-p-emoji">👨‍💼</div><div class="rlnew-p-name">Mike</div><div class="rlnew-p-style">Günlük konuşma</div>
-</div>
-<div class="rlnew-persona" data-persona="Sophia" data-style="resmi ve profesyonel">
-<div class="rlnew-p-emoji">👩‍💼</div><div class="rlnew-p-name">Sophia</div><div class="rlnew-p-style">Resmi/profesyonel</div>
-</div>
-<div class="rlnew-persona" data-persona="Jack" data-style="enerjik ve esprili">
-<div class="rlnew-p-emoji">🧑‍🎤</div><div class="rlnew-p-name">Jack</div><div class="rlnew-p-style">Rahat ve enerjik</div>
-</div>
-</div>
-</section>
-<section class="rlnew-card">
-<div class="rlnew-label">💬 Sohbet</div>
-<div class="rlnew-chat" id="rlnewChat">
-<div class="rlnew-msg system">Seviye, senaryo ve partner seç. Sonra konuşmayı başlat.</div>
-</div>
-<div class="rlnew-input-row">
-<button class="rlnew-iconbtn" id="rlnewMicBtn" title="Sesli yazdır">🎙️</button>
-<textarea class="rlnew-message" id="rlnewMessageInput" placeholder="Mesajını İngilizce yaz veya mikrofona bas..."></textarea>
-<button class="rlnew-iconbtn" id="rlnewSendBtn" title="Gönder">➤</button>
-</div>
-<div class="rlnew-footer-actions">
-<button class="rlnew-btn rlnew-danger" id="rlnewClearChatBtn">🗑️ Sohbeti Sil</button>
-<button class="rlnew-btn rlnew-secondary" id="rlnewHintBtn">💡 Cevap Öner</button>
-<button class="rlnew-btn rlnew-secondary" id="rlnewTranslateBtn">🇹🇷 Türkçeye Çevir</button>
-</div>
-<div class="rlnew-translate-box" id="rlnewTranslateBox"></div>
-</section>
-</div>
-</div>
+
 <!-- ══ STANDALONE PRONUNCIATION ANALYSIS SCREEN ══ -->
+
+
 <div class="screen" id="sc-pronstandalone">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="switchTab('word')">←</button>
-<h2>🎤 Telaffuz Analizi</h2>
+  <div class="top-bar">
+    <button class="back-btn" aria-label="Geri" onclick="switchTab('word')">←</button>
+    <h2>🎤 Telaffuz Analizi</h2>
+  </div>
+
+  <div class="sp-container">
+    <!-- Hero -->
+    <div class="sp-hero">
+      <div class="sp-hero-icon">🎤</div>
+      <div class="sp-hero-title">Kelime Telaffuz Analizi</div>
+      <div class="sp-hero-sub">İngilizce bir kelime yaz, IPA + Türkçe okunuşu gör, mikrofona söyle, harf bazlı renkli analizini al.</div>
+    </div>
+
+    <!-- Input Card -->
+    <div class="sp-input-card">
+      <div class="sp-input-label">📝 Analiz Edilecek Kelime</div>
+      <div class="sp-input-row">
+        <input id="spWordInput" type="text" placeholder="örn. pronunciation" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <button class="sp-analyze-btn" onclick="runStandalonePronAnalysis()">🔍 Analiz Et</button>
+      </div>
+      <div class="sp-quick-chips" id="spQuickChips">
+        <span class="sp-chip" onclick="spQuickFill('schedule')">schedule</span>
+        <span class="sp-chip" onclick="spQuickFill('thought')">thought</span>
+        <span class="sp-chip" onclick="spQuickFill('rural')">rural</span>
+        <span class="sp-chip" onclick="spQuickFill('comfortable')">comfortable</span>
+        <span class="sp-chip" onclick="spQuickFill('vegetable')">vegetable</span>
+        <span class="sp-chip" onclick="spQuickFill('squirrel')">squirrel</span>
+      </div>
+    </div>
+
+    <!-- Results placeholder -->
+    <div id="spResults">
+      <div class="sp-hint">
+        ☝️ Yukarıya bir kelime yaz veya örneklerden birine tıkla.<br>
+        <span style="opacity:.7">IPA, hece bölünmesi, vurgu ve Türkçe yaklaşık okunuş görüntülenecek.</span>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="sp-container">
-<!-- Hero -->
-<div class="sp-hero">
-<div class="sp-hero-icon">🎤</div>
-<div class="sp-hero-title">Kelime Telaffuz Analizi</div>
-<div class="sp-hero-sub">İngilizce bir kelime yaz, IPA + Türkçe okunuşu gör, mikrofona söyle, harf bazlı renkli analizini al.</div>
-</div>
-<!-- Input Card -->
-<div class="sp-input-card">
-<div class="sp-input-label">📝 Analiz Edilecek Kelime</div>
-<div class="sp-input-row">
-<input autocapitalize="off" autocomplete="off" id="spWordInput" placeholder="örn. pronunciation" spellcheck="false" type="text"/>
-<button class="sp-analyze-btn" onclick="runStandalonePronAnalysis()">🔍 Analiz Et</button>
-</div>
-<div class="sp-quick-chips" id="spQuickChips">
-<span class="sp-chip" onclick="spQuickFill('schedule')">schedule</span>
-<span class="sp-chip" onclick="spQuickFill('thought')">thought</span>
-<span class="sp-chip" onclick="spQuickFill('rural')">rural</span>
-<span class="sp-chip" onclick="spQuickFill('comfortable')">comfortable</span>
-<span class="sp-chip" onclick="spQuickFill('vegetable')">vegetable</span>
-<span class="sp-chip" onclick="spQuickFill('squirrel')">squirrel</span>
-</div>
-</div>
-<!-- Results placeholder -->
-<div id="spResults">
-<div class="sp-hint">
-        ☝️ Yukarıya bir kelime yaz veya örneklerden birine tıkla.<br/>
-<span style="opacity:.7">IPA, hece bölünmesi, vurgu ve Türkçe yaklaşık okunuş görüntülenecek.</span>
-</div>
-</div>
-</div>
-</div>
+
+
+
+
 <nav class="bottom-nav" id="bottomNav">
-<button class="bnav-btn" id="bn-daily" onclick="switchTab('daily')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-sun"></use></svg>Bugün</button>
-<button class="bnav-btn" id="bn-languageMap" onclick="window.open('dil_haritasi_v1.html','_blank')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-map"></use></svg>Dil Haritası</button>
-<button class="bnav-btn" id="bn-pronstandalone" onclick="switchTab('pronstandalone')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-mic"></use></svg>Telaffuz</button>
-<button class="bnav-btn active" id="bn-word" onclick="switchTab('word')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-book"></use></svg>Kelime</button>
-<button class="bnav-btn" id="bn-learned" onclick="switchTab('learned')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-list"></use></svg>Liste</button>
-<button class="bnav-btn" id="bn-stats" onclick="switchTab('stats')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-chart"></use></svg>İstatistik</button>
-<button class="bnav-btn" id="bn-ai" onclick="switchTab('ai')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-bot"></use></svg>AI</button>
-<button class="bnav-btn" id="bn-askai" onclick="switchTab('askai')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-help"></use></svg>AI Sor</button>
-<button class="bnav-btn" id="bn-cameraCoach" onclick="switchTab('cameraCoach')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-camera"></use></svg>Kamera</button>
-<button class="bnav-btn" id="bn-settings" onclick="switchTab('settings')"><svg class="bico" viewbox="0 0 24 24"><use href="#i-cog"></use></svg>Ayarlar</button>
+<button class="bnav-btn" id="bn-daily" onclick="switchTab('daily')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-sun"/></svg>Bugün</button>
+<button class="bnav-btn" id="bn-languageMap" onclick="window.open('dil_haritasi_v1.html','_blank')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-map"/></svg>Dil Haritası</button>
+<button class="bnav-btn" id="bn-pronstandalone" onclick="switchTab('pronstandalone')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-mic"/></svg>Telaffuz</button>
+<button class="bnav-btn active" id="bn-word" onclick="switchTab('word')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-book"/></svg>Kelime</button>
+<button class="bnav-btn" id="bn-learned" onclick="switchTab('learned')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-list"/></svg>Liste</button>
+<button class="bnav-btn" id="bn-stats" onclick="switchTab('stats')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-chart"/></svg>İstatistik</button>
+<button class="bnav-btn" id="bn-ai" onclick="switchTab('ai')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-bot"/></svg>AI</button>
+<button class="bnav-btn" id="bn-askai" onclick="switchTab('askai')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-help"/></svg>AI Sor</button>
+<button class="bnav-btn" id="bn-cameraCoach" onclick="switchTab('cameraCoach')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-camera"/></svg>Kamera</button>
+<button class="bnav-btn" id="bn-settings" onclick="switchTab('settings')"><svg class="bico" viewBox="0 0 24 24"><use href="#i-cog"/></svg>Ayarlar</button>
 </nav>
+
+
 <!-- STANDALONE: All scripts inlined -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <!-- REALISTIC PRONUNCIATION WAVEFORM PATCH START -->
+
+
+
 <!-- REALISTIC PRONUNCIATION WAVEFORM PATCH END -->
+
+
 <!-- PHONEME COMPARISON + USER WAVEFORM PATCH START -->
+
+
+
 <!-- PHONEME COMPARISON + USER WAVEFORM PATCH END -->
+
+
 <!-- MOBILE POPUP + AI BUTTONS PATCH -->
+
+
+
+
+
 <!-- REAL LIFE MODE BUTTON FORCE PATCH START -->
+
+
+
 <!-- REAL LIFE MODE BUTTON FORCE PATCH END -->
+
+
 <!-- WORD MODE PHASE 1 + 2 PROFESSIONAL UPGRADE START -->
+
+
+
 <!-- WORD MODE PHASE 1 + 2 PROFESSIONAL UPGRADE END -->
+
+
 <!-- FORCE REAL LIFE COACH PANEL PATCH START -->
+
+
+
 <!-- FORCE REAL LIFE COACH PANEL PATCH END -->
+
+
+
+
+
 <!-- PRONUNCIATION MAP + VOICE FIX PATCH START -->
+
+
+
 <!-- PRONUNCIATION MAP + VOICE FIX PATCH END -->
+
+
 <!-- FORCE PRONUNCIATION MAP SCREEN FIX START -->
+
+
+
 <!-- FORCE PRONUNCIATION MAP SCREEN FIX END -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <div class="screen" id="sc-live-coach">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="backToSettingsFromLiveCoach()">←</button>
-<h2>⚡ Canlı Skor Koçu</h2>
-</div>
-<div class="card live-coach-wrap">
-<div class="lc-word-entry">
-<label for="lcManualWord">✍️ Canlı skor koçunda çalışmak istediğin kelimeyi yaz</label>
-<input autocomplete="off" id="lcManualWord" oninput="lcSyncManualWord()" placeholder="Örn: think, through, comfortable" value="think"/>
-<div class="lc-word-buttons">
-<button class="btn btn-green" onclick="lcSetManualTarget()">✅ Kelimeyi Ayarla</button>
-<button class="btn btn-ghost" onclick="lcRandomTarget()">🎲 Rastgele</button>
-</div>
-<div class="lc-current-target">Hedef kelime: <b id="lcCurrentTargetLabel">think</b></div>
-</div>
-<!-- CANLI SKOR KOÇU İÇİNE GÖMÜLÜ GERÇEK TELAFFUZ HARİTASI -->
-<div class="pfc-panel" id="lcPronFaceCoachPanel" style="display:block;margin-top:12px;margin-bottom:12px">
-<div class="pfc-title">🧬 Gerçek Telaffuz Haritası</div>
-<div class="pfc-mode-row">
-<button class="pfc-mode active" id="lcPfcModeWord" onclick="lcSetPFCMode('word')">Kelime</button>
-<button class="pfc-mode" id="lcPfcModePhrase" onclick="lcSetPFCMode('phrase')">Phrase</button>
-<button class="pfc-mode" id="lcPfcModeSentence" onclick="lcSetPFCMode('sentence')">Cümle</button>
-</div>
-<div class="pfc-face-wrap">
-<div class="pfc-face" id="lcPfcFaceSvg"></div>
-<div>
-<div class="pfc-current-sound" id="lcPfcCurrentSound">θ</div>
-<div class="pfc-current-label" id="lcPfcCurrentLabel">Hedef ses</div>
-<div class="pfc-tip" id="lcPfcTip">Kelime yazıp “Kelimeyi Ayarla” dediğinde dudak/dil pozisyonu burada değişir.</div>
-</div>
-</div>
-<div id="lcPfcIPA" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:9px 10px;font-size:13px;color:var(--sub);line-height:1.5;margin-bottom:8px">IPA: —</div>
-<div class="pfc-heatmap" id="lcPfcHeatmap"></div>
-<div class="pfc-stats">
-<div class="pfc-stat"><div class="num" id="lcPfcScore">—</div><div class="txt">Fonem Skoru</div></div>
-<div class="pfc-stat"><div class="num" id="lcPfcWeakCount">—</div><div class="txt">Zayıf Ses</div></div>
-</div>
-<div class="pfc-title" style="margin-top:10px">🎯 Bu kelime için gerekli ses açıklamaları</div>
-<div class="pfc-sound-grid" id="lcPfcProblemCards"></div>
-</div>
-<div class="lc-hero">
-<div class="lc-target">
-<input id="lcTarget" oninput="lcMirrorTargetToManual()" placeholder="Hedef kelime/cümle" value="think"/>
-<button class="btn btn-blue" onclick="lcSpeakTarget()">🔊 Dinle</button>
-</div>
-</div>
-<div class="lc-controls">
-<button class="btn btn-green" onclick="startLiveCoach()">⚡ Başlat</button>
-<button class="btn btn-ghost" onclick="stopLiveCoach()">⏹ Kapat</button>
-</div>
-<div class="lc-video-box">
-<video autoplay="" id="lcVideo" muted="" playsinline=""></video>
-<canvas id="lcGhost"></canvas>
-<div class="lc-badge" id="lcBadge">Kapalı</div>
-</div>
-<div class="lc-score-big">
-<div class="lc-score-card">
-<div class="lc-score-val" id="lcLiveScore">0</div>
-<div class="lc-score-lbl">Canlı Uyum</div>
-<div class="lc-meter"><div class="lc-fill" id="lcLiveFill"></div></div>
-</div>
-<div class="lc-score-card">
-<div class="lc-score-val" id="lcMouthScore">0</div>
-<div class="lc-score-lbl">Ağız Uyum</div>
-<div class="lc-meter"><div class="lc-fill" id="lcMouthFill"></div></div>
-</div>
-</div>
-<div class="lc-live-warning mid" id="lcWarning">Kamerayı başlat ve hedef kelimeyi söyle.</div>
-<div class="lc-mini-grid">
-<div class="lc-mini">
-<div class="lc-mini-val" id="lcEyeScore">0</div>
-<div class="lc-mini-lbl">Göz</div>
-</div>
-<div class="lc-mini">
-<div class="lc-mini-val" id="lcRhythmScore">0</div>
-<div class="lc-mini-lbl">Ritim</div>
-</div>
-<div class="lc-mini">
-<div class="lc-mini-val" id="lcModeName">TH</div>
-<div class="lc-mini-lbl">Hedef</div>
-</div>
-</div>
-<div class="lc-history" id="lcHistory"></div>
+  <div class="top-bar">
+    <button class="back-btn" aria-label="Geri" onclick="backToSettingsFromLiveCoach()">←</button>
+    <h2>⚡ Canlı Skor Koçu</h2>
+  </div>
+
+  <div class="card live-coach-wrap">
+    <div class="lc-word-entry">
+      <label for="lcManualWord">✍️ Canlı skor koçunda çalışmak istediğin kelimeyi yaz</label>
+      <input id="lcManualWord" value="think" placeholder="Örn: think, through, comfortable" autocomplete="off" oninput="lcSyncManualWord()">
+      <div class="lc-word-buttons">
+        <button class="btn btn-green" onclick="lcSetManualTarget()">✅ Kelimeyi Ayarla</button>
+        <button class="btn btn-ghost" onclick="lcRandomTarget()">🎲 Rastgele</button>
+      </div>
+      <div class="lc-current-target">Hedef kelime: <b id="lcCurrentTargetLabel">think</b></div>
+    </div>
+
+
+    <!-- CANLI SKOR KOÇU İÇİNE GÖMÜLÜ GERÇEK TELAFFUZ HARİTASI -->
+    <div class="pfc-panel" id="lcPronFaceCoachPanel" style="display:block;margin-top:12px;margin-bottom:12px">
+      <div class="pfc-title">🧬 Gerçek Telaffuz Haritası</div>
+      <div class="pfc-mode-row">
+        <button class="pfc-mode active" id="lcPfcModeWord" onclick="lcSetPFCMode('word')">Kelime</button>
+        <button class="pfc-mode" id="lcPfcModePhrase" onclick="lcSetPFCMode('phrase')">Phrase</button>
+        <button class="pfc-mode" id="lcPfcModeSentence" onclick="lcSetPFCMode('sentence')">Cümle</button>
+      </div>
+      <div class="pfc-face-wrap">
+        <div class="pfc-face" id="lcPfcFaceSvg"></div>
+        <div>
+          <div class="pfc-current-sound" id="lcPfcCurrentSound">θ</div>
+          <div class="pfc-current-label" id="lcPfcCurrentLabel">Hedef ses</div>
+          <div class="pfc-tip" id="lcPfcTip">Kelime yazıp “Kelimeyi Ayarla” dediğinde dudak/dil pozisyonu burada değişir.</div>
+        </div>
+      </div>
+      <div id="lcPfcIPA" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:9px 10px;font-size:13px;color:var(--sub);line-height:1.5;margin-bottom:8px">IPA: —</div>
+      <div class="pfc-heatmap" id="lcPfcHeatmap"></div>
+      <div class="pfc-stats">
+        <div class="pfc-stat"><div class="num" id="lcPfcScore">—</div><div class="txt">Fonem Skoru</div></div>
+        <div class="pfc-stat"><div class="num" id="lcPfcWeakCount">—</div><div class="txt">Zayıf Ses</div></div>
+      </div>
+      <div class="pfc-title" style="margin-top:10px">🎯 Bu kelime için gerekli ses açıklamaları</div>
+      <div class="pfc-sound-grid" id="lcPfcProblemCards"></div>
+    </div>
+
+    <div class="lc-hero">
+      <div class="lc-target">
+        <input id="lcTarget" value="think" placeholder="Hedef kelime/cümle" oninput="lcMirrorTargetToManual()">
+        <button class="btn btn-blue" onclick="lcSpeakTarget()">🔊 Dinle</button>
+      </div>
+    </div>
+
+    <div class="lc-controls">
+      <button class="btn btn-green" onclick="startLiveCoach()">⚡ Başlat</button>
+      <button class="btn btn-ghost" onclick="stopLiveCoach()">⏹ Kapat</button>
+    </div>
+
+    <div class="lc-video-box">
+      <video id="lcVideo" autoplay playsinline muted></video>
+      <canvas id="lcGhost"></canvas>
+      <div class="lc-badge" id="lcBadge">Kapalı</div>
+    </div>
+
+    <div class="lc-score-big">
+      <div class="lc-score-card">
+        <div class="lc-score-val" id="lcLiveScore">0</div>
+        <div class="lc-score-lbl">Canlı Uyum</div>
+        <div class="lc-meter"><div class="lc-fill" id="lcLiveFill"></div></div>
+      </div>
+
+      <div class="lc-score-card">
+        <div class="lc-score-val" id="lcMouthScore">0</div>
+        <div class="lc-score-lbl">Ağız Uyum</div>
+        <div class="lc-meter"><div class="lc-fill" id="lcMouthFill"></div></div>
+      </div>
+    </div>
+
+    <div class="lc-live-warning mid" id="lcWarning">Kamerayı başlat ve hedef kelimeyi söyle.</div>
+
+    <div class="lc-mini-grid">
+      <div class="lc-mini">
+        <div class="lc-mini-val" id="lcEyeScore">0</div>
+        <div class="lc-mini-lbl">Göz</div>
+      </div>
+      <div class="lc-mini">
+        <div class="lc-mini-val" id="lcRhythmScore">0</div>
+        <div class="lc-mini-lbl">Ritim</div>
+      </div>
+      <div class="lc-mini">
+        <div class="lc-mini-val" id="lcModeName">TH</div>
+        <div class="lc-mini-lbl">Hedef</div>
+      </div>
+    </div>
+
+    <div class="lc-history" id="lcHistory"></div>
+
+    
 <div class="wow-panel" id="wowPanel">
-<div class="wow-title">🚀 Ücretsiz Premium Analiz Paneli</div>
-<div class="wow-xp-row">
-<div class="wow-level" id="wowLevel">1</div>
-<div>
-<div class="wow-xpbar"><div class="wow-xpfill" id="wowXpFill"></div></div>
-<div class="wow-xptext" id="wowXpText">0 XP / 100 XP</div>
+  <div class="wow-title">🚀 Ücretsiz Premium Analiz Paneli</div>
+  <div class="wow-xp-row">
+    <div class="wow-level" id="wowLevel">1</div>
+    <div>
+      <div class="wow-xpbar"><div class="wow-xpfill" id="wowXpFill"></div></div>
+      <div class="wow-xptext" id="wowXpText">0 XP / 100 XP</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="wowResetStats()">Sıfırla</button>
+  </div>
+  <canvas id="wowRadarCanvas" width="420" height="260"></canvas>
+  <div class="wow-mini-grid">
+    <div class="wow-mini-card"><div class="wow-mini-val" id="wowSpeedVal">0</div><div class="wow-mini-lbl">Hız</div></div>
+    <div class="wow-mini-card"><div class="wow-mini-val" id="wowRhythmVal">0</div><div class="wow-mini-lbl">Ritim</div></div>
+    <div class="wow-mini-card"><div class="wow-mini-val" id="wowNativeVal">0</div><div class="wow-mini-lbl">Native</div></div>
+  </div>
+  <div class="wow-combo" id="wowComboBox">Shadowing Combo: x0</div>
 </div>
-<button class="btn btn-ghost btn-sm" onclick="wowResetStats()">Sıfırla</button>
-</div>
-<canvas height="260" id="wowRadarCanvas" width="420"></canvas>
-<div class="wow-mini-grid">
-<div class="wow-mini-card"><div class="wow-mini-val" id="wowSpeedVal">0</div><div class="wow-mini-lbl">Hız</div></div>
-<div class="wow-mini-card"><div class="wow-mini-val" id="wowRhythmVal">0</div><div class="wow-mini-lbl">Ritim</div></div>
-<div class="wow-mini-card"><div class="wow-mini-val" id="wowNativeVal">0</div><div class="wow-mini-lbl">Native</div></div>
-</div>
-<div class="wow-combo" id="wowComboBox">Shadowing Combo: x0</div>
-</div>
+
 <div class="lc-tip">
-<b>Bu tam çalışan Canlı Koç sayfasıdır.</b><br/>
+      <b>Bu tam çalışan Canlı Koç sayfasıdır.</b><br>
       Kamera açılır, videonun üstüne ideal ağız rehberi çizilir, canlı skor ve anlık uyarı verir. Mevcut kamera/telaffuz ekranına dokunmaz.
     </div>
+  </div>
 </div>
-</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <!-- PROFESSIONAL LEARNING UPGRADE: Smart Dashboard + Real SRS + Pronunciation History -->
+
+
+
+
+
 <!-- ════════════════════════════════════════════════════════════
      PROFESSIONAL MENU INTEGRATION — Akıllı Plan / SRS / Telaffuz Geçmişi
      ════════════════════════════════════════════════════════════ -->
+
+
 <div class="screen" id="sc-pro-smart">
-<div class="top-bar"><button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button><h2>🧠 Akıllı Plan</h2><span class="streak-badge">Pro</span></div>
-<div class="card">
-<div class="wm-pro-title">Bugünkü öğrenme planın</div>
-<div class="wm-pro-sub">Zayıf kelimeler, tekrar zamanı gelen kartlar ve telaffuz geçmişine göre otomatik öneri üretir.</div>
-<div id="wmProSmartBody"></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button><h2>🧠 Akıllı Plan</h2><span class="streak-badge">Pro</span></div>
+  <div class="card">
+    <div class="wm-pro-title">Bugünkü öğrenme planın</div>
+    <div class="wm-pro-sub">Zayıf kelimeler, tekrar zamanı gelen kartlar ve telaffuz geçmişine göre otomatik öneri üretir.</div>
+    <div id="wmProSmartBody"></div>
+  </div>
 </div>
-</div>
+
 <div class="screen" id="sc-pro-pron-history">
-<div class="top-bar"><button aria-label="Geri" class="back-btn" onclick="showScreen('sc-word')">←</button><h2>🎙️ Telaffuz Geçmişi</h2><span class="streak-badge">Pro</span></div>
-<div class="card">
-<div class="wm-pro-title">Ses puanı kayıtları</div>
-<div class="wm-pro-sub">Kelime ve cümle okuma denemelerinin son sonuçlarını gösterir. Yeni kayıtlar mikrofon puanlamasından otomatik toplanır.</div>
-<div id="wmProPronHistoryBody"></div>
+  <div class="top-bar"><button class="back-btn" aria-label="Geri" onclick="showScreen('sc-word')">←</button><h2>🎙️ Telaffuz Geçmişi</h2><span class="streak-badge">Pro</span></div>
+  <div class="card">
+    <div class="wm-pro-title">Ses puanı kayıtları</div>
+    <div class="wm-pro-sub">Kelime ve cümle okuma denemelerinin son sonuçlarını gösterir. Yeni kayıtlar mikrofon puanlamasından otomatik toplanır.</div>
+    <div id="wmProPronHistoryBody"></div>
+  </div>
 </div>
-</div>
+
+
+
+
+
+
+
+
+
+
 <!-- ✅ MENU VISIBILITY FIX: buttons were being clipped by fixed heights / narrow nav -->
+
+
+
+
+
+
+
+
 <!-- SPEAKING WORLD TRANSITION ADDON - safe injected button + overlay -->
-<div aria-hidden="true" id="wmSpeakingWorldOverlay">
-<div class="wmsw-wrap">
-<div class="wmsw-top">
-<button class="wmsw-back" onclick="wmCloseSpeakingWorld()">← Geri</button>
-<div class="wmsw-title">🎙️ AI Speaking World</div>
+
+<div id="wmSpeakingWorldOverlay" aria-hidden="true">
+  <div class="wmsw-wrap">
+    <div class="wmsw-top">
+      <button class="wmsw-back" onclick="wmCloseSpeakingWorld()">← Geri</button>
+      <div class="wmsw-title">🎙️ AI Speaking World</div>
+    </div>
+    <div class="wmsw-grid">
+      <div class="wmsw-card">
+        <h3>🧠 Akıllı Tekrar Motoru</h3>
+        <p>Yanlış yapılan, düşük telaffuz skorlu ve zayıf fonemli kelimeleri günlük tekrar listesine alır.</p>
+        <span class="wmsw-pill">Bugünün tekrarları</span><span class="wmsw-pill">Zor sesler</span><span class="wmsw-pill">Düşük skor</span>
+        <button class="wmsw-btn" onclick="wmSWReview()">Bugünkü Tekrarı Hazırla</button>
+        <div class="wmsw-output" id="wmSWReviewOut">Henüz liste hazırlanmadı.</div>
+      </div>
+      <div class="wmsw-card">
+        <h3>🤖 AI Hafıza</h3>
+        <p>Kullanıcının zorlandığı sesleri, kelimeleri ve gelişim eğilimini özetler.</p>
+        <button class="wmsw-btn" onclick="wmSWMemory()">Hafıza Özetini Göster</button>
+        <div class="wmsw-output" id="wmSWMemoryOut">Henüz analiz yapılmadı.</div>
+      </div>
+      <div class="wmsw-card">
+        <h3>🎭 RPG Konuşma</h3>
+        <p>Gerçek hayat senaryosunda AI karakterle konuşma pratiği başlatır.</p>
+        <div class="wmsw-scenario">
+          <button onclick="wmSWRPG('Restoran')">🍽️ Restoran</button>
+          <button onclick="wmSWRPG('Havaalanı')">✈️ Havaalanı</button>
+          <button onclick="wmSWRPG('Otel')">🏨 Otel</button>
+          <button onclick="wmSWRPG('İş görüşmesi')">💼 İş</button>
+          <button onclick="wmSWRPG('Market')">🛒 Market</button>
+          <button onclick="wmSWRPG('Arkadaş sohbeti')">👋 Sohbet</button>
+        </div>
+        <textarea id="wmSWRPGInput" class="wmsw-input" rows="3" placeholder="Senaryoda söylemek istediğin İngilizce cümleyi yaz..."></textarea>
+        <button class="wmsw-btn" onclick="wmSWRPGAnalyze()">Cümleyi Analiz Et</button>
+        <div class="wmsw-output" id="wmSWRPGOut">Bir senaryo seç.</div>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="wmsw-grid">
-<div class="wmsw-card">
-<h3>🧠 Akıllı Tekrar Motoru</h3>
-<p>Yanlış yapılan, düşük telaffuz skorlu ve zayıf fonemli kelimeleri günlük tekrar listesine alır.</p>
-<span class="wmsw-pill">Bugünün tekrarları</span><span class="wmsw-pill">Zor sesler</span><span class="wmsw-pill">Düşük skor</span>
-<button class="wmsw-btn" onclick="wmSWReview()">Bugünkü Tekrarı Hazırla</button>
-<div class="wmsw-output" id="wmSWReviewOut">Henüz liste hazırlanmadı.</div>
-</div>
-<div class="wmsw-card">
-<h3>🤖 AI Hafıza</h3>
-<p>Kullanıcının zorlandığı sesleri, kelimeleri ve gelişim eğilimini özetler.</p>
-<button class="wmsw-btn" onclick="wmSWMemory()">Hafıza Özetini Göster</button>
-<div class="wmsw-output" id="wmSWMemoryOut">Henüz analiz yapılmadı.</div>
-</div>
-<div class="wmsw-card">
-<h3>🎭 RPG Konuşma</h3>
-<p>Gerçek hayat senaryosunda AI karakterle konuşma pratiği başlatır.</p>
-<div class="wmsw-scenario">
-<button onclick="wmSWRPG('Restoran')">🍽️ Restoran</button>
-<button onclick="wmSWRPG('Havaalanı')">✈️ Havaalanı</button>
-<button onclick="wmSWRPG('Otel')">🏨 Otel</button>
-<button onclick="wmSWRPG('İş görüşmesi')">💼 İş</button>
-<button onclick="wmSWRPG('Market')">🛒 Market</button>
-<button onclick="wmSWRPG('Arkadaş sohbeti')">👋 Sohbet</button>
-</div>
-<textarea class="wmsw-input" id="wmSWRPGInput" placeholder="Senaryoda söylemek istediğin İngilizce cümleyi yaz..." rows="3"></textarea>
-<button class="wmsw-btn" onclick="wmSWRPGAnalyze()">Cümleyi Analiz Et</button>
-<div class="wmsw-output" id="wmSWRPGOut">Bir senaryo seç.</div>
-</div>
-</div>
-</div>
-</div>
+
 <!-- /SPEAKING WORLD TRANSITION ADDON -->
-<div class="screen" id="screen-sentence-mining">
-<div class="top-bar">
-<button aria-label="Geri" class="back-btn" onclick="showScreen('word')">←</button>
-<h2>⛏️ Sentence Mining</h2>
-</div>
-<div class="smng-card">
-<div class="smng-title">Metinden bilinmeyen kelime çıkar</div>
-<div class="smng-sub">
+
+
+
+
+
+
+
+
+
+
+<div id="screen-sentence-mining" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" aria-label="Geri" onclick="showScreen('word')">←</button>
+    <h2>⛏️ Sentence Mining</h2>
+  </div>
+
+  <div class="smng-card">
+    <div class="smng-title">Metinden bilinmeyen kelime çıkar</div>
+    <div class="smng-sub">
       PDF, altyazı, haber, YouTube transkripti veya herhangi bir İngilizce metni buraya yapıştır.
       Sistem kelimeleri ayıklar, sözlükten anlamlarını bulur ve çalışma listesine ekler.
     </div>
-<textarea class="smng-textarea" id="smngInput" placeholder="İngilizce metni buraya yapıştır..."></textarea>
-<div class="smng-row">
-<button class="smng-btn smng-primary" onclick="smngAnalyze()">🔍 Kelimeleri Çıkar</button>
-<button class="smng-btn smng-blue" onclick="smngAddAllToStudy()">🧠 Tümünü Çalışılacaklara Ekle</button>
-<button class="smng-btn smng-purple" onclick="smngLoadSample()">✨ Örnek Metin</button>
-<button class="smng-btn smng-ghost" onclick="smngClear()">Temizle</button>
+    <textarea id="smngInput" class="smng-textarea" placeholder="İngilizce metni buraya yapıştır..."></textarea>
+    <div class="smng-row">
+      <button class="smng-btn smng-primary" onclick="smngAnalyze()">🔍 Kelimeleri Çıkar</button>
+      <button class="smng-btn smng-blue" onclick="smngAddAllToStudy()">🧠 Tümünü Çalışılacaklara Ekle</button>
+      <button class="smng-btn smng-purple" onclick="smngLoadSample()">✨ Örnek Metin</button>
+      <button class="smng-btn smng-ghost" onclick="smngClear()">Temizle</button>
+    </div>
+  </div>
+
+  <div id="smngStats" class="smng-stats" style="display:none"></div>
+
+  <div class="smng-card">
+    <div class="smng-title">Bulunan Kelimeler</div>
+    <div id="smngResults" class="smng-empty">Henüz analiz yapılmadı.</div>
+  </div>
 </div>
-</div>
-<div class="smng-stats" id="smngStats" style="display:none"></div>
-<div class="smng-card">
-<div class="smng-title">Bulunan Kelimeler</div>
-<div class="smng-empty" id="smngResults">Henüz analiz yapılmadı.</div>
-</div>
-</div>
+
+
+
+
+
+
 <button id="smngLauncherFixed" onclick="smngOpenOverlay()">⛏️ Mining</button>
+
 <div id="smngOverlay">
-<div class="smng-fixed-wrap">
-<div class="smng-fixed-top">
-<button class="smng-close" onclick="smngCloseOverlay()">← Kapat</button>
-<h2>⛏️ Sentence Mining</h2>
+  <div class="smng-fixed-wrap">
+    <div class="smng-fixed-top">
+      <button class="smng-close" onclick="smngCloseOverlay()">← Kapat</button>
+      <h2>⛏️ Sentence Mining</h2>
+    </div>
+    <div class="smng-card">
+      <div class="smng-title">Metinden bilinmeyen kelime çıkar</div>
+      <div class="smng-sub">PDF, altyazı, haber, YouTube transkripti veya herhangi bir İngilizce metni buraya yapıştır. Sistem kelimeleri ayıklar, sözlükten anlamlarını bulur ve çalışma listesine ekler.</div>
+      <textarea id="smngInputFixed" class="smng-textarea" placeholder="İngilizce metni buraya yapıştır..."></textarea>
+      <div class="smng-row">
+        <button class="smng-btn smng-primary" onclick="smngAnalyzeFixed()">🔍 Kelimeleri Çıkar</button>
+        <button class="smng-btn smng-blue" onclick="smngAddAllToStudyFixed()">🧠 Tümünü Ekle</button>
+        <button class="smng-btn smng-purple" onclick="smngLoadSampleFixed()">✨ Örnek Metin</button>
+        <button class="smng-btn smng-ghost" onclick="smngClearFixed()">Temizle</button>
+      </div>
+    </div>
+    <div id="smngStatsFixed" class="smng-stats" style="display:none"></div>
+    <div class="smng-card">
+      <div class="smng-title">Bulunan Kelimeler</div>
+      <div id="smngResultsFixed" class="smng-empty">Henüz analiz yapılmadı.</div>
+    </div>
+  </div>
 </div>
-<div class="smng-card">
-<div class="smng-title">Metinden bilinmeyen kelime çıkar</div>
-<div class="smng-sub">PDF, altyazı, haber, YouTube transkripti veya herhangi bir İngilizce metni buraya yapıştır. Sistem kelimeleri ayıklar, sözlükten anlamlarını bulur ve çalışma listesine ekler.</div>
-<textarea class="smng-textarea" id="smngInputFixed" placeholder="İngilizce metni buraya yapıştır..."></textarea>
-<div class="smng-row">
-<button class="smng-btn smng-primary" onclick="smngAnalyzeFixed()">🔍 Kelimeleri Çıkar</button>
-<button class="smng-btn smng-blue" onclick="smngAddAllToStudyFixed()">🧠 Tümünü Ekle</button>
-<button class="smng-btn smng-purple" onclick="smngLoadSampleFixed()">✨ Örnek Metin</button>
-<button class="smng-btn smng-ghost" onclick="smngClearFixed()">Temizle</button>
-</div>
-</div>
-<div class="smng-stats" id="smngStatsFixed" style="display:none"></div>
-<div class="smng-card">
-<div class="smng-title">Bulunan Kelimeler</div>
-<div class="smng-empty" id="smngResultsFixed">Henüz analiz yapılmadı.</div>
-</div>
-</div>
-</div>
+
+
+
+
+
 <button id="voiceCompareLauncher" onclick="vcOpenOverlay()">〰️ Ses</button>
 <div id="voiceCompareOverlay"><div class="vc-wrap"><div class="vc-top"><button class="vc-close" onclick="vcCloseOverlay()">← Kapat</button><h2>〰️ Gerçek Ses Karşılaştırması v1</h2></div>
-<div class="vc-card"><div class="vc-title">Hedef kelime / cümle</div><div class="vc-sub">Önce hedef sesi dinle. Sonra kendi sesini kaydet. Sistem süre, ritim, enerji ve waveform benzerliğini karşılaştırır.</div><input class="vc-input" id="vcText" placeholder="Kelime veya cümle yaz" value="water"/><div class="vc-row"><button class="vc-btn vc-blue" onclick="vcSpeakTarget()">🔊 Hedefi Dinle</button><button class="vc-btn vc-red" id="vcRecordBtn" onclick="vcToggleRecord()">🎤 Kaydet</button><button class="vc-btn vc-purple" onclick="vcCompareNow()">📊 Karşılaştır</button><button class="vc-btn vc-ghost" onclick="vcReset()">Temizle</button></div></div>
-<div class="vc-card"><div class="vc-title">Hedef Ses Dalgası</div><canvas class="vc-canvas" height="120" id="vcTargetWave" width="720"></canvas><div class="vc-sub" id="vcTargetMeta">Henüz hedef ses üretilmedi.</div></div>
-<div class="vc-card"><div class="vc-title">Senin Ses Dalgası</div><canvas class="vc-canvas" height="120" id="vcUserWave" width="720"></canvas><div class="vc-sub" id="vcUserMeta">Henüz kayıt yok.</div></div>
-<div class="vc-card"><div class="vc-title">Karşılaştırma Sonucu</div><div class="vc-grid" id="vcStats"><div class="vc-stat"><b>-</b><span>RİTİM</span></div><div class="vc-stat"><b>-</b><span>SÜRE</span></div><div class="vc-stat"><b>-</b><span>ENERJİ</span></div><div class="vc-stat"><b>-</b><span>GENEL</span></div></div><div class="vc-bars"><div class="vc-bar-row"><span>Ritim</span><div class="vc-bar-track"><div class="vc-bar-fill" id="vcBarRhythm"></div></div><span id="vcValRhythm">-</span></div><div class="vc-bar-row"><span>Süre</span><div class="vc-bar-track"><div class="vc-bar-fill" id="vcBarDuration"></div></div><span id="vcValDuration">-</span></div><div class="vc-bar-row"><span>Enerji</span><div class="vc-bar-track"><div class="vc-bar-fill" id="vcBarEnergy"></div></div><span id="vcValEnergy">-</span></div></div><div class="vc-feedback" id="vcFeedback">Karşılaştırma yapmak için hedefi dinle ve kendi sesini kaydet.</div></div></div></div>
+<div class="vc-card"><div class="vc-title">Hedef kelime / cümle</div><div class="vc-sub">Önce hedef sesi dinle. Sonra kendi sesini kaydet. Sistem süre, ritim, enerji ve waveform benzerliğini karşılaştırır.</div><input id="vcText" class="vc-input" value="water" placeholder="Kelime veya cümle yaz"><div class="vc-row"><button class="vc-btn vc-blue" onclick="vcSpeakTarget()">🔊 Hedefi Dinle</button><button id="vcRecordBtn" class="vc-btn vc-red" onclick="vcToggleRecord()">🎤 Kaydet</button><button class="vc-btn vc-purple" onclick="vcCompareNow()">📊 Karşılaştır</button><button class="vc-btn vc-ghost" onclick="vcReset()">Temizle</button></div></div>
+<div class="vc-card"><div class="vc-title">Hedef Ses Dalgası</div><canvas id="vcTargetWave" class="vc-canvas" width="720" height="120"></canvas><div id="vcTargetMeta" class="vc-sub">Henüz hedef ses üretilmedi.</div></div>
+<div class="vc-card"><div class="vc-title">Senin Ses Dalgası</div><canvas id="vcUserWave" class="vc-canvas" width="720" height="120"></canvas><div id="vcUserMeta" class="vc-sub">Henüz kayıt yok.</div></div>
+<div class="vc-card"><div class="vc-title">Karşılaştırma Sonucu</div><div id="vcStats" class="vc-grid"><div class="vc-stat"><b>-</b><span>RİTİM</span></div><div class="vc-stat"><b>-</b><span>SÜRE</span></div><div class="vc-stat"><b>-</b><span>ENERJİ</span></div><div class="vc-stat"><b>-</b><span>GENEL</span></div></div><div class="vc-bars"><div class="vc-bar-row"><span>Ritim</span><div class="vc-bar-track"><div id="vcBarRhythm" class="vc-bar-fill"></div></div><span id="vcValRhythm">-</span></div><div class="vc-bar-row"><span>Süre</span><div class="vc-bar-track"><div id="vcBarDuration" class="vc-bar-fill"></div></div><span id="vcValDuration">-</span></div><div class="vc-bar-row"><span>Enerji</span><div class="vc-bar-track"><div id="vcBarEnergy" class="vc-bar-fill"></div></div><span id="vcValEnergy">-</span></div></div><div id="vcFeedback" class="vc-feedback">Karşılaştırma yapmak için hedefi dinle ve kendi sesini kaydet.</div></div></div></div>
 </div><!-- /#app : tüm ekranlar artık #app içinde -->
-<script src="js/vocab-data.js"></script>
-<script src="js/legacy-app.js?v=final-menu-safe-20260612-2"></script>
-<script src="js/sentence-mode-core.js"></script>
-<script src="js/app.js"></script>
+
+
+  <script src="js/vocab-data.js"></script>
+  <script src="js/legacy-app.js?v=final-menu-safe-20260613-lazybooks"></script>
+  <script src="js/sentence-mode-core.js"></script>
+  <script src="js/app.js"></script>
 <script src="js/free_features.js"></script>
 <script src="js/fixes.js"></script>
 <script src="js/learning-path.js?v=18"></script>
 <script src="./tumdata-github-loader.js?v=final-safe-20260612-2"></script>
 <script src="./tumdata-auto-learningpath-fix.js?v=final-safe-20260612-2"></script>
+
 <!-- RIGHT SLIDE PANEL TOOLS FIX -->
+
 <!-- Sentence Mode v1.2 clean: duplicate inline repair blocks removed -->
+
 <!-- FINAL NO BLUE + TUMDATA SAFETY PATCH v3 -->
 <style id="final-no-blue-buttons-v3">
 :root{
@@ -4426,231 +4752,94 @@ html body .wm-card{
 </script>
 <!-- /FINAL NO BLUE + TUMDATA SAFETY PATCH v3 -->
 
-<!-- WM FOUR FIXES: menü açılışı, örnek cümleler, 2 sütun menü, mobil tıklama -->
-<script src="js/wm-four-fixes.js?v=20260613-7"></script>
 
 
-<script id="wm-word-examples-final-v2">
+<script id="wm-final-menu-and-word-examples-safe-v2">
 (function(){
   'use strict';
-  if(window.__wmWordExamplesFinalV2) return;
-  window.__wmWordExamplesFinalV2 = true;
+  window.WM_START_ON_MENU = true;
+  window.WM_DISABLE_AUTO_WORD_OPEN = true;
+  window.__wmUserNavigatedAfterBoot = false;
+  const bootUntil = Date.now() + 2600;
+  function forceMenu(){
+    if(window.__wmUserNavigatedAfterBoot) return;
+    if(Date.now() > bootUntil) return;
+    const menu = document.getElementById('sc-menu');
+    if(!menu) return;
+    document.querySelectorAll('.screen').forEach(s=>{
+      s.classList.remove('active');
+      s.style.display = 'none';
+    });
+    menu.classList.add('active');
+    menu.style.display = 'block';
+  }
+  function markNav(){ window.__wmUserNavigatedAfterBoot = true; }
+  document.addEventListener('click', function(e){
+    const b = e.target && e.target.closest && e.target.closest('button,a,[role="button"]');
+    if(!b) return;
+    const t=(b.textContent||'').trim();
+    if(t && !/ana menü/i.test(t)) markNav();
+  }, true);
+  document.addEventListener('DOMContentLoaded', ()=>{ forceMenu(); setTimeout(forceMenu,300); setTimeout(forceMenu,900); setTimeout(forceMenu,1800); });
+  window.addEventListener('load', ()=>{ forceMenu(); setTimeout(forceMenu,400); setTimeout(forceMenu,1200); });
 
-  function clean(s){ return String(s==null?'':s).replace(/\s+/g,' ').trim(); }
-  function esc(s){ return clean(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-  function norm(s){ return clean(s).toLowerCase().replace(/[’']/g,"'").replace(/^[^a-z]+|[^a-z]+$/g,''); }
-  function baseWord(w){
-    let x=norm(w).replace(/^(to|a|an|the)\s+/,'');
-    if(x.length>4) x=x.replace(/(ing|ied|ed|es|s)$/,'');
-    return x;
+  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function norm(s){return String(s||'').toLowerCase().replace(/[^a-z']/g,' ').trim();}
+  function wordBoundary(sentence, word){
+    const w=norm(word).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    if(!w) return false;
+    return new RegExp('(^|\\s)'+w+'(\\s|$)','i').test(norm(sentence));
   }
-  function isWord(s){ return /^[A-Za-z][A-Za-z'’-]{1,}$/.test(clean(s)); }
-  function wordBoundary(text, word){
-    const w=clean(word).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    try{return new RegExp('\\b'+w+'\\b','i').test(clean(text));}catch(e){return clean(text).toLowerCase().includes(clean(word).toLowerCase());}
-  }
-  function get(o, keys){ for(const k of keys){ if(o && o[k]!=null && clean(o[k])) return clean(o[k]); } return ''; }
-  function rowEN(r){ return get(r,['SentenceEN','sentenceEN','sentence','Sentence','Example EN','exampleEN','en','English','wordSentence','cumle','Cümle']); }
-  function rowTR(r){ return get(r,['SentenceTR','sentenceTR','translation','Translation','Example TR','exampleTR','tr','Turkish','turkish','Turkish meaning','sentence_tr','cumleTr','CümleTR']); }
-  function rowGrammar(r){ return get(r,['GrammarStructure','grammarStructure','Grammar','grammar','Pattern','pattern','Tense','SentenceType','RoleMap','Dependency']); }
-  function arr(x){
-    if(Array.isArray(x)) return x;
-    if(x && Array.isArray(x.rows)) return x.rows;
-    if(x && Array.isArray(x.data)) return x.data;
-    if(x && Array.isArray(x.items)) return x.items;
-    return [];
-  }
-  function collectPools(){
+  function rowEN(r){return r?.Sentence || r?.sentence || r?.SENTENCE || r?.EnglishSentence || r?.English || r?.en || r?.EN || r?.Example || r?.example || '';}
+  function rowTR(r){return r?.SentenceTR || r?.sentenceTr || r?.SENTENCETR || r?.TurkishSentence || r?.Turkish || r?.tr || r?.TR || r?.ExampleTR || r?.exampleTr || '';}
+  function getPools(){
     const pools=[];
-    [window.words, window.allWords, window.wordList, window.rows, window.dataRows, window.sentenceRows, window.tumData, window.wmRows, window.wmPathData, window.currentWords].forEach(function(v){ const a=arr(v); if(a.length) pools.push(a); });
-    try{
-      for(let i=0;i<localStorage.length;i++){
-        const k=localStorage.key(i)||'';
-        if(!/(word|sentence|cumle|tumdata|path|data|excel|rows|wm)/i.test(k)) continue;
-        const v=localStorage.getItem(k);
-        if(!v || v.length<20 || (v[0]!=='[' && v[0]!=='{')) continue;
-        try{ const a=arr(JSON.parse(v)); if(a.length) pools.push(a); }catch(e){}
-      }
-    }catch(e){}
+    ['tumDataRows','TumDataRows','tumData','TumData','learningRows','allSentences','sentences','allWords','words'].forEach(k=>{
+      try{ if(Array.isArray(window[k])) pools.push(window[k]); }catch(e){}
+    });
+    try{ if(window.WMPath && Array.isArray(WMPath.rows)) pools.push(WMPath.rows); }catch(e){}
+    try{ if(window.WMPath && Array.isArray(WMPath.data)) pools.push(WMPath.data); }catch(e){}
     return pools;
   }
-  function findExamples(word, limit){
+  window.wmFindWordExampleSentences = function(word, limit=6){
     const seen=new Set(), out=[];
-    collectPools().forEach(function(pool){
-      if(out.length>=limit) return;
-      pool.forEach(function(r){
-        if(out.length>=limit) return;
-        const en=rowEN(r);
-        if(!en || !wordBoundary(en, word)) return;
-        const key=en.toLowerCase();
-        if(seen.has(key)) return;
-        seen.add(key);
-        out.push({en:en, tr:rowTR(r), grammar:rowGrammar(r), raw:r});
-      });
-    });
+    for(const pool of getPools()){
+      for(const r of pool){
+        const en=rowEN(r); if(!en || !wordBoundary(en, word)) continue;
+        const key=en.toLowerCase(); if(seen.has(key)) continue;
+        seen.add(key); out.push({en, tr: rowTR(r)});
+        if(out.length>=limit) return out;
+      }
+    }
     return out;
-  }
-
-  function roleOfToken(token, sentence, grammar, index){
-    const w=norm(token);
-    const g=clean(grammar).toLowerCase();
-    if(['i','you','he','she','it','we','they','me','him','her','us','them','my','your','his','their','our'].includes(w)) return 'subject';
-    if(['am','is','are','was','were','be','been','being'].includes(w)) return 'be';
-    if(['do','does','did','have','has','had','will','would','can','could','should','must','may','might'].includes(w)) return 'aux';
-    if(['not',"n't",'never','no'].includes(w)) return 'neg';
-    if(['a','an','the'].includes(w)) return 'article';
-    if(['in','on','at','to','for','from','with','by','of','about','into','over','under','after','before','between','through','during','without','within','around'].includes(w)) return 'prep';
-    if(['and','but','or','because','although','however','so','if','when','while','that','which','who'].includes(w)) return 'conn';
-    if(/ly$/.test(w) || ['very','too','also','just','now','then','here','there','probably','really'].includes(w)) return 'adv';
-    if(['good','bad','new','old','big','small','tired','happy','sad','weird','busy','ready','right','wrong'].includes(w) || g.includes('adjective')) return 'adj';
-    if(['am','is','are','was','were'].includes(w)) return 'be';
-    if(['go','come','make','take','get','give','see','want','need','like','work','study','learn','speak','read','write','play','act','sleep','eat','drink','book','call','help','look','feel','have','do','be','been','being','dining'].includes(baseWord(w)) || /ing$|ed$/.test(w) || g.includes('verb') || g.includes('tense')) return 'verb';
-    return 'noun';
-  }
-  function renderGrammarSentence(sentence, focusWord, grammar){
-    const fbase=baseWord(focusWord), fnorm=norm(focusWord);
-    return esc(sentence).replace(/\b([A-Za-z][A-Za-z'’-]*)\b/g,function(m, tok, offset){
-      const before=sentence.slice(0, offset);
-      const idx=(before.match(/\b[A-Za-z][A-Za-z'’-]*\b/g)||[]).length;
-      const role=roleOfToken(tok, sentence, grammar, idx);
-      const hit=(baseWord(tok)===fbase || norm(tok)===fnorm) ? ' wm-word-hit' : '';
-      return '<span class="wm-role wm-role-'+role+hit+'">'+esc(tok)+'</span>';
-    });
-  }
-
-  window.wmFindWordExampleSentences=function(word, limit){ return findExamples(word, limit||7); };
-  window.wmExamplesHTML=function(word){
-    const rows=findExamples(word,7);
-    if(!rows.length){
-      return '<section class="wm-word-examples-box" data-wm-examples="1"><h3>Bu kelimenin geçtiği cümleler</h3><p class="wm-word-no-example">Örnek bulunamadı.</p></section>';
-    }
-    return '<section class="wm-word-examples-box" data-wm-examples="1"><h3>Bu kelimenin geçtiği cümleler</h3>'+rows.map(function(r){
-      return '<article class="wm-word-example-item"><b>'+renderGrammarSentence(r.en, word, r.grammar)+'</b><span>'+esc(r.tr||'')+'</span></article>';
-    }).join('')+'</section>';
   };
-
-  function ensureCSS(){
-    if(document.getElementById('wm-word-examples-final-v2-css')) return;
-    const st=document.createElement('style');
-    st.id='wm-word-examples-final-v2-css';
-    st.textContent=`
-      .wm-examples-btn{display:none!important}
-      .wm-word-examples-box{
-        display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;
-        margin:16px 0 0!important;padding:12px!important;border:1px solid rgba(148,163,184,.18)!important;border-radius:18px!important;
-        background:rgba(15,23,42,.78)!important;text-align:left!important;clear:both!important;float:none!important;grid-column:1/-1!important;flex-basis:100%!important;
+  function examplesHTML(word){
+    const rows=window.wmFindWordExampleSentences(word,6);
+    if(!rows.length) return '';
+    return '<div class="wm-word-examples-box"><h3>Bu kelimenin geçtiği cümleler</h3>'+rows.map(r=>
+      '<div class="wm-word-example-item"><b>'+esc(r.en)+'</b><br><span>'+esc(r.tr||'')+'</span></div>'
+    ).join('')+'</div>';
+  }
+  const css=document.createElement('style');
+  css.id='wm-word-examples-css';
+  css.textContent='.wm-word-examples-box{margin-top:14px;padding:12px;border:1px solid rgba(148,163,184,.18);border-radius:14px;background:rgba(15,23,42,.62)}.wm-word-examples-box h3{margin:0 0 10px;font-size:14px;font-weight:900;color:#f8fafc}.wm-word-example-item{padding:10px 11px;margin:8px 0;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.72);line-height:1.35}.wm-word-example-item b{font-size:13px;color:#f8fafc}.wm-word-example-item span{font-size:12px;color:#94a3b8}';
+  document.head.appendChild(css);
+  const oldShowAI = window.showAI;
+  window.showAI = function(title, body){
+    let html = body;
+    try{
+      const m=String(title||'').match(/[—-]\s*([^—-]+)$/);
+      const word=(m&&m[1]||'').trim();
+      if(word && /Kelime Açıklama|Kelime İlişkileri/i.test(String(title||'')) && !String(body||'').includes('wm-word-examples-box')){
+        html = String(body||'') + examplesHTML(word);
       }
-      .wm-word-examples-box h3{margin:0 0 12px!important;font-size:23px!important;line-height:1.18!important;font-weight:950!important;color:#f8fafc!important;text-align:left!important;letter-spacing:-.25px!important;text-shadow:0 1px 2px rgba(0,0,0,.45)!important}
-      .wm-word-example-item{display:block!important;width:100%!important;box-sizing:border-box!important;padding:13px 15px!important;margin:9px 0!important;border:1px solid rgba(148,163,184,.16)!important;border-radius:16px!important;background:#101b2d!important;line-height:1.45!important;text-align:left!important;white-space:normal!important;min-height:0!important}
-      .wm-word-example-item b{display:block!important;font-size:16.5px!important;line-height:1.45!important;color:#f8fafc!important;text-align:left!important;word-break:normal!important;overflow-wrap:break-word!important;white-space:normal!important}
-      .wm-word-example-item span{display:block!important;font-size:16px!important;line-height:1.45!important;color:#9ec5f0!important;text-align:left!important;word-break:normal!important;overflow-wrap:break-word!important;white-space:normal!important;margin-top:3px!important;font-weight:700!important}
-      .wm-word-no-example{color:#94a3b8!important;margin:8px 0 0!important;font-size:14px!important;text-align:left!important}
-      .wm-role{font-weight:950!important}.wm-role-subject{color:#60a5fa!important}.wm-role-be{color:#fb923c!important}.wm-role-aux{color:#fbbf24!important}.wm-role-neg{color:#f87171!important}.wm-role-article{color:#fde047!important}.wm-role-prep{color:#22c55e!important}.wm-role-conn{color:#f472b6!important}.wm-role-adv{color:#34d399!important}.wm-role-adj{color:#a78bfa!important}.wm-role-verb{color:#ef4444!important}.wm-role-noun{color:#38bdf8!important}.wm-word-hit{color:#fb923c!important;text-shadow:0 0 8px rgba(251,146,60,.25)!important}
-      .sheet.dict-modal .dict-big-buttons,.sheet.dict-modal .dict-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;align-items:stretch!important;width:100%!important}
-      .sheet.dict-modal .dict-big-buttons>button,.sheet.dict-modal .dict-actions>button{width:100%!important;min-width:0!important;min-height:46px!important;touch-action:manipulation!important;pointer-events:auto!important;position:relative!important;z-index:5!important}
-      @media(max-width:720px){
-        .sheet.dict-modal,.sheet,.modal,.popup,[role="dialog"]{max-width:min(94vw,560px)!important;width:min(94vw,560px)!important;box-sizing:border-box!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important}
-        .sheet.dict-modal .dict-big-buttons,.sheet.dict-modal .dict-actions{grid-template-columns:1fr 1fr!important}
-        .wm-word-examples-box{padding:12px!important;margin-top:14px!important}
-        .wm-word-examples-box h3{font-size:22px!important}
-        .wm-word-example-item{padding:13px 14px!important}.wm-word-example-item b{font-size:16px!important}.wm-word-example-item span{font-size:15px!important}
-      }
-    `;
-    document.head.appendChild(st);
-  }
-
-  function rememberWord(e){
-    const el=e.target && e.target.closest && e.target.closest('.tok,.word-chip,[data-word],[data-wm-word],span,b,strong');
-    if(!el) return;
-    const data=el.getAttribute && (el.getAttribute('data-word')||el.getAttribute('data-wm-word'));
-    let t=clean(data || el.textContent || '').replace(/^[^A-Za-z]+|[^A-Za-z'’-]+$/g,'');
-    if(isWord(t) && !/^(play|slow|fast|speed|ipa|syllables|kelime|açıklama|ilişkileri|kaydı|başlat)$/i.test(t)) window.__wmLastClickedWord=t;
-  }
-  document.addEventListener('pointerdown', rememberWord, true);
-  document.addEventListener('touchstart', rememberWord, true);
-  document.addEventListener('click', rememberWord, true);
-
-  function wordFromGlobals(){
-    const names=['currentWord','activeWord','selectedWord','currentItem','activeItem','currentCard','activeSentenceItem'];
-    for(const n of names){
-      try{ const v=window[n];
-        if(typeof v==='string' && isWord(v)) return v;
-        if(v && typeof v==='object'){
-          const w=v.word||v.Word||v.english||v.English||v.en||v.EN||v.Highlight||v.Highlights;
-          if(isWord(w)) return w;
-        }
-      }catch(e){}
-    }
-    return '';
-  }
-  function wordFromPanel(panel){
-    const sels=['.dict-head-word','.dict-word','.word-title','.popup-word','[data-word]','[data-wm-word]','h1','h2','h3','b','strong'];
-    for(const sel of sels){
-      for(const el of panel.querySelectorAll(sel)){
-        let t=clean((el.getAttribute && (el.getAttribute('data-word')||el.getAttribute('data-wm-word'))) || el.textContent || '');
-        t=t.replace(/[×✕]/g,'').replace(/^(IPA|Syllables|Kelime|Açıklama|İlişkileri|Play|Slow|Fast|Speed|Türkçe|Okunuş)\s*[:：-]?/i,'').trim();
-        const m=t.match(/\b([A-Za-z][A-Za-z'’-]{1,})\b/);
-        if(m && isWord(m[1]) && !/^(IPA|Syllables|Play|Slow|Fast|Speed|Kelime|Açıklama|İlişkileri|Kaydı|Başlat)$/i.test(m[1])) return m[1];
-      }
-    }
-    return window.__wmLastClickedWord || wordFromGlobals();
-  }
-  function looksLikePopup(el){
-    const txt=clean(el && el.textContent || '');
-    return txt.length>25 && /IPA|Syllables|Kelime Açıklama|Kelime İlişkileri|Kaydı Başlat|Play|Slow|Fast/i.test(txt)
-      && !/Excel Formatı|Kelime Listesi|İstatistik|Ana Menü|Ezberlenecekler/i.test(txt);
-  }
-  function bestPanel(seed){
-    let cur=seed, list=[];
-    for(let i=0;cur && i<12;i++,cur=cur.parentElement){ if(looksLikePopup(cur)) list.push(cur); }
-    list.sort((a,b)=>(a.textContent||'').length-(b.textContent||'').length);
-    return list[0] || null;
-  }
-  function addExamples(panel){
-    ensureCSS();
-    if(!panel || panel.dataset.wmExamplesReadyV2==='1') return;
-    const word=wordFromPanel(panel);
-    if(!isWord(word)) return;
-    panel.querySelectorAll('.wm-examples-btn').forEach(x=>x.remove());
-    panel.querySelectorAll('.wm-word-examples-box').forEach(x=>x.remove());
-    const tmp=document.createElement('div');
-    tmp.innerHTML=window.wmExamplesHTML(word);
-    const box=tmp.firstElementChild;
-    if(!box) return;
-    box.setAttribute('data-wm-for-word', word);
-    // ÖNEMLİ: yol.html'deki gibi tam genişlik için kutuyu panelin ana gövdesine ekle.
-    // Grid / iki sütunlu buton grubunun içine sokma; masaüstündeki dar-kötü tasarım buradan geliyordu.
-    panel.appendChild(box);
-    panel.dataset.wmExamplesReadyV2='1';
-  }
-  function scan(){
-    ensureCSS();
-    document.querySelectorAll('.wm-examples-btn').forEach(x=>x.remove());
-    const seeds=[...document.querySelectorAll('body *')].filter(function(el){
-      if(!(el instanceof HTMLElement)) return false;
-      const txt=el.textContent||'';
-      return /Kelime Açıklama|Kelime İlişkileri|Syllables|Kaydı Başlat|Türkçe okunuş/i.test(txt);
-    }).slice(-120);
-    const seen=new Set();
-    seeds.forEach(function(s){ const p=bestPanel(s); if(p && !seen.has(p)){ seen.add(p); addExamples(p); } });
-  }
-
-  // Mobilde bazı tarayıcılarda kelimeye dokunma click'e dönüşmüyor. Zorla click fallback.
-  document.addEventListener('touchend', function(e){
-    const t=e.target && e.target.closest && e.target.closest('.tok,.word-chip,[data-word],[data-wm-word]');
-    if(!t) return;
-    rememberWord(e);
-    const before=document.querySelectorAll('.sheet.dict-modal,.sheet,.modal,.popup,[role="dialog"]').length;
-    setTimeout(function(){
-      const after=document.querySelectorAll('.sheet.dict-modal,.sheet,.modal,.popup,[role="dialog"]').length;
-      if(after<=before){ try{ t.click(); }catch(_){} }
-      setTimeout(scan,120);
-    },80);
-  }, true);
-
-  function start(){ ensureCSS(); scan(); new MutationObserver(function(){ setTimeout(scan,50); }).observe(document.body||document.documentElement,{childList:true,subtree:true,characterData:true}); }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', start); else start();
-  document.addEventListener('click', function(){ setTimeout(scan,80); setTimeout(scan,350); }, true);
+    }catch(e){}
+    if(typeof oldShowAI==='function') return oldShowAI.call(this,title,html);
+    alert(String(title||'')+'\n\n'+String(html||'').replace(/<[^>]+>/g,''));
+  };
 })();
 </script>
+
+<!-- WM FOUR FIXES: menü açılışı, örnek cümleler, 2 sütun menü, mobil tıklama -->
+<script src="js/wm-four-fixes.js?v=20260613-7"></script>
 </body></html>
