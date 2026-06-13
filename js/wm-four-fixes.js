@@ -642,6 +642,7 @@
               var existing = await file.text();
               if (existing === n) {
                 // İçerik birebir aynı → tekrar yazma.
+                console.log('⏭️ [wm-fix] Kitap zaten güncel, yazma atlandı:', fname);
                 return false;
               }
             } catch (err) {
@@ -653,9 +654,11 @@
       };
       wrapped.__wmContentGuard = true;
       try { window.saveBookToBackupFolder = wrapped; } catch (e) { return false; }
+      console.log('🛡️ [wm-fix] Kitap yedek içerik-guard bağlandı (saveBookToBackupFolder sarıldı)');
       return true;
     }
 
+    console.log('🟢 [wm-fix] skipRedundantBookBackup yüklendi (v20260613-4)');
     // legacy-app v34 sarmalayıcısı window.saveBookToBackupFolder'ı
     // sonradan atayabilir; hazır olunca ve yeniden atanırsa tekrar sar.
     wrap();
