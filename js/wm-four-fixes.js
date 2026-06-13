@@ -484,20 +484,26 @@
         }).join('') + '</div>';
     }
 
-    // Popup'taki kelimeyi belirle: önce showPronunciationPopup ile
-    // yakalanan değer, sonra popup'taki en büyük başlık.
+    // Popup'taki kelimeyi belirle: popup'taki kelime başlığını oku,
+    // yoksa hook ile yakalanan son değere düş.
     function popupWord(container) {
-      if (lastWord) return lastWord;
       try {
-        // Başlık genelde popup'ın ilk büyük metni (Image: "systems")
         var card = container.querySelector('.pronunciation-popup') || container;
-        var cand = card.querySelector('h1,h2,.sp-word,.word-title,[data-word]');
+        // Legacy popup'ta kelime başlığı sınıfları: sp-word / pron-word
+        var cand = card.querySelector('.sp-word,.pron-word,.word-title,[data-word],h1,h2');
         if (cand) {
           var w = (cand.getAttribute && cand.getAttribute('data-word')) || cand.textContent || '';
           w = String(w).trim().split(/\s+/)[0];
-          if (w) return w;
+          if (w && /[a-zA-Z]/.test(w)) return w;
+        }
+        // Yedek: başlıktan okunamazsa, IPA satırından önceki ilk kalın metin
+        var strong = card.querySelector('b,strong');
+        if (strong) {
+          var s = String(strong.textContent || '').trim().split(/\s+/)[0];
+          if (s && /[a-zA-Z]/.test(s)) return s;
         }
       } catch (e) {}
+      if (lastWord) return lastWord;
       return '';
     }
 
@@ -511,9 +517,16 @@
       var hasContent = /Kaydı Başlat|TELAFFUZUNU|Syllables|ANLAMLAR/i.test(card.textContent || '');
       if (!hasContent) return;
       var word = popupWord(container);
-      if (!word) return;
+      if (!word) { return; }
       var html = buildBoxHtml(word);
-      if (!html) return;
+      if (!html) {
+        if (!container.__wmNoExLogged) {
+          container.__wmNoExLogged = true;
+          var n = 0; try { if (Array.isArray(window.__WM_PATH_DATA__)) n = window.__WM_PATH_DATA__.length; } catch (e) {}
+          console.log('🔎 [wm-fix] "' + word + '" için örnek cümle bulunamadı (havuz: ' + n + ')');
+        }
+        return;
+      }
       // En sona ekle (Kaydı Başlat / TELAFFUZUNU DENE bölümünün altına)
       card.insertAdjacentHTML('beforeend', html);
       console.log('🔎 [wm-fix] Popup örnek cümleler eklendi:', word);
