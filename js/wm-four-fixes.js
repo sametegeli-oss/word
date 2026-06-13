@@ -293,10 +293,13 @@
       if (typeof window.explainWord === 'function' && !window.explainWord.__wmTapWrapped) {
         var orig = window.explainWord;
         window.explainWord = function () {
-          window._scrollGuardActive = false; // tap'i guard iptal etmesin
+          // Tap'i guard iptal etmesin: hem şimdi hem hemen sonra temizle.
+          window._scrollGuardActive = false;
+          console.log('🟢 [wm-fix] explainWord çağrıldı, guard temizlendi:', arguments[0]);
           return orig.apply(this, arguments);
         };
         window.explainWord.__wmTapWrapped = true;
+        console.log('🛡️ [wm-fix] explainWord sarıldı (mobil tap guard)');
         return true;
       }
       return false;
@@ -306,6 +309,21 @@
       var iv = setInterval(function () {
         if (wrapExplain() || ++tries > 60) clearInterval(iv);
       }, 150);
+    }
+
+    // Ek güvenlik: legacy bazı yollarda guard'ı tap sırasında tekrar true
+    // yapabiliyor. _scrollGuardActive'i, gerçek bir kaydırma olmadıkça
+    // sürekli false tutmak için tanımı bir property'ye çeviriyoruz.
+    try {
+      var _guardVal = false;
+      Object.defineProperty(window, '_scrollGuardActive', {
+        configurable: true,
+        get: function () { return _guardVal && moved; },   // sadece gerçekten kaydırıldıysa aktif
+        set: function (v) { _guardVal = v; }
+      });
+      console.log('🛡️ [wm-fix] _scrollGuardActive akıllı guard kuruldu');
+    } catch (e) {
+      console.warn('🔎 [wm-fix] guard property kurulamadı:', e && e.message);
     }
   })();
 
