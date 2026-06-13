@@ -5046,4 +5046,204 @@ html body .wm-card{
 })();
 </script>
 
+
+
+<script id="wm-word-examples-direct-final-v4">
+(function(){
+  'use strict';
+  if(window.__wmWordExamplesDirectFinalV4) return;
+  window.__wmWordExamplesDirectFinalV4 = true;
+
+  function clean(s){ return String(s ?? '').replace(/\s+/g,' ').trim(); }
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function norm(s){ return clean(s).toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9']/g,' ').replace(/\s+/g,' ').trim(); }
+  function baseWord(w){ return norm(w).replace(/^(to|a|an|the)\s+/,'').replace(/(ing|ed|es|s)$/,''); }
+  function isOneEnglishWord(s){ return /^[A-Za-z][A-Za-z'’-]{1,}$/.test(clean(s)); }
+  function wordBoundary(sentence, word){
+    const nw=norm(word), bw=baseWord(word);
+    if(!nw && !bw) return false;
+    return norm(sentence).split(/\s+/).filter(Boolean).some(function(t){ return t===nw || t===bw || baseWord(t)===bw || baseWord(t)===nw; });
+  }
+  function rowEN(r){ return clean(r && (r.SentenceEN ?? r.Sentence ?? r.sentence ?? r.SENTENCE ?? r.EnglishSentence ?? r.English ?? r.english ?? r.en ?? r.EN ?? r.ExampleEN ?? r.Example ?? r.example ?? r.wordSentence ?? '')); }
+  function rowTR(r){ return clean(r && (r.SentenceTR ?? r.sentenceTr ?? r.SENTENCETR ?? r.TurkishSentence ?? r.Turkish ?? r.turkish ?? r.tr ?? r.TR ?? r.ExampleTR ?? r.exampleTr ?? r.translation ?? r.Translation ?? '')); }
+  function highlight(sentence, word){
+    const bw=baseWord(word);
+    return esc(sentence).replace(/\b([A-Za-z][A-Za-z'’-]*)\b/g,function(m){
+      return (baseWord(m)===bw || norm(m)===norm(word)) ? '<span class="wm-word-hit">'+esc(m)+'</span>' : esc(m);
+    });
+  }
+  function arr(x){
+    if(Array.isArray(x)) return x;
+    if(x && Array.isArray(x.rows)) return x.rows;
+    if(x && Array.isArray(x.data)) return x.data;
+    if(x && Array.isArray(x.items)) return x.items;
+    return [];
+  }
+  function collectPools(){
+    const pools=[];
+    [window.words, window.allWords, window.wordList, window.rows, window.dataRows, window.sentenceRows, window.tumData, window.wmRows, window.wmPathData].forEach(function(v){ const a=arr(v); if(a.length) pools.push(a); });
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i)||'';
+        if(!/(word|sentence|cumle|tumdata|path|data|excel|rows)/i.test(k)) continue;
+        const v=localStorage.getItem(k);
+        if(!v || v.length<20) continue;
+        try{ const a=arr(JSON.parse(v)); if(a.length) pools.push(a); }catch(e){}
+      }
+    }catch(e){}
+    return pools;
+  }
+  function findExamples(word, limit){
+    if(typeof window.wmFindWordExampleSentences === 'function'){
+      try{ const got=window.wmFindWordExampleSentences(word, limit||7); if(Array.isArray(got) && got.length) return got; }catch(e){}
+    }
+    const seen=new Set(), out=[];
+    collectPools().forEach(function(pool){
+      if(out.length >= (limit||7)) return;
+      pool.forEach(function(r){
+        if(out.length >= (limit||7)) return;
+        const en=rowEN(r); if(!en || !wordBoundary(en, word)) return;
+        const key=en.toLowerCase(); if(seen.has(key)) return;
+        seen.add(key); out.push({en:en, tr:rowTR(r)});
+      });
+    });
+    return out;
+  }
+  window.wmFindWordExampleSentences = function(word, limit){ return findExamples(word, limit||7); };
+  window.wmExamplesHTML = function(word){
+    const rows=findExamples(word, 7);
+    const title='<h3>🔎 Bu kelimenin geçtiği cümleler</h3>';
+    if(!rows.length) return '<div class="wm-word-examples-box" data-wm-examples="1">'+title+'<p class="wm-word-no-example">Örnek bulunamadı.</p></div>';
+    return '<div class="wm-word-examples-box" data-wm-examples="1">'+title+rows.map(function(r){
+      return '<div class="wm-word-example-item"><b>'+highlight(r.en, word)+'</b><br><span>'+esc(r.tr||'')+'</span></div>';
+    }).join('')+'</div>';
+  };
+
+  function ensureCSS(){
+    if(document.getElementById('wm-word-examples-direct-final-css')) return;
+    const st=document.createElement('style');
+    st.id='wm-word-examples-direct-final-css';
+    st.textContent = `
+      .wm-examples-btn{border:1px solid rgba(148,163,184,.22)!important;border-radius:16px!important;background:linear-gradient(180deg,rgba(22,31,49,.96),rgba(14,21,35,.96))!important;color:#f8fafc!important;font-weight:900!important;min-height:46px!important;padding:12px 14px!important;cursor:pointer!important;box-shadow:none!important}
+      .wm-examples-btn:hover{border-color:rgba(56,189,248,.45)!important;transform:translateY(-1px)}
+      .wm-examples-btn.full{width:100%;margin-top:10px!important;display:block!important}
+      .wm-word-examples-box{margin-top:16px;padding:14px;border:1px solid rgba(148,163,184,.18);border-radius:18px;background:rgba(15,23,42,.62);width:100%}
+      .wm-word-examples-box h3{margin:0 0 12px;font-size:22px;line-height:1.15;font-weight:950;color:#f8fafc}
+      .wm-word-example-item{padding:14px 16px;margin:9px 0;border:1px solid rgba(148,163,184,.16);border-radius:16px;background:rgba(15,23,42,.72);line-height:1.45}
+      .wm-word-example-item b{font-size:17px;color:#f8fafc}.wm-word-example-item span{font-size:16px;color:#9ec5f0}
+      .wm-word-hit{color:#fb923c;font-weight:950}.wm-word-no-example{color:#94a3b8;margin:8px 0 0;font-size:14px}
+      @media(max-width:720px){.wm-word-examples-box h3{font-size:20px}.wm-word-example-item b{font-size:16px}.wm-word-example-item span{font-size:15px}}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function rememberFromEvent(e){
+    const el=e.target && e.target.closest && e.target.closest('.tok,.word-chip,[data-word],button,span,b,strong');
+    if(!el) return;
+    const explicit=el.getAttribute && (el.getAttribute('data-word') || el.getAttribute('data-wm-word'));
+    let txt=clean(explicit || el.textContent || '');
+    txt=txt.replace(/^[^A-Za-z]+|[^A-Za-z'’-]+$/g,'');
+    if(isOneEnglishWord(txt) && !/^(play|slow|fast|speed|ipa|syllables|kelime|açıklama|ilişkileri|kaydı|başlat)$/i.test(txt)){
+      window.__wmLastClickedWord = txt;
+    }
+  }
+  document.addEventListener('pointerdown', rememberFromEvent, true);
+  document.addEventListener('click', rememberFromEvent, true);
+
+  function currentWordFromGlobals(){
+    const names=['currentWord','activeWord','selectedWord','word','currentItem','activeItem','currentCard','activeCard'];
+    for(const n of names){
+      try{
+        const v=window[n];
+        if(typeof v==='string' && isOneEnglishWord(v)) return v;
+        if(v && typeof v==='object'){
+          const w=v.word||v.Word||v.english||v.English||v.en||v.EN||v.Highlight||v.Highlights;
+          if(isOneEnglishWord(w)) return w;
+        }
+      }catch(e){}
+    }
+    return '';
+  }
+  function wordFromPanel(panel){
+    const selectors=['.dict-head-word','.dict-word','.word-title','.popup-word','[data-word]','[data-wm-word]','h1','h2','h3','b','strong'];
+    for(const sel of selectors){
+      const nodes=[...panel.querySelectorAll(sel)];
+      for(const el of nodes){
+        let txt=clean((el.getAttribute && (el.getAttribute('data-word')||el.getAttribute('data-wm-word'))) || el.textContent || '');
+        txt=txt.replace(/[×✕]/g,'').replace(/^(Kelime Açıklama|Kelime İlişkileri|Kelime|IPA|Syllables)\s*[:：-]?\s*/i,'').trim();
+        const m=txt.match(/\b([A-Za-z][A-Za-z'’-]{1,})\b/);
+        if(m && !/^(IPA|Syllables|Play|Slow|Fast|Speed|Kelime|Açıklama|İlişkileri|Kaydı|Başlat|Türkçe|Okunuş)$/i.test(m[1])) return m[1];
+      }
+    }
+    return currentWordFromGlobals() || window.__wmLastClickedWord || '';
+  }
+  function looksLikeWordPopup(el){
+    const txt=clean(el.textContent||'');
+    if(txt.length<20) return false;
+    return /IPA|Syllables|Kelime Açıklama|Kelime İlişkileri|Kaydı Başlat|Türkçe okunuş|Play|Slow|Fast/i.test(txt)
+      && !/Excel Formatı|Sürüm ve Özellikler|Kelime Listesi|İstatistik/i.test(txt);
+  }
+  function bestContainer(start){
+    if(!start) return null;
+    const candidates=[];
+    let el=start;
+    for(let i=0; el && i<8; i++, el=el.parentElement){
+      if(looksLikeWordPopup(el)) candidates.push(el);
+    }
+    candidates.sort(function(a,b){ return (a.textContent||'').length - (b.textContent||'').length; });
+    return candidates[0] || null;
+  }
+  function findButtonArea(panel){
+    const areas=[...panel.querySelectorAll('.dict-big-buttons,.dict-actions,.pron-section,.actions,.button-row,.row,div')];
+    return areas.find(function(a){ const t=a.textContent||''; return /Kelime Açıklama/.test(t) && /Kelime İlişkileri/.test(t); }) ||
+           areas.find(function(a){ const t=a.textContent||''; return /Play/.test(t) && /Slow/.test(t) && /Fast/.test(t); }) || null;
+  }
+  function showExamples(panel, word){
+    if(!panel || !word) return;
+    panel.querySelectorAll('.wm-word-examples-box').forEach(function(x){x.remove();});
+    const wrap=document.createElement('div');
+    wrap.innerHTML=window.wmExamplesHTML(word);
+    const box=wrap.firstElementChild;
+    const anchor=panel.querySelector('.pron-section') || panel.querySelector('[class*="record" i]') || findButtonArea(panel) || panel.lastElementChild;
+    if(anchor && anchor.parentNode && anchor !== panel){ anchor.parentNode.insertBefore(box, anchor.nextSibling); }
+    else panel.appendChild(box);
+    try{ box.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
+  }
+  function addButton(panel){
+    if(!panel || !looksLikeWordPopup(panel)) return;
+    if(panel.querySelector(':scope > .wm-examples-btn, .wm-examples-btn')) return;
+    const word=wordFromPanel(panel);
+    if(!isOneEnglishWord(word)) return;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='wm-examples-btn full';
+    btn.textContent='📚 Geçtiği Cümleler';
+    btn.setAttribute('data-wm-word', word);
+    btn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); showExamples(panel, word); }, true);
+    const area=findButtonArea(panel);
+    if(area) area.appendChild(btn); else panel.appendChild(btn);
+  }
+  function scan(){
+    ensureCSS();
+    const seeds=[...document.querySelectorAll('body *')].filter(function(el){
+      if(!(el instanceof HTMLElement)) return false;
+      const st=getComputedStyle(el);
+      if(st.display==='none' || st.visibility==='hidden') return false;
+      const txt=el.textContent||'';
+      return /Kelime Açıklama|Kelime İlişkileri|Syllables|Kaydı Başlat|Türkçe okunuş/i.test(txt);
+    }).slice(-80);
+    const seen=new Set();
+    seeds.forEach(function(seed){
+      const p=bestContainer(seed) || seed;
+      if(!seen.has(p)){ seen.add(p); addButton(p); }
+    });
+  }
+  const mo=new MutationObserver(function(){ setTimeout(scan, 30); });
+  function start(){ ensureCSS(); scan(); mo.observe(document.body||document.documentElement,{childList:true,subtree:true,characterData:true}); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', start); else start();
+  document.addEventListener('click', function(){ setTimeout(scan,60); setTimeout(scan,250); }, true);
+  setInterval(scan, 900);
+})();
+</script>
+
 </body></html>
