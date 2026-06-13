@@ -4902,4 +4902,148 @@ html body .wm-card{
 
 <!-- WM FOUR FIXES: menü açılışı, örnek cümleler, 2 sütun menü, mobil tıklama -->
 <script src="js/wm-four-fixes.js?v=20260613-7"></script>
+
+<script id="wm-word-examples-button-fix-v2">
+(function(){
+  'use strict';
+  if(window.__wmWordExamplesButtonFixV2) return;
+  window.__wmWordExamplesButtonFixV2 = true;
+
+  function clean(s){ return String(s||'').replace(/\s+/g,' ').trim(); }
+  function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function norm(s){ return clean(s).toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9']/g,' ').replace(/\s+/g,' ').trim(); }
+  function baseWord(w){ return norm(w).replace(/^(to|a|an|the)\s+/,'').replace(/(ing|ed|es|s)$/,''); }
+  function wordBoundary(sentence, word){
+    const nw=norm(word), bw=baseWord(word);
+    if(!nw && !bw) return false;
+    return norm(sentence).split(/\s+/).filter(Boolean).some(t=> t===nw || t===bw || baseWord(t)===bw || baseWord(t)===nw);
+  }
+  function rowEN(r){ return clean(r?.SentenceEN ?? r?.Sentence ?? r?.sentence ?? r?.SENTENCE ?? r?.EnglishSentence ?? r?.English ?? r?.english ?? r?.en ?? r?.EN ?? r?.ExampleEN ?? r?.Example ?? r?.example ?? ''); }
+  function rowTR(r){ return clean(r?.SentenceTR ?? r?.sentenceTr ?? r?.SENTENCETR ?? r?.TurkishSentence ?? r?.Turkish ?? r?.turkish ?? r?.tr ?? r?.TR ?? r?.ExampleTR ?? r?.exampleTr ?? ''); }
+  function arrayFromStorageValue(v){
+    try{
+      const p = typeof v === 'string' ? JSON.parse(v) : v;
+      if(Array.isArray(p)) return p;
+      if(p && Array.isArray(p.rows)) return p.rows;
+      if(p && Array.isArray(p.data)) return p.data;
+      if(p && Array.isArray(p.items)) return p.items;
+    }catch(e){}
+    return null;
+  }
+  function getPools(){
+    const pools=[];
+    ['tumDataRows','TumDataRows','tumData','TumData','learningRows','allRows','allData','excelData','dataRows','sentenceRows','allSentences','sentences','currentRows','currentList','allWords','words'].forEach(k=>{try{if(Array.isArray(window[k])) pools.push(window[k]);}catch(e){}});
+    try{ if(window.WMPath && Array.isArray(WMPath.rows)) pools.push(WMPath.rows); }catch(e){}
+    try{ if(window.WMPath && Array.isArray(WMPath.data)) pools.push(WMPath.data); }catch(e){}
+    try{ if(window.appState && Array.isArray(appState.rows)) pools.push(appState.rows); }catch(e){}
+    try{ if(window.state && Array.isArray(state.rows)) pools.push(state.rows); }catch(e){}
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i)||'';
+        if(!/(row|data|sentence|word|tum|excel|cumle)/i.test(k)) continue;
+        const arr=arrayFromStorageValue(localStorage.getItem(k));
+        if(Array.isArray(arr) && arr.length) pools.push(arr);
+      }
+    }catch(e){}
+    return pools;
+  }
+  if(typeof window.wmFindWordExampleSentences !== 'function'){
+    window.wmFindWordExampleSentences=function(word, limit=7){
+      const seen=new Set(), out=[];
+      for(const pool of getPools()){
+        for(const r of pool){
+          const en=rowEN(r); if(!en || !wordBoundary(en, word)) continue;
+          const key=en.toLowerCase(); if(seen.has(key)) continue;
+          seen.add(key); out.push({en, tr:rowTR(r)});
+          if(out.length>=limit) return out;
+        }
+      }
+      return out;
+    };
+  }
+  function highlightWord(sentence, word){
+    const bw=baseWord(word);
+    return esc(sentence).replace(/\b([A-Za-z][A-Za-z'’-]*)\b/g, function(m){
+      const bm=baseWord(m);
+      return (bm===bw || norm(m)===norm(word)) ? '<span class="wm-word-hit">'+esc(m)+'</span>' : esc(m);
+    });
+  }
+  if(typeof window.wmExamplesHTML !== 'function'){
+    window.wmExamplesHTML=function(word){
+      const rows=window.wmFindWordExampleSentences(word,7);
+      return '<div class="wm-word-examples-box"><h3>Bu kelimenin geçtiği cümleler</h3>'+
+        (rows.length ? rows.map(r=>'<div class="wm-word-example-item"><b>'+highlightWord(r.en,word)+'</b><br><span>'+esc(r.tr||'')+'</span></div>').join('') : '<p class="wm-word-no-example">Örnek bulunamadı.</p>')+
+      '</div>';
+    };
+  }
+
+  const style=document.createElement('style');
+  style.id='wm-word-examples-button-style-v2';
+  style.textContent=`
+    .wm-examples-btn{border:0;border-radius:16px;padding:14px 16px;font-weight:900;cursor:pointer;background:linear-gradient(135deg,#38bdf8,#2563eb)!important;color:#fff!important;min-height:48px;box-shadow:none!important}
+    .wm-examples-btn.full{width:100%;margin-top:10px}
+    .wm-word-examples-box{margin-top:16px;padding:14px;border:1px solid rgba(148,163,184,.18);border-radius:18px;background:rgba(15,23,42,.62)}
+    .wm-word-examples-box h3{margin:0 0 12px;font-size:24px;line-height:1.15;font-weight:950;color:#f8fafc}
+    .wm-word-example-item{padding:14px 16px;margin:9px 0;border:1px solid rgba(148,163,184,.16);border-radius:16px;background:rgba(15,23,42,.72);line-height:1.45}
+    .wm-word-example-item b{font-size:17px;color:#f8fafc}.wm-word-example-item span{font-size:16px;color:#9ec5f0}
+    .wm-word-hit{color:#fb923c;font-weight:950}.wm-word-no-example{color:#94a3b8;margin:8px 0 0;font-size:14px}
+  `;
+  document.head.appendChild(style);
+
+  function wordFromPanel(panel){
+    const candidates=[
+      panel.querySelector('.dict-head-word'),
+      panel.querySelector('[id*="word" i]'),
+      panel.querySelector('h1'), panel.querySelector('h2'), panel.querySelector('h3'),
+      panel.querySelector('b')
+    ].filter(Boolean);
+    for(const el of candidates){
+      const txt=clean(el.textContent).replace(/[×✕]/g,'').trim();
+      const m=txt.match(/\b([A-Za-z][A-Za-z'’-]{1,})\b/);
+      if(m && !/IPA|Syllables|Play|Slow|Fast|Speed|Kelime|Açıklama|İlişkileri/i.test(m[1])) return m[1];
+    }
+    const all=clean(panel.textContent);
+    const m=all.match(/^([A-Za-z][A-Za-z'’-]{1,})\b/);
+    return m ? m[1] : '';
+  }
+  function findButtonArea(panel){
+    const areas=[...panel.querySelectorAll('.dict-big-buttons,.dict-actions,.pron-section,.card,div')];
+    return areas.find(a=>/Kelime Açıklama/.test(a.textContent||'') && /Kelime İlişkileri/.test(a.textContent||'')) || null;
+  }
+  function addButton(panel){
+    if(!panel || panel.querySelector('.wm-examples-btn')) return;
+    if(!(/IPA|Syllables|Kelime Açıklama|Kelime İlişkileri|Kaydı Başlat/i.test(panel.textContent||''))) return;
+    const word=wordFromPanel(panel); if(!word) return;
+    const area=findButtonArea(panel);
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='wm-examples-btn';
+    btn.textContent='📚 Geçtiği Cümleler';
+    btn.onclick=function(e){
+      e.preventDefault(); e.stopPropagation();
+      panel.querySelectorAll('.wm-word-examples-box').forEach(x=>x.remove());
+      const wrap=document.createElement('div');
+      wrap.innerHTML=window.wmExamplesHTML(word);
+      const anchor=panel.querySelector('.pron-section') || panel.querySelector('[class*="record" i]') || panel.lastElementChild;
+      (anchor && anchor.parentNode ? anchor.parentNode : panel).appendChild(wrap.firstElementChild);
+    };
+    if(area){
+      btn.classList.add('full');
+      area.appendChild(btn);
+    }else{
+      btn.classList.add('full');
+      panel.appendChild(btn);
+    }
+  }
+  function scan(){
+    document.querySelectorAll('.sheet,.modal,.popup,[role="dialog"],.dict-modal,.card').forEach(addButton);
+  }
+  const mo=new MutationObserver(scan);
+  mo.observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('click',()=>setTimeout(scan,80),true);
+  setInterval(scan,1000);
+  setTimeout(scan,400);
+})();
+</script>
+
 </body></html>
