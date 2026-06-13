@@ -454,6 +454,124 @@
   })();
 
   /* ============================================================
+     (2b) TELAFFUZ/KELİME POPUP'INA "BU KELİMENİN GEÇTİĞİ CÜMLELER"
+     Öğrenme yolundaki kelime popup'ı (wm-pronunciation-popup-container:
+     IPA, ANLAMLAR, Syllables, Play/Slow/Fast, Kelime Açıklama,
+     Kaydı Başlat) yol.html'deki gibi örnek cümle bölümünü göstermiyordu.
+     Burada o popup açıldığında, "TELAFFUZUNU DENE / Kaydı Başlat"
+     bölümünün altına örnek cümle kutusunu enjekte ediyoruz.
+     ============================================================ */
+  (function addExamplesToPronPopup() {
+    var POPUP_ID = 'wm-pronunciation-popup-container';
+    var lastWord = '';
+
+    function findExamples(word, limit) {
+      try {
+        if (typeof window.wmFindWordExampleSentences === 'function') {
+          return window.wmFindWordExampleSentences(word, limit || 7) || [];
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    function buildBoxHtml(word) {
+      var rows = findExamples(word, 7);
+      if (!rows.length) return '';
+      return '<div class="wm-word-examples-box"><h3>Bu kelimenin geçtiği cümleler</h3>' +
+        rows.map(function (r) {
+          return '<div class="wm-word-example-item"><b>' + esc(r.en) + '</b>' +
+            (r.tr ? '<br><span>' + esc(r.tr) + '</span>' : '') + '</div>';
+        }).join('') + '</div>';
+    }
+
+    // Popup'taki kelimeyi belirle: önce showPronunciationPopup ile
+    // yakalanan değer, sonra popup'taki en büyük başlık.
+    function popupWord(container) {
+      if (lastWord) return lastWord;
+      try {
+        // Başlık genelde popup'ın ilk büyük metni (Image: "systems")
+        var card = container.querySelector('.pronunciation-popup') || container;
+        var cand = card.querySelector('h1,h2,.sp-word,.word-title,[data-word]');
+        if (cand) {
+          var w = (cand.getAttribute && cand.getAttribute('data-word')) || cand.textContent || '';
+          w = String(w).trim().split(/\s+/)[0];
+          if (w) return w;
+        }
+      } catch (e) {}
+      return '';
+    }
+
+    function inject(container) {
+      if (!container) return;
+      // İçerik henüz yüklenmediyse (spinner) bekle
+      if (container.querySelector('.wm-word-examples-box')) return;
+      var card = container.querySelector('.pronunciation-popup') || container;
+      if (!card) return;
+      // Spinner aşamasında ANLAMLAR/Kaydı Başlat yok → bekle
+      var hasContent = /Kaydı Başlat|TELAFFUZUNU|Syllables|ANLAMLAR/i.test(card.textContent || '');
+      if (!hasContent) return;
+      var word = popupWord(container);
+      if (!word) return;
+      var html = buildBoxHtml(word);
+      if (!html) return;
+      // En sona ekle (Kaydı Başlat / TELAFFUZUNU DENE bölümünün altına)
+      card.insertAdjacentHTML('beforeend', html);
+      console.log('🔎 [wm-fix] Popup örnek cümleler eklendi:', word);
+    }
+
+    function scheduleInject() {
+      var tries = 0;
+      var iv = setInterval(function () {
+        var c = document.getElementById(POPUP_ID);
+        if (!c) { clearInterval(iv); return; }            // popup kapandı
+        if (c.querySelector('.wm-word-examples-box')) { clearInterval(iv); return; }
+        inject(c);
+        if (c.querySelector('.wm-word-examples-box') || ++tries > 40) clearInterval(iv);
+      }, 120);
+    }
+
+    // showPronunciationPopup'ı sar: kelimeyi doğrudan yakala + enjeksiyonu tetikle
+    function hookPopup() {
+      try {
+        var P = window.WM_Pronunciation;
+        if (P && typeof P.showPronunciationPopup === 'function' && !P.showPronunciationPopup.__wmExHooked) {
+          var orig = P.showPronunciationPopup;
+          P.showPronunciationPopup = function (w) {
+            try { if (w) lastWord = String(w).trim().split(/\s+/)[0]; } catch (e) {}
+            var r = orig.apply(this, arguments);
+            scheduleInject();
+            return r;
+          };
+          P.showPronunciationPopup.__wmExHooked = true;
+          console.log('🛡️ [wm-fix] showPronunciationPopup sarıldı (örnek cümleler)');
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+    if (!hookPopup()) {
+      var t = 0, hi = setInterval(function () { if (hookPopup() || ++t > 60) clearInterval(hi); }, 150);
+    }
+
+    // Yedek: popup container DOM'a eklenince de yakala (hook kaçırırsa)
+    try {
+      var mo = new MutationObserver(function (muts) {
+        for (var i = 0; i < muts.length; i++) {
+          var added = muts[i].addedNodes;
+          for (var j = 0; j < added.length; j++) {
+            var n = added[j];
+            if (n.nodeType === 1 && (n.id === POPUP_ID || (n.querySelector && n.querySelector('#' + POPUP_ID)))) {
+              scheduleInject();
+              return;
+            }
+          }
+        }
+      });
+      mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    } catch (e) {}
+  })();
+
+  /* ============================================================
      (1b) AÇILIŞTA VERİ YÜKLENENE KADAR MENÜYÜ BEKLET
      Mobilde TumData_Temiz.xlsx geç/başarısız yüklenebiliyordu ve
      menü boş veriyle açılıyordu. Burada veri yüklenene (veya makul
