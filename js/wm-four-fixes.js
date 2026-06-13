@@ -97,22 +97,25 @@
   })();
 
   /* ============================================================
-     (1) AÇILIŞTA SADECE MENÜ
-     forceMenu, kullanıcı bir butona basana kadar (boot süresinden
-     bağımsız) kelime ekranı açılırsa menüye geri döndürür.
+     (1) AÇILIŞTA SADECE MENÜ  (kalıcı koruma)
+     showScreen'i kalıcı olarak sarıyoruz: kullanıcı gerçek bir
+     gezinme yapana kadar menü DIŞINDA bir ekran açılmak istenirse
+     sc-menu'ye çeviriyoruz. ZAMAN SINIRI YOK — mobilde veri geç
+     yüklenip startSession gecikse bile kelime ekranı açılmaz.
      ============================================================ */
   (function startOnMenu() {
     window.WM_START_ON_MENU = true;
-    var userNavigated = false;
+    // Kullanıcı henüz bir şey seçmedi
+    if (typeof window.__WM_USER_NAV__ === 'undefined') window.__WM_USER_NAV__ = false;
+
+    function userHasNavigated() { return !!window.__WM_USER_NAV__; }
 
     function forceMenu() {
-      if (userNavigated) return;
-      // Veri yükleme katmanı açıkken menüyü gösterme (gate bitince açar)
-      if (document.getElementById('wmDataLoadingOverlay')) return;
+      if (userHasNavigated()) return;
+      if (document.getElementById('wmDataLoadingOverlay')) return; // gate açıkken bekle
       var menu = document.getElementById('sc-menu');
       if (!menu) return;
       var active = document.querySelector('.screen.active');
-      // Menü zaten aktifse dokunma
       if (active && active.id === 'sc-menu') return;
       document.querySelectorAll('.screen').forEach(function (s) {
         s.classList.remove('active');
@@ -120,41 +123,71 @@
       });
       menu.classList.add('active');
       menu.style.display = 'block';
-      try {
-        var nav = document.getElementById('bottomNav');
-        if (nav) nav.style.display = 'none';
-      } catch (e) {}
     }
 
-    // Kullanıcı gerçek bir menü öğesine / butona bastığında serbest bırak
+    // showScreen'i KALICI olarak sar: kullanıcı gezinmeden menü dışına çıkma
+    function wrapShowScreen() {
+      var orig = window.showScreen;
+      if (typeof orig !== 'function') return false;
+      if (orig.__wmPermMenuGuard) return true;
+      var wrapped = function (id) {
+        // Kullanıcı henüz gezinmediyse ve menü dışına çıkılmak isteniyorsa engelle
+        if (!userHasNavigated() && id && id !== 'sc-menu') {
+          return orig.call(this, 'sc-menu');
+        }
+        return orig.apply(this, arguments);
+      };
+      wrapped.__wmPermMenuGuard = true;
+      // önceki guard bayraklarını da koru
+      wrapped.__wmMenuGuard = true;
+      try { window.showScreen = wrapped; } catch (e) { return false; }
+      return true;
+    }
+
+    // showScreen sonradan tanımlanır/yeniden atanırsa tekrar sar (kalıcı izleme)
+    if (!wrapShowScreen()) {
+      var tries = 0;
+      var iv = setInterval(function () {
+        if (wrapShowScreen() || ++tries > 120) clearInterval(iv);
+      }, 150);
+    }
+    // başka kod showScreen'i tekrar override ederse yeniden sarmak için periyodik kontrol
+    setInterval(function () {
+      if (userHasNavigated()) return;
+      if (window.showScreen && !window.showScreen.__wmPermMenuGuard) wrapShowScreen();
+    }, 500);
+
+    // Kullanıcı gerçek bir gezinme yaptığında koruma serbest
+    function markNav(reason) { window.__WM_USER_NAV__ = true; }
     document.addEventListener('click', function (e) {
-      var b = e.target && e.target.closest && e.target.closest('button,a,[role="button"],.menu-tile,.menu-cta,.bnav-btn');
+      var b = e.target && e.target.closest && e.target.closest('button,a,[role="button"],.menu-tile,.menu-cta,.bnav-btn,.wp-card');
       if (!b) return;
       var t = (b.textContent || '').trim();
-      if (t && /ana menü|menüye dön/i.test(t)) return; // menüye dönüş tetikleyici sayılmaz
-      userNavigated = true;
+      // "ana menü / menüye dön" tıklaması gezinme sayılmaz (zaten menüye gidiyor)
+      if (t && /ana menü|menüye dön/i.test(t)) return;
+      markNav('click');
     }, true);
 
-    // İlk ~6 saniye boyunca otomatik açılmaları menüye çevir
-    var ticks = [0, 200, 500, 900, 1500, 2500, 4000, 6000];
+    // Güvenlik ağı: kullanıcı gezinmeden menü dışı aktif olduysa menüye çek
+    var ticks = [0, 150, 350, 600, 1000, 1600, 2500, 4000, 6000, 9000];
     function schedule() { ticks.forEach(function (ms) { setTimeout(forceMenu, ms); }); }
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', schedule);
-    } else {
-      schedule();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule);
+    else schedule();
     window.addEventListener('load', schedule);
 
-    // Boot sırasında bir şey sc-word'ü aktif ederse anında yakala
     try {
       var mo = new MutationObserver(function () {
-        if (userNavigated) { mo.disconnect(); return; }
-        var w = document.getElementById('sc-word');
-        if (w && w.classList.contains('active')) forceMenu();
+        if (userHasNavigated()) return;
+        var active = document.querySelector('.screen.active');
+        if (active && active.id !== 'sc-menu' && !document.getElementById('wmDataLoadingOverlay')) {
+          forceMenu();
+        }
       });
       mo.observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['class', 'style'] });
-      // güvenlik: 8 sn sonra gözlemciyi kapat
-      setTimeout(function () { try { mo.disconnect(); } catch (e) {} }, 8000);
+      // kullanıcı gezinince gözlemciyi bırak
+      var stopIv = setInterval(function () {
+        if (userHasNavigated()) { try { mo.disconnect(); } catch (e) {} clearInterval(stopIv); }
+      }, 500);
     } catch (e) {}
   })();
 
@@ -291,76 +324,109 @@
       return [];
     }
 
-    function buildBox(word) {
+    function buildBoxHtml(word) {
       var rows = findExamples(word, 6);
       if (!rows.length) return '';
       return '<div class="wm-word-examples-box"><h3>Bu kelimenin geçtiği cümleler</h3>' +
         rows.map(function (r) {
-          return '<div class="wm-word-example-item"><b>' + esc(r.en) + '</b><br><span>' + esc(r.tr || '') + '</span></div>';
+          return '<div class="wm-word-example-item"><b>' + esc(r.en) + '</b>' +
+            (r.tr ? '<br><span>' + esc(r.tr) + '</span>' : '') + '</div>';
         }).join('') + '</div>';
     }
 
-    // Modal içeriği bu kaplardan birine render edilir
-    function getModalBox() {
-      return document.getElementById('modalExplanationContent') ||
-        document.querySelector('#wordExplanationModal .modal-content, #wordExplanationModal') ||
-        null;
+    // Modalın gösterdiği kelimeyi bul: önce legacy geçmişinden, sonra
+    // hook ile yakalanan değer, sonra modaldeki başlık/büyük yazı.
+    function currentWord() {
+      try {
+        var h = window.explanationHistory, i = window.explanationHistoryIndex;
+        if (Array.isArray(h) && i >= 0 && i < h.length && h[i] && h[i].word) return String(h[i].word);
+      } catch (e) {}
+      if (window.__wmLastExplainWord) return String(window.__wmLastExplainWord);
+      // modaldeki en büyük başlık (kelime)
+      try {
+        var modal = document.getElementById('wordExplanationModal');
+        if (modal) {
+          var h2 = modal.querySelector('h1,h2,.dict-word,.word-title,[data-word]');
+          if (h2) {
+            var w = h2.getAttribute && h2.getAttribute('data-word');
+            return String(w || h2.textContent || '').trim().split(/\s+/)[0];
+          }
+        }
+      } catch (e) {}
+      return '';
     }
 
-    function inject(word) {
-      var box = getModalBox();
-      if (!box) return false;
-      if (box.querySelector('.wm-word-examples-box')) return true; // zaten eklendi
-      var html = buildBox(word);
-      if (!html) return false; // veri henüz yoksa daha sonra tekrar denenir
+    function getBox() {
+      return document.getElementById('modalExplanationContent');
+    }
+
+    function injectInto(box) {
+      if (!box) return;
+      if (box.querySelector('.wm-word-examples-box')) return; // zaten var
+      var word = currentWord();
+      if (!word) return;
+      var html = buildBoxHtml(word);
+      if (!html) return; // veri yok → sonra tekrar denenir
       box.insertAdjacentHTML('beforeend', html);
-      return true;
     }
 
-    // Modal açıkken örnek cümleleri eklemeyi birkaç kez dene
-    // (veri xlsx'ten async geldiği için ilk denemede boş olabilir).
-    function injectWithRetries(word) {
-      var delays = [0, 60, 200, 500, 1000, 2000, 3500];
-      delays.forEach(function (d) {
-        setTimeout(function () {
-          // Modal kapandıysa boşuna deneme
-          var box = getModalBox();
+    // Modal içeriği her render edildiğinde örnek kutusunu (yeniden) ekle.
+    // showWordExplanationModal'i hook etmeye GEREK kalmadan çalışır;
+    // geçmişte ileri/geri gidip içerik yeniden çizilse de tekrar ekler.
+    var pending = false;
+    function scheduleInject() {
+      if (pending) return;
+      pending = true;
+      setTimeout(function () {
+        pending = false;
+        injectInto(getBox());
+      }, 30);
+    }
+
+    function startObserver() {
+      try {
+        var mo = new MutationObserver(function (muts) {
+          var box = getBox();
           if (!box) return;
-          if (box.querySelector('.wm-word-examples-box')) return;
-          inject(word);
-        }, d);
-      });
+          // İçerik değişti ve bizim kutu yoksa ekle
+          if (!box.querySelector('.wm-word-examples-box')) scheduleInject();
+        });
+        mo.observe(document.documentElement, { childList: true, subtree: true });
+      } catch (e) {}
+      // Ek güvenlik: periyodik kontrol (gözlemci kaçırırsa)
+      setInterval(function () {
+        var box = getBox();
+        if (box && !box.querySelector('.wm-word-examples-box')) injectInto(box);
+      }, 700);
     }
 
+    // Yine de showWordExplanationModal'i hook etmeyi dene (kelimeyi
+    // doğrudan yakalamak için — başlık parse'ına güvenmeden).
     function hook() {
       if (typeof window.showWordExplanationModal === 'function' && !window.showWordExplanationModal.__wmExHooked) {
         var orig = window.showWordExplanationModal;
         window.showWordExplanationModal = function (word) {
+          if (word) window.__wmLastExplainWord = word;
           var r = orig.apply(this, arguments);
-          window.__wmLastExplainWord = word;
-          injectWithRetries(word);
+          scheduleInject();
           return r;
         };
         window.showWordExplanationModal.__wmExHooked = true;
-        return true;
       }
-      return false;
+    }
+    hook();
+    var t = 0, hi = setInterval(function () { hook(); if (++t > 40) clearInterval(hi); }, 150);
+
+    // Veri sonradan yüklenince açık modali tazele
+    window.addEventListener('tumdata:loaded', function () { injectInto(getBox()); });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', startObserver);
+    } else {
+      startObserver();
     }
 
-    // Veri sonradan yüklenince, açık modal varsa örnekleri tazele
-    window.addEventListener('tumdata:loaded', function () {
-      if (window.__wmLastExplainWord) injectWithRetries(window.__wmLastExplainWord);
-    });
-
-    // Fonksiyon legacy-app yüklendikten sonra hazır olur; birkaç kez dene
-    if (!hook()) {
-      var tries = 0;
-      var iv = setInterval(function () {
-        if (hook() || ++tries > 40) clearInterval(iv);
-      }, 150);
-    }
-
-    // CSS zaten index.html'de var; yoksa minimal stil ekle
+    // CSS
     if (!document.getElementById('wm-word-examples-css')) {
       var css = document.createElement('style');
       css.id = 'wm-word-examples-css';
