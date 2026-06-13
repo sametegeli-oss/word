@@ -641,19 +641,40 @@
           .replace(/\s+$/, '');         // sondaki boşluk/yeni satırlar
       }
 
+      // Yarış (race) önleme:
+      // 1) inFlight: aynı kitap kimliği için eşzamanlı çağrılar tek tek sıraya
+      //    girsin — biri klasörü tararken diğeri yazmaya başlamasın.
+      // 2) writtenThisSession: bu oturumda aynı içerikle zaten yazılan/atlanan
+      //    kitaplar tekrar yazılmasın (geri yükleme kitabı iki kez çağırabiliyor).
+      var inFlight = (window.__wmBookGuardInFlight = window.__wmBookGuardInFlight || {});
+      var writtenThisSession = (window.__wmBookGuardWritten = window.__wmBookGuardWritten || {});
+
+      function contentKey(s) {
+        // Hızlı imza: uzunluk + ilk/son 64 karakter (tam içeriği saklamadan).
+        var str = norm(s);
+        return str.length + ':' + str.slice(0, 64) + ':' + str.slice(-64);
+      }
+
       var wrapped = async function (e, t, n) {
+        var bookId = String(e);
+        // Önceki çağrı hâlâ sürüyorsa onu bekle (kilit).
+        if (inFlight[bookId]) {
+          try { await inFlight[bookId]; } catch (_) {}
+        }
+        var release;
+        var myLock = new Promise(function (res) { release = res; });
+        inFlight[bookId] = myLock;
         try {
           var handle = window.backupFolderHandle;
-          // Klasör seçili ve yeni içerik (n) verilmişse, mevcut dosyayı
-          // okuyup aynıysa yazmayı atla.
           if (handle && typeof n === 'string') {
-            var fname = 'book_' + e + '_' +
-              String(t || '').replace(/[^a-z0-9]/gi, '_').substring(0, 50) + '.txt';
-            // Klasörü tarayıp gerçek dosya adını bul. getFileHandle ile
-            // doğrudan isimden aramak, Türkçe/özel karakterlerden doğan
-            // isim üretimi farkları yüzünden tutmuyordu. Aynı kitap kimliği
-            // ('book_' + e + '_') ön ekiyle başlayan gerçek dosyayı buluruz.
-            var prefix = 'book_' + e + '_';
+            var key = contentKey(n);
+            // Bu oturumda aynı içerikle zaten işlendiyse tekrar yazma.
+            if (writtenThisSession[bookId] === key) {
+              console.log('⏭️ [wm-fix] Kitap bu oturumda zaten işlendi, atlandı:', bookId);
+              return false;
+            }
+            // Klasörü tarayıp gerçek dosya adını bul.
+            var prefix = 'book_' + bookId + '_';
             var realName = null;
             try {
               for await (var entry of handle.values()) {
@@ -673,6 +694,7 @@
                 var file = await fh.getFile();
                 var existing = await file.text();
                 if (existing === n || norm(existing) === norm(n)) {
+                  writtenThisSession[bookId] = key; // bu içerik artık klasörde
                   console.log('⏭️ [wm-fix] Kitap zaten güncel, yazma atlandı:', realName);
                   return false;
                 }
@@ -689,9 +711,19 @@
             } else {
               console.warn('🔎 [wm-fix] Klasörde eşleşen dosya yok, yazılacak:', prefix);
             }
+            // Yazılacak: önce oturum kaydını işaretle ki ikinci eşzamanlı
+            // çağrı aynı içeriği tekrar yazmasın.
+            writtenThisSession[bookId] = key;
           }
-        } catch (e2) { /* sorun olursa orijinale düş */ }
-        return fn.apply(this, arguments);
+          return await fn.apply(this, arguments);
+        } catch (e2) {
+          try { return await fn.apply(this, arguments); } catch (_) { return false; }
+        } finally {
+          release();
+          if (inFlight[bookId] === myLock) {
+            delete inFlight[bookId];
+          }
+        }
       };
       wrapped.__wmContentGuard = true;
       try { window.saveBookToBackupFolder = wrapped; } catch (e) { return false; }
@@ -699,7 +731,7 @@
       return true;
     }
 
-    console.log('🟢 [wm-fix] skipRedundantBookBackup yüklendi (v20260613-6)');
+    console.log('🟢 [wm-fix] skipRedundantBookBackup yüklendi (v20260613-7)');
     // legacy-app v34 sarmalayıcısı window.saveBookToBackupFolder'ı
     // sonradan atayabilir; hazır olunca ve yeniden atanırsa tekrar sar.
     wrap();
