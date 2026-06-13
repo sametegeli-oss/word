@@ -5246,4 +5246,116 @@ html body .wm-card{
 })();
 </script>
 
+
+
+<script id="wm-word-examples-layout-mobile-final">
+(function(){
+  'use strict';
+  if(window.__wmWordExamplesLayoutMobileFinal) return;
+  window.__wmWordExamplesLayoutMobileFinal = true;
+
+  function clean(s){return String(s||'').replace(/\s+/g,' ').trim();}
+  function isOneEnglishWord(s){return /^[A-Za-z][A-Za-z'’-]{1,}$/.test(clean(s));}
+  function ensureFinalCSS(){
+    if(document.getElementById('wm-word-examples-layout-mobile-final-css')) return;
+    const st=document.createElement('style');
+    st.id='wm-word-examples-layout-mobile-final-css';
+    st.textContent=`
+      .wm-examples-btn{grid-column:1/-1!important;width:100%!important;min-height:48px!important;margin:8px 0 0!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;white-space:normal!important;position:relative!important;z-index:4!important;touch-action:manipulation!important}
+      .wm-word-examples-box{grid-column:1/-1!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;margin:18px 0 0!important;padding:14px!important;border:1px solid rgba(148,163,184,.18)!important;border-radius:18px!important;background:rgba(15,23,42,.78)!important;text-align:left!important;clear:both!important;display:block!important}
+      .wm-word-examples-box h3{margin:0 0 12px!important;font-size:24px!important;line-height:1.15!important;font-weight:950!important;color:#f8fafc!important;text-align:left!important;letter-spacing:-.3px!important}
+      .wm-word-example-item{display:block!important;width:100%!important;box-sizing:border-box!important;padding:14px 16px!important;margin:9px 0!important;border:1px solid rgba(148,163,184,.16)!important;border-radius:16px!important;background:#101b2d!important;line-height:1.45!important;text-align:left!important;min-height:0!important}
+      .wm-word-example-item b{display:block!important;font-size:17px!important;line-height:1.45!important;color:#f8fafc!important;text-align:left!important;word-break:normal!important;overflow-wrap:break-word!important}
+      .wm-word-example-item span{display:block!important;font-size:16px!important;line-height:1.45!important;color:#9ec5f0!important;text-align:left!important;word-break:normal!important;overflow-wrap:break-word!important;margin-top:2px!important}
+      .wm-word-hit{color:#fb923c!important;font-weight:950!important}
+      .wm-word-no-example{color:#94a3b8!important;margin:8px 0 0!important;font-size:14px!important;text-align:left!important}
+      .dict-big-buttons,.dict-actions{align-items:stretch!important}
+      .dict-big-buttons > .wm-word-examples-box,.dict-actions > .wm-word-examples-box{flex-basis:100%!important}
+      @media(max-width:720px){
+        .sheet.dict-modal,.sheet,.modal,.popup,[role="dialog"]{max-width:min(94vw,560px)!important;width:min(94vw,560px)!important;box-sizing:border-box!important}
+        .dict-big-buttons,.dict-actions{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
+        .dict-big-buttons > button,.dict-actions > button{width:100%!important;min-width:0!important;touch-action:manipulation!important}
+        .wm-word-examples-box h3{font-size:22px!important}
+        .wm-word-example-item{padding:13px 14px!important}
+        .wm-word-example-item b{font-size:16px!important}
+        .wm-word-example-item span{font-size:15px!important}
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function looksLikeWordPopup(el){
+    const txt=clean(el && el.textContent || '');
+    return txt.length>20 && /IPA|Syllables|Kelime Açıklama|Kelime İlişkileri|Kaydı Başlat|Play|Slow|Fast/i.test(txt)
+      && !/Excel Formatı|Kelime Listesi|İstatistik|Ana Menü/i.test(txt);
+  }
+  function findPanel(el){
+    let cur=el;
+    const list=[];
+    for(let i=0;cur && i<12;i++,cur=cur.parentElement){ if(looksLikeWordPopup(cur)) list.push(cur); }
+    list.sort((a,b)=>(a.textContent||'').length-(b.textContent||'').length);
+    return list[0]||null;
+  }
+  function wordFromPanel(panel, btn){
+    const data=btn && btn.getAttribute && (btn.getAttribute('data-wm-word')||btn.getAttribute('data-word'));
+    if(isOneEnglishWord(data)) return data;
+    if(isOneEnglishWord(window.__wmLastClickedWord)) return window.__wmLastClickedWord;
+    const sels=['.dict-head-word','.dict-word','.word-title','.popup-word','[data-word]','[data-wm-word]','h1','h2','h3','b','strong'];
+    for(const sel of sels){
+      for(const el of panel.querySelectorAll(sel)){
+        let t=clean((el.getAttribute && (el.getAttribute('data-word')||el.getAttribute('data-wm-word'))) || el.textContent || '');
+        t=t.replace(/[×✕]/g,'').replace(/^(IPA|Syllables|Kelime|Açıklama|İlişkileri|Play|Slow|Fast|Speed)\s*[:：-]?/i,'').trim();
+        const m=t.match(/\b([A-Za-z][A-Za-z'’-]{1,})\b/);
+        if(m && isOneEnglishWord(m[1]) && !/^(IPA|Syllables|Play|Slow|Fast|Speed|Kelime|Açıklama|İlişkileri|Kaydı|Başlat)$/i.test(m[1])) return m[1];
+      }
+    }
+    return '';
+  }
+  function placeExamples(panel, word){
+    if(!panel || !word || typeof window.wmExamplesHTML !== 'function') return;
+    panel.querySelectorAll('.wm-word-examples-box').forEach(x=>x.remove());
+    const tmp=document.createElement('div');
+    tmp.innerHTML=window.wmExamplesHTML(word);
+    const box=tmp.firstElementChild;
+    if(!box) return;
+    box.setAttribute('data-wm-final-layout','1');
+    const pron=[...panel.querySelectorAll('*')].find(el=>/TELAFFUZUNU DENE|Kaydı Başlat/i.test(el.textContent||'') && (el.className||'').toString().includes('pron'));
+    const record=[...panel.querySelectorAll('button,div')].reverse().find(el=>/Kaydı Başlat/i.test(el.textContent||''));
+    const recordBlock=record ? (record.closest('.pron-section,.dict-box,.card,div') || record) : null;
+    const anchor=recordBlock || panel.querySelector('.pron-section') || panel.querySelector('.dict-big-buttons') || panel.querySelector('.dict-actions');
+    if(anchor && anchor.parentNode && anchor !== panel){ anchor.parentNode.insertBefore(box, anchor.nextSibling); }
+    else panel.appendChild(box);
+    setTimeout(()=>{ try{ box.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(e){} },20);
+  }
+
+  ensureFinalCSS();
+
+  // Eski handler dar sağ kolona basmasın diye Geçtiği Cümleler tıklamasını burada yönet.
+  document.addEventListener('click', function(e){
+    const btn=e.target && e.target.closest && e.target.closest('.wm-examples-btn,button');
+    if(!btn) return;
+    if(!/Geçtiği Cümleler|Bu kelimenin geçtiği cümleler/i.test(btn.textContent||'')) return;
+    const panel=findPanel(btn);
+    if(!panel) return;
+    const word=wordFromPanel(panel, btn);
+    if(!isOneEnglishWord(word)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    placeExamples(panel, word);
+  }, true);
+
+  // Mobilde bazı tarayıcılarda ilk dokunma click üretmezse, ilgili butonlara gerçek click gönder.
+  document.addEventListener('touchend', function(e){
+    const btn=e.target && e.target.closest && e.target.closest('button');
+    if(!btn) return;
+    const txt=clean(btn.textContent||'');
+    if(/Kelime Açıklama|Kelime İlişkileri|Geçtiği Cümleler/i.test(txt)){
+      btn.style.pointerEvents='auto';
+      setTimeout(function(){ try{ btn.click(); }catch(_){} }, 0);
+    }
+  }, {capture:false, passive:true});
+})();
+</script>
+
 </body></html>
