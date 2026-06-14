@@ -17,7 +17,16 @@
      ============================================================ */
   (function lazyActiveList() {
     var done = false;
+    var enteredWord = false;        // kullanıcı kelime ekranına girdi mi
+    var pendingListId = null;       // ertelenmiş aktif liste id'si
+
     function ensureLoaded() {
+      enteredWord = true;
+      // Açılışta ertelenen switchToList çağrısı varsa şimdi çalıştır
+      if (pendingListId != null && window.__wmRealSwitchToList) {
+        var id = pendingListId; pendingListId = null;
+        try { window.__wmRealSwitchToList(id); } catch (e) {}
+      }
       if (done) return;
       // Zaten kelime varsa (kullanıcı liste seçtiyse) tekrar yükleme
       try {
@@ -35,7 +44,24 @@
         try { wr(); } catch (e) {}
       }
     }
+
+    // switchToList'i sar: kullanıcı kelime ekranına GİRMEDEN açılışta
+    // tetiklenen otomatik yüklemeyi ertele (asıl "Liste yüklendi" yolu bu).
+    function wrapSwitchToList() {
+      if (typeof window.switchToList !== 'function' || window.switchToList.__wmLazyList) return;
+      var orig = window.switchToList;
+      window.__wmRealSwitchToList = orig;
+      var w = function (id) {
+        // Kullanıcı kelime ekranına henüz girmediyse → ERTELE
+        if (!enteredWord) { pendingListId = id; return; }
+        return orig.apply(this, arguments);
+      };
+      w.__wmLazyList = true;
+      try { window.switchToList = w; } catch (x) {}
+    }
+
     function hook() {
+      wrapSwitchToList();
       // switchTab('word') ve showScreen('sc-word') girişlerinde tetikle
       if (typeof window.switchTab === 'function' && !window.switchTab.__wmLazy) {
         var st = window.switchTab;
@@ -51,7 +77,7 @@
         try { window.showScreen = w2; } catch (x) {}
       }
     }
-    // showScreen birçok kez yeniden sarılıyor; periyodik yeniden bağla
+    // showScreen/switchToList birçok kez yeniden sarılıyor; periyodik yeniden bağla
     var tries = 0;
     var iv = setInterval(function () { hook(); if (++tries > 80) clearInterval(iv); }, 200);
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook);
