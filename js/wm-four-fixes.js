@@ -1199,4 +1199,151 @@
     window.addEventListener('load', inject);
   })();
 
+  /* ============================================================
+     (7) YOUGLISH — GERÇEK VİDEOLARDA TELAFFUZ DİNLEME
+     Tek paylaşılan modal. Kelime popup'ında ve kelime/modül
+     kartında "🎬 Videolarda dinle" butonu açar. widget.fetch ile
+     ilgili kelime/cümle yüklenir. "Powered by YouGlish.com" görünür
+     (YouGlish şartı). Legacy'ye dokunulmaz.
+     ============================================================ */
+  (function youglishIntegration() {
+    var apiLoaded = false, apiLoading = false, widget = null, pendingQuery = null;
+
+    // 1) YouGlish API script'ini gerektiğinde yükle
+    function loadAPI() {
+      if (apiLoaded || apiLoading) return;
+      apiLoading = true;
+      var tag = document.createElement('script');
+      tag.src = 'https://youglish.com/public/emb/widget.js';
+      tag.async = true;
+      var first = document.getElementsByTagName('script')[0];
+      first.parentNode.insertBefore(tag, first);
+    }
+    // API hazır olunca YouGlish bu global'i çağırır
+    window.onYouglishAPIReady = function () {
+      apiLoaded = true; apiLoading = false;
+      try {
+        widget = new YG.Widget('wm-yg-widget', {
+          width: 0,            // konteyner boyutuna uy
+          components: 9,       // arama kutusu + altyazı
+          events: {}
+        });
+        if (pendingQuery) { doFetch(pendingQuery); pendingQuery = null; }
+      } catch (e) {}
+    };
+
+    function doFetch(q) {
+      var lang = 'english';
+      try {
+        if (widget && typeof widget.fetch === 'function') {
+          widget.fetch(q, lang);
+        }
+      } catch (e) {}
+    }
+
+    // 2) Modal'ı bir kez oluştur
+    function ensureModal() {
+      if (document.getElementById('wm-yg-modal')) return;
+      var css = document.createElement('style');
+      css.textContent =
+        '#wm-yg-modal{position:fixed;inset:0;z-index:2147483000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(3px)}' +
+        '#wm-yg-modal.open{display:flex}' +
+        '#wm-yg-box{width:min(680px,94vw);max-height:90vh;overflow:auto;background:#0f172a;border:1px solid rgba(255,255,255,.12);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5);padding:14px}' +
+        '#wm-yg-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}' +
+        '#wm-yg-title{font:800 16px Nunito,Arial;color:#f8fafc}' +
+        '#wm-yg-close{background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:10px;width:34px;height:34px;font-size:18px;cursor:pointer}' +
+        '#wm-yg-widget{min-height:360px;border-radius:10px;overflow:hidden}' +
+        '#wm-yg-foot{margin-top:8px;text-align:right;font:600 11px Nunito,Arial;opacity:.7}' +
+        '#wm-yg-foot a{color:#93c5fd;text-decoration:none}' +
+        '.wm-yg-btn{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 12px;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:10px;font:700 13px Nunito,Arial;cursor:pointer}';
+      document.head.appendChild(css);
+
+      var modal = document.createElement('div');
+      modal.id = 'wm-yg-modal';
+      modal.innerHTML =
+        '<div id="wm-yg-box">' +
+          '<div id="wm-yg-head"><div id="wm-yg-title">🎬 Videolarda dinle</div>' +
+          '<button id="wm-yg-close" aria-label="Kapat">✕</button></div>' +
+          '<div id="wm-yg-widget"></div>' +
+          '<div id="wm-yg-foot">Powered by <a href="https://youglish.com" target="_blank" rel="noopener">YouGlish.com</a></div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal || e.target.id === 'wm-yg-close') closeModal();
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+    }
+
+    function openModal(query, label) {
+      ensureModal();
+      var t = document.getElementById('wm-yg-title');
+      if (t) t.textContent = '🎬 ' + (label || query);
+      document.getElementById('wm-yg-modal').classList.add('open');
+      if (!apiLoaded) { pendingQuery = query; loadAPI(); }
+      else doFetch(query);
+    }
+    function closeModal() {
+      var m = document.getElementById('wm-yg-modal');
+      if (m) m.classList.remove('open');
+    }
+    window.WM_openYouglish = openModal; // dışarıdan da çağrılabilir
+
+    // 3) Kelime popup'ına buton ekle (örnek-cümleler kutusunun yanına)
+    function addBtnToPopup() {
+      var popup = document.getElementById('wm-pronunciation-popup-container');
+      if (!popup) return;
+      var card = popup.querySelector('.pronunciation-popup, .sp-card, .pron-card') || popup;
+      if (card.querySelector('.wm-yg-btn')) return;
+      // kelimeyi popup başlığından al
+      var titleEl = card.querySelector('h3, h2, h1, .sp-word, .word-title');
+      var word = titleEl ? (titleEl.textContent || '').trim() : '';
+      if (!word || !/[A-Za-z]/.test(word)) return;
+      word = word.replace(/^[^A-Za-z'’-]+|[^A-Za-z'’-]+$/g, '');
+      var btn = document.createElement('button');
+      btn.className = 'wm-yg-btn';
+      btn.textContent = '🎬 Videolarda dinle';
+      btn.onclick = function (e) { e.stopPropagation(); openModal(word, word); };
+      card.appendChild(btn);
+    }
+
+    // 4) Kelime/modül kartına buton ekle
+    function addBtnToCards() {
+      // Kelime ekranı kartı (wordCard): cümleyi dinle
+      var wc = document.getElementById('wordCard');
+      if (wc && !wc.querySelector('.wm-yg-btn')) {
+        var sentEl = wc.querySelector('.wc-sent');
+        var sent = sentEl ? (sentEl.textContent || '').trim() : '';
+        if (sent) {
+          var b1 = document.createElement('button');
+          b1.className = 'wm-yg-btn';
+          b1.textContent = '🎬 Videolarda dinle';
+          b1.onclick = function (e) { e.stopPropagation(); openModal(sent, sent.slice(0, 40)); };
+          var anchor = wc.querySelector('.wc-sent-oku') || wc.querySelector('.wc-sent-tr') || sentEl;
+          if (anchor) anchor.insertAdjacentElement('afterend', b1); else wc.appendChild(b1);
+        }
+      }
+      // Modül/öğrenme yolu kartı: cümleyi dinle
+      var sb = document.querySelector('#sc-path .wp-scene-body');
+      if (sb && !sb.querySelector('.wm-yg-btn')) {
+        var enEl = sb.querySelector('.wp-en');
+        var en = enEl ? (enEl.textContent || '').trim() : '';
+        if (en) {
+          var b2 = document.createElement('button');
+          b2.className = 'wm-yg-btn';
+          b2.textContent = '🎬 Videolarda dinle';
+          b2.onclick = function (e) { e.stopPropagation(); openModal(en, en.slice(0, 40)); };
+          sb.appendChild(b2);
+        }
+      }
+    }
+
+    try {
+      var mo = new MutationObserver(function () { addBtnToPopup(); addBtnToCards(); });
+      mo.observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
+    document.addEventListener('DOMContentLoaded', function () { addBtnToPopup(); addBtnToCards(); });
+    window.addEventListener('load', function () { addBtnToPopup(); addBtnToCards(); });
+    console.log('🎬 [wm-fix] YouGlish entegrasyonu kuruldu');
+  })();
+
 })();
