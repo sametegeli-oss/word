@@ -463,6 +463,67 @@
   })();
 
   /* ============================================================
+     (2c) ÖĞRENME YOLU KELİMELERİNE DOĞRUDAN DOKUNMA → POPUP
+     Öğrenme yolunda kelimeler <span class="wp-w"> ve hiçbir tıklama/
+     dokunma dinleyicisi YOK. Popup, getSelection() (metin seçimi) veya
+     dblclick yoluyla açılıyordu; ikisi de MOBİLDE tek dokunuşta çalışmaz
+     (tek dokunuş metin seçmez, dblclick zoom yapar). Bu yüzden mobilde
+     sadece öğrenme yolunda popup açılmıyordu. Burada wp-w'ye delege bir
+     tek-dokunuş dinleyicisi bağlayıp doğrudan showPronunciationPopup
+     çağırıyoruz (başka ekranlardaki pronounceable-word gibi).
+     ============================================================ */
+  (function tapOpenPathWords() {
+    function wordOf(el) {
+      var w = (el.getAttribute && (el.getAttribute('data-word') || el.getAttribute('data-w'))) || el.textContent || '';
+      w = String(w).trim().replace(/^[^A-Za-z'’-]+|[^A-Za-z'’-]+$/g, ''); // baştaki/sondaki noktalamayı at
+      return w;
+    }
+    function openPopup(word, el) {
+      if (!word) return false;
+      try {
+        var P = window.WM_Pronunciation;
+        if (P && typeof P.showPronunciationPopup === 'function') {
+          P.showPronunciationPopup(word, el);
+          return true;
+        }
+      } catch (e) {}
+      // Yedek yollar
+      try { if (typeof window.explainWord === 'function') { window.explainWord(word); return true; } } catch (e) {}
+      try { if (typeof window._explainWordImpl === 'function') { window._explainWordImpl(word, 'chatMessages'); return true; } } catch (e) {}
+      return false;
+    }
+
+    // Dokunma kaydırma mı tıklama mı ayırt et (sadece bu span için)
+    var sx = 0, sy = 0, moved = false;
+    document.addEventListener('touchstart', function (e) {
+      var t = e.touches && e.touches[0]; if (!t) return;
+      sx = t.clientX; sy = t.clientY; moved = false;
+    }, { passive: true, capture: true });
+    document.addEventListener('touchmove', function (e) {
+      var t = e.touches && e.touches[0]; if (!t) return;
+      if (Math.abs(t.clientX - sx) > 14 || Math.abs(t.clientY - sy) > 14) moved = true;
+    }, { passive: true, capture: true });
+
+    function handleTap(e) {
+      var span = e.target && e.target.closest && e.target.closest('.wp-w');
+      if (!span) return;
+      if (moved) return;                 // kaydırma ise dokunma sayma
+      var word = wordOf(span);
+      if (!word || !/[A-Za-z]/.test(word)) return;
+      // legacy'nin scroll guard'ını da temizle (varsa)
+      try { window._scrollGuardActive = false; } catch (e2) {}
+      if (openPopup(word, span)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+    // touchend (mobil) + click (masaüstü) — ikisi de doğrudan açar
+    document.addEventListener('touchend', handleTap, true);
+    document.addEventListener('click', handleTap, true);
+    console.log('🛡️ [wm-fix] Öğrenme yolu kelime-dokunma açıcı kuruldu (wp-w)');
+  })();
+
+  /* ============================================================
      (2b) TELAFFUZ/KELİME POPUP'INA "BU KELİMENİN GEÇTİĞİ CÜMLELER"
      Öğrenme yolundaki kelime popup'ı (wm-pronunciation-popup-container:
      IPA, ANLAMLAR, Syllables, Play/Slow/Fast, Kelime Açıklama,
