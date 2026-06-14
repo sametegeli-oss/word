@@ -8,6 +8,50 @@
 (function () {
   'use strict';
 
+  /* ============================================================
+     (5) AÇILIŞTA AKTİF LİSTEYİ YÜKLEME — LAZY
+     Legacy artık açılışta tryAutoRestore() çağırmıyor; fonksiyonu
+     window.__wmDeferredRestore'a koyuyor. Burada kullanıcı KELİME
+     ekranına (sc-word / word tab) ilk kez girdiğinde yüklüyoruz.
+     Böylece açılış hızlanır, liste yalnız gerekince yüklenir.
+     ============================================================ */
+  (function lazyActiveList() {
+    var done = false;
+    function ensureLoaded() {
+      if (done) return;
+      // Zaten kelime varsa (kullanıcı liste seçtiyse) tekrar yükleme
+      try {
+        if (Array.isArray(window.allWords) && window.allWords.length > 0) { done = true; return; }
+      } catch (e) {}
+      var fn = window.__wmDeferredRestore;
+      if (typeof fn === 'function') {
+        done = true;
+        try { fn(); } catch (e) {}
+      }
+    }
+    function hook() {
+      // switchTab('word') ve showScreen('sc-word') girişlerinde tetikle
+      if (typeof window.switchTab === 'function' && !window.switchTab.__wmLazy) {
+        var st = window.switchTab;
+        var w = function (e) { if (e === 'word') ensureLoaded(); return st.apply(this, arguments); };
+        w.__wmLazy = true;
+        try { window.switchTab = w; } catch (x) {}
+      }
+      if (typeof window.showScreen === 'function' && !window.showScreen.__wmLazyWord) {
+        var ss = window.showScreen;
+        var w2 = function (id) { if (id === 'sc-word') ensureLoaded(); return ss.apply(this, arguments); };
+        w2.__wmLazyWord = true;
+        // showScreen başka guard'larla da sarılı; zincire ekle
+        try { window.showScreen = w2; } catch (x) {}
+      }
+    }
+    // showScreen birçok kez yeniden sarılıyor; periyodik yeniden bağla
+    var tries = 0;
+    var iv = setInterval(function () { hook(); if (++tries > 80) clearInterval(iv); }, 200);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook);
+    else hook();
+  })();
+
   /* ---------- ORTAK YARDIMCILAR ---------- */
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {

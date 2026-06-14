@@ -685,6 +685,7 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
           +(it.grammar?'<span class="wp-tag">'+esc(it.grammar)+'</span>':'')
           +'<div class="wp-en" id="wpEn">'+wordSpans(it.en)+'</div>'
           +(it.tr?'<div class="wp-tr">'+esc(it.tr)+'</div>':'')
+          +(function(){var p=it.raw&&(it.raw.TRPronunciation||it.raw.trPronunciation||it.raw.trpronunciation);return p?'<div class="wp-tr-oku" style="margin-top:6px;font-size:14px;color:#fbbf24;font-style:italic;opacity:.9">🗣️ '+esc(p)+'</div>':'';})()
         +'</div>'
       +'</div>'
       +'<div class="wp-actions">'
@@ -696,7 +697,6 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
         +'<button class="wp-act ghost" onclick="WMPath.next()"><span class="wp-ico">→</span><span class="wp-lbl">İleri</span></button>'
       +'</div>'
       +'<div class="wp-mini-acts">'
-        +'<div class="wp-mini-title">Bu konuyla pekiştir</div>'
         +'<div class="wp-mini-row">'
           +'<button class="wp-mini" onclick="WMPath.practiceShadow()"><span class="wp-ico">🎧</span><span class="wp-lbl">Shadow</span></button>'
           +'<button class="wp-mini" onclick="WMPath.practiceStory()"><span class="wp-ico">📖</span><span class="wp-lbl">Hikaye</span></button>'
