@@ -685,7 +685,7 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
           +(it.grammar?'<span class="wp-tag">'+esc(it.grammar)+'</span>':'')
           +'<div class="wp-en" id="wpEn">'+wordSpans(it.en)+'</div>'
           +(it.tr?'<div class="wp-tr">'+esc(it.tr)+'</div>':'')
-          +(function(){var p=it.raw&&(it.raw.TRPronunciation||it.raw.trPronunciation||it.raw.trpronunciation);return p?'<div class="wp-tr-oku" style="margin-top:6px;font-size:14px;color:#fbbf24;font-style:italic;opacity:.9">🗣️ '+esc(p)+'</div>':'';})()
+          +(function(){var p=it.raw&&(it.raw.trPron||it.raw.TRPronunciation||it.raw.trPronunciation);return p?'<div class="wp-tr-oku" style="margin-top:6px;font-size:14px;color:#fbbf24;font-style:italic;opacity:.9">🗣️ '+esc(p)+'</div>':'';})()
         +'</div>'
       +'</div>'
       +'<div class="wp-actions">'
@@ -1364,6 +1364,7 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
     var cTopic= pick(keymap,['Topic','Konu']);
     var cWord = pick(keymap,['Word','Kelime']);
     var cId   = pick(keymap,['ID','Id']);
+    var cPron = pick(keymap,['TRPronunciation','TrPronunciation','Pronunciation','Okunus','Okunuş','TROkunus']);
     var allKeys = Object.keys(sample);
 
     // her satırda: başlıktaki EN/TR doğru mu? değilse içerikten bul (kayma sigortası)
@@ -1406,6 +1407,7 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
         order:  cOrd!=null ? (parseFloat(r[cOrd])||idx) : idx,
         sentence: en,
         sentenceTr: et.tr,
+        trPron: cPron!=null ? String(r[cPron]||'').trim() : '',
         imagePrompt: resolveImage(r),
         grammarStructure: cGr!=null ? String(r[cGr]||'').trim() : '',
         level:  cLv!=null ? String(r[cLv]||'').trim() : 'A1',
@@ -2392,9 +2394,10 @@ console.log('🗺️ learning-path.js TAMAMLANDI — WMPath:', typeof window.WMP
     if(typeof window.autoRestoreFromBackupFolder!=='function' || window.autoRestoreFromBackupFolder.__wmPathWrap) return;
     var orig = window.autoRestoreFromBackupFolder;
     var wrapped = async function(){
-      // Önce legacy kendi restore'unu yapsın (kelimeler/SRS/kitaplar)
-      var r;
-      try{ r = await orig.apply(this, arguments); }catch(e){ r=undefined; }
+      // KELİME listesini açılışta YÜKLEME (lazy). Legacy orig'i kelime
+      // ekranına girilince çalışsın diye sakla. Modül Yolu verisini ise
+      // hemen geri yaz (öğrenme yolu için gerekli, ekran açmaz).
+      window.__wmDeferredWordRestore = function(){ try{ return orig.apply(window, []); }catch(e){} };
       // Sonra Modül Yolu verisini en-yeni sağlam yedekten geri yaz
       try{
         var h = window.backupFolderHandle;
@@ -2420,7 +2423,7 @@ console.log('🗺️ learning-path.js TAMAMLANDI — WMPath:', typeof window.WMP
           }
         }
       }catch(e){}
-      return r;
+      return undefined;
     };
     wrapped.__wmPathWrap = true;
     try{ window.autoRestoreFromBackupFolder = wrapped; }catch(e){}

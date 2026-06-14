@@ -28,6 +28,12 @@
         done = true;
         try { fn(); } catch (e) {}
       }
+      // Yedek klasöründen kelime listesi geri yükleme de ertelenmişti
+      var wr = window.__wmDeferredWordRestore;
+      if (typeof wr === 'function') {
+        window.__wmDeferredWordRestore = null;
+        try { wr(); } catch (e) {}
+      }
     }
     function hook() {
       // switchTab('word') ve showScreen('sc-word') girişlerinde tetikle
@@ -549,16 +555,36 @@
     }, { passive: true, capture: true });
 
     function handleTap(e) {
-      var span = e.target && e.target.closest && e.target.closest('.wp-w');
-      if (!span) return;
+      var t = e.target;
+      if (!t || !t.closest) return;
       if (moved) return;                 // kaydırma ise dokunma sayma
-      var word = wordOf(span);
-      if (!word || !/[A-Za-z]/.test(word)) return;
-      // legacy'nin scroll guard'ını da temizle (varsa)
       try { window._scrollGuardActive = false; } catch (e2) {}
-      if (openPopup(word, span)) {
-        e.preventDefault();
-        e.stopPropagation();
+
+      // 1) Öğrenme yolu kelimesi (wp-w) → telaffuz/açıklama popup'ı
+      var span = t.closest('.wp-w');
+      if (span) {
+        var word = wordOf(span);
+        if (word && /[A-Za-z]/.test(word) && openPopup(word, span)) {
+          e.preventDefault(); e.stopPropagation();
+        }
+        return;
+      }
+
+      // 2) Kelime kartındaki cümle kelimeleri (word-clickable / hl / renkli span)
+      //    Bunlar zaten onclick="explainWord(...,'wordCard')" taşır ama mobilde
+      //    tetiklenmeyebiliyor → doğrudan explainWord çağırıyoruz.
+      var cw = t.closest('.word-clickable, .hl, #wordCard .wc-sent span');
+      if (cw) {
+        var inCard = cw.closest('#wordCard');
+        if (inCard) {
+          var w2 = wordOf(cw);
+          if (w2 && /[A-Za-z]/.test(w2)) {
+            try {
+              if (typeof window.explainWord === 'function') { window.explainWord(w2, 'wordCard'); e.preventDefault(); e.stopPropagation(); return; }
+            } catch (e3) {}
+            if (openPopup(w2, cw)) { e.preventDefault(); e.stopPropagation(); }
+          }
+        }
       }
     }
     // touchend (mobil) + click (masaüstü) — ikisi de doğrudan açar
@@ -1090,6 +1116,61 @@
       if (window.saveBookToBackupFolder && !window.saveBookToBackupFolder.__wmContentGuard) wrap();
       if (++tries > 150) clearInterval(iv);
     }, 100);
+  })();
+
+  /* ============================================================
+     (6) KELİME EKRANI (wordCard) → CÜMLE TÜRKÇE OKUNUŞU
+     Kelime objesi TRPronunciation taşımıyor. Cümleyi __WM_PATH_DATA__
+     içinde eşleştirip trPron'u bulup .wc-sent-tr altına ekliyoruz.
+     ============================================================ */
+  (function wordCardOkunus() {
+    var pronIndex = null;
+    function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+    function buildIndex() {
+      pronIndex = {};
+      try {
+        var d = window.__WM_PATH_DATA__;
+        if (Array.isArray(d)) {
+          d.forEach(function (r) {
+            var en = r && (r.sentence || r.SentenceEN || r.en);
+            var p = r && (r.trPron || r.TRPronunciation || r.trPronunciation);
+            if (en && p) pronIndex[norm(en)] = p;
+          });
+        }
+      } catch (e) {}
+    }
+    function findPron(sentence) {
+      if (!sentence) return '';
+      if (pronIndex === null) buildIndex();
+      var k = norm(sentence);
+      if (pronIndex[k]) return pronIndex[k];
+      // path verisi henüz boşsa, sonra dolabilir → indexi tazele
+      if (Object.keys(pronIndex).length === 0) { buildIndex(); if (pronIndex[k]) return pronIndex[k]; }
+      return '';
+    }
+    function inject() {
+      var card = document.getElementById('wordCard');
+      if (!card) return;
+      var trEl = card.querySelector('.wc-sent-tr');
+      if (!trEl) return;
+      if (card.querySelector('.wc-sent-oku')) return; // zaten var
+      var sentEl = card.querySelector('.wc-sent');
+      var sentence = sentEl ? sentEl.textContent : '';
+      var p = findPron(sentence);
+      if (!p) return;
+      var div = document.createElement('div');
+      div.className = 'wc-sent-oku';
+      div.style.cssText = 'margin-top:6px;font-size:14px;color:#fbbf24;font-style:italic;opacity:.9';
+      div.textContent = '🗣️ ' + p;
+      trEl.insertAdjacentElement('afterend', div);
+    }
+    // wordCard her renderLearn'de yeniden kurulur → gözlemle
+    try {
+      var mo = new MutationObserver(function () { inject(); });
+      mo.observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
+    document.addEventListener('DOMContentLoaded', inject);
+    window.addEventListener('load', inject);
   })();
 
 })();
