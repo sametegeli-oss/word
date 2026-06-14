@@ -1002,13 +1002,15 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
 
     // Açıklamayı yalnızca KAYDIRMA/HAREKET kaynaklıysa engelle (gerçek tap/tık etkilenmez).
     function shouldBlock(){ return touchMoved || recentlyScrolled(); }
+    function shouldBlockLoose(){ return touchMoved; } // sadece o anki dokunuş kaydıysa
 
-    function guard(name){
+    function guard(name, loose){
       var orig = window[name];
       if(typeof orig!=='function' || orig.__wmGuarded) return;
+      var blockFn = loose ? shouldBlockLoose : shouldBlock;
       var wrapped = function(){
         if(inEditable()) return orig.apply(this, arguments);
-        if(shouldBlock()){
+        if(blockFn()){
           try{ var s=window.getSelection&&window.getSelection(); if(s&&s.removeAllRanges) s.removeAllRanges(); }catch(e){}
           return;
         }
@@ -1018,9 +1020,12 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
       try{ window[name]=wrapped; }catch(e){}
     }
     function apply(){
-      guard('handleWordSelection');
-      guard('_explainWordImpl');
-      guard('handleMobileTouchEnd');   // mobilde dokunma bitince açıklama açan ASIL fonksiyon
+      guard('handleWordSelection');          // sıkı: istemsiz seçim/scroll engellensin
+      guard('_explainWordImpl', true);        // gevşek: kasıtlı kelime seçimi kaydırma sonrası da açılsın
+      // NOT: handleMobileTouchEnd KASITLI bir dokunmanın sonudur; onu
+      // recentlyScrolled penceresiyle engellemek mobilde popup'ın hiç
+      // açılmamasına yol açıyordu. İstemsiz açılmayı zaten handleWordSelection
+      // guard'ı önlüyor. Bu yüzden artık sarmıyoruz.
       guard('handleWordDoubleClick');
     }
     apply();

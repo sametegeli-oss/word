@@ -474,6 +474,25 @@
     var POPUP_ID = 'wm-pronunciation-popup-container';
     var lastWord = '';
 
+    // yol.html ile birebir aynı gramer-rolü renkleri + token stili
+    if (!document.getElementById('wm-pos-colors-css')) {
+      var pcss = document.createElement('style');
+      pcss.id = 'wm-pos-colors-css';
+      pcss.textContent =
+        '.wm-tok{display:inline-block;padding:1px 2px;border-radius:6px;transition:.15s}' +
+        '.wm-tok.pos-subject{color:#60a5fa;font-weight:800}' +
+        '.wm-tok.pos-verb{color:#ef4444;font-weight:800}' +
+        '.wm-tok.pos-be{color:#fb923c;font-weight:800}' +
+        '.wm-tok.pos-article{color:#facc15;font-weight:800}' +
+        '.wm-tok.pos-prep{color:#22c55e;font-weight:800}' +
+        '.wm-tok.pos-noun{color:#38bdf8;font-weight:800}' +
+        '.wm-tok.pos-adj{color:#a78bfa;font-weight:800}' +
+        '.wm-tok.pos-conn{color:#f472b6;font-weight:800}' +
+        '.wm-tok.pos-adv{color:#34d399;font-weight:800}' +
+        '.wm-tok.pos-pron{color:#93c5fd;font-weight:800}';
+      document.head.appendChild(pcss);
+    }
+
     function findExamples(word, limit) {
       try {
         if (typeof window.wmFindWordExampleSentences === 'function') {
@@ -483,13 +502,81 @@
       return [];
     }
 
+    // ── yol.html ile BİREBİR aynı renklendirme mantığı (AI YOK) ──
+    // Kelime rolü: önce satırın GrammarStructure'ından, yoksa sabit
+    // kelime listelerinden + sözlükten belirlenir. Renkler pos-* sınıfları.
+    function wmBase(w) {
+      try { if (typeof window.baseWord === 'function') return window.baseWord(w); } catch (e) {}
+      return String(w == null ? '' : w).toLowerCase().replace(/^[^a-z]+|[^a-z]+$/g, '');
+    }
+    function roleFromGrammarAt(r, idx) {
+      var gs = String((r && r.GrammarStructure) || '').toLowerCase();
+      if (!gs) return '';
+      var pieces = gs.split(/\s*\+\s*|\s*>\s*|\s*,\s*/).map(function (x) { return x.trim(); }).filter(Boolean);
+      var p = pieces[idx] || '';
+      if (/subject|pronoun/.test(p)) return 'subject';
+      if (/be verb|\bbe\b|am\/is\/are/.test(p)) return 'be';
+      if (/article|a\/an|determiner/.test(p)) return 'article';
+      if (/preposition|prep/.test(p)) return 'prep';
+      if (/connector|conjunction|because|although/.test(p)) return 'conn';
+      if (/adjective|adj/.test(p)) return 'adj';
+      if (/adverb|adv/.test(p)) return 'adv';
+      if (/noun|object|complement/.test(p)) return 'noun';
+      if (/verb|modal|auxiliary/.test(p)) return 'verb';
+      return '';
+    }
+    function roleFromWordRepo(w) {
+      var lw = wmBase(w);
+      if (['i','you','he','she','it','we','they','me','him','her','us','them','my','your','his','our','their'].indexOf(lw) >= 0) return 'subject';
+      if (['am','is','are','was','were','be','been','being'].indexOf(lw) >= 0) return 'be';
+      if (['a','an','the'].indexOf(lw) >= 0) return 'article';
+      if (['in','on','at','to','for','from','with','by','of','about','into','over','under','after','before','between','near'].indexOf(lw) >= 0) return 'prep';
+      if (['and','but','or','because','although','however','therefore','so','while','when','if'].indexOf(lw) >= 0) return 'conn';
+      var rec = null; try { if (typeof window.WM_lookupDict === 'function') rec = window.WM_lookupDict(w); } catch (e) {}
+      var m = rec ? (Array.isArray(rec.meanings) ? rec.meanings.join(' ') : JSON.stringify(rec)).toLowerCase() : '';
+      if (/\[f\.\]|verb|fiil/.test(m)) return 'verb';
+      if (/\[i\.\]|noun|isim/.test(m)) return 'noun';
+      if (/\[s\.\]|adjective|sıfat|sifat/.test(m)) return 'adj';
+      if (/\[z\.\]|adverb|zarf/.test(m)) return 'adv';
+      if (/ly$/.test(lw)) return 'adv';
+      return '';
+    }
+    function roleOf(w, r, idx) {
+      var role = roleFromGrammarAt(r, idx);
+      if (role) return role;
+      try { if (typeof window.roleOfToken === 'function') role = window.roleOfToken(w, r, idx); } catch (e) {}
+      return role || roleFromWordRepo(w);
+    }
+    function parseColors(r) {
+      try { if (typeof window.parseWordModeColors === 'function') return window.parseWordModeColors(r || {}); } catch (e) {}
+      var raw = String((r && (r.colors || r.Colors || r.Renkler || r.renkler)) || ''); var out = {};
+      raw.split(/[,;|]/).forEach(function (x) {
+        var a = x.split(':'); if (a.length >= 2) { var k = wmBase(a[0]); var v = a.slice(1).join(':').trim(); if (k && /^#?[0-9a-f]{3,8}$/i.test(v)) { if (v[0] !== '#') v = '#' + v; out[k] = v; } }
+      });
+      return out;
+    }
+    var tokenize2 = function (s) { return String(s || '').match(/[A-Za-z][A-Za-z'’\-]*|[^A-Za-z]+/g) || []; };
+
+    // Cümleyi yol.html gibi renkli span'lerle render et
+    function renderSentenceTokens(en, row) {
+      var r = row || {}, colors = parseColors(r), wordIndex = 0;
+      return tokenize2(en).map(function (part) {
+        if (!/^[A-Za-z]/.test(part)) return esc(part);
+        var k = wmBase(part), col = colors[k];
+        var role = roleOf(part, r, wordIndex++);
+        var cls = 'wm-tok' + (role ? (' pos-' + role) : '');
+        var style = col ? (' style="color:' + esc(col) + '"') : '';
+        return '<span class="' + cls + '"' + style + '>' + esc(part) + '</span>';
+      }).join('');
+    }
+
     function buildBoxHtml(word) {
       var rows = findExamples(word, 7);
       if (!rows.length) return '';
       return '<div class="wm-word-examples-box"><h3>Bu kelimenin geçtiği cümleler</h3>' +
         rows.map(function (r) {
-          return '<div class="wm-word-example-item"><b>' + esc(r.en) + '</b>' +
-            (r.tr ? '<br><span>' + esc(r.tr) + '</span>' : '') + '</div>';
+          return '<div class="wm-word-example-item"><b>' + renderSentenceTokens(r.en, r.row || r) + '</b>' +
+            (r.tr ? '<br><span class="wm-ex-tr">' + esc(r.tr) + '</span>' : '') + '</div>';
         }).join('') + '</div>';
     }
 
