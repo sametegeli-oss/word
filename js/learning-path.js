@@ -690,6 +690,7 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
       +'</div>'
       +'<div class="wp-actions">'
         +'<button class="wp-act listen" onclick="WMPath.listen()"><span class="wp-ico">🔊</span><span class="wp-lbl">Dinle</span></button>'
+        +'<button class="wp-act ambient" onclick="WMPath.ambient()"><span class="wp-ico">🌧️</span><span class="wp-lbl">Ortam</span></button>'
         +'<button class="wp-act speak" onclick="WMPath.speak()"><span class="wp-ico">🎙️</span><span class="wp-lbl">Konuş</span></button>'
         +'<button class="wp-act ai" onclick="WMPath.explain()"><span class="wp-ico">🧠</span><span class="wp-lbl">Açıkla</span></button>'
         +'<button class="wp-act know" onclick="WMPath.mark()"><span class="wp-ico">'+(known?'✓':'✅')+'</span><span class="wp-lbl">Bildim</span></button>'
@@ -776,7 +777,130 @@ console.log('🗺️ learning-path.js YÜKLENDİ — sürüm v15');
       if (url){ scene.style.backgroundImage='url("'+url+'")';
         scene.style.backgroundSize='cover'; scene.style.backgroundPosition='center'; }
     }).catch(function(){ scene.classList.remove('wp-shimmer'); });
+    // Sahneye uygun ortam sesi türünü hazırla (otomatik çalmaz; butonla)
+    try{ WMAmb.setScene(detectScene((it.img||'')+' '+(it.en||''))); }catch(e){}
+    // ses çalıyorsa yeni kartta buton etiketini senkron tut
+    try{ if(WMAmb.isPlaying()){ var b=document.querySelector('.wp-act.ambient .wp-lbl'), ic=document.querySelector('.wp-act.ambient .wp-ico'); if(b)b.textContent='Ortam ✓'; if(ic)ic.textContent='🔉'; } }catch(e){}
   }
+
+  /* ---------- ORTAM SESİ (Web Audio ile sentez, dosyasız) ----------
+     Cümlenin konusuna göre ambians: yağmur, deniz, rüzgâr, şehir,
+     kafe, orman/kuş, gece, oda tonu. Butonla aç/kapa. Kart değişince
+     tür değişir; çalıyorsa yeni türe geçer. */
+  function detectScene(text){
+    var t=(text||'').toLowerCase();
+    if(/\b(rain|storm|thunder|drizzle|wet|umbrella)\b/.test(t)) return 'rain';
+    if(/\b(sea|ocean|beach|wave|shore|coast|surf|tide)\b/.test(t)) return 'waves';
+    if(/\b(wind|windy|cold|snow|mountain|storm|breeze)\b/.test(t)) return 'wind';
+    if(/\b(city|street|car|traffic|road|bus|town|drive|highway)\b/.test(t)) return 'city';
+    if(/\b(cafe|coffee|restaurant|bar|kitchen|cook|eat|dinner|lunch)\b/.test(t)) return 'cafe';
+    if(/\b(forest|tree|bird|wood|park|garden|jungle|nature|leaf)\b/.test(t)) return 'forest';
+    if(/\b(night|sleep|dark|star|moon|evening|quiet)\b/.test(t)) return 'night';
+    return 'room';
+  }
+
+  var WMAmb = (function(){
+    var ctx=null, nodes=[], gain=null, playing=false, scene='room', timer=null;
+    function AC(){ return window.AudioContext||window.webkitAudioContext; }
+    function ensureCtx(){ if(!ctx){ var C=AC(); if(!C) return null; ctx=new C(); } return ctx; }
+    // pembe/kahverengi gürültü tamponu
+    function noiseBuffer(kind){
+      var len=ctx.sampleRate*4, b=ctx.createBuffer(1,len,ctx.sampleRate), d=b.getChannelData(0);
+      var last=0;
+      for(var i=0;i<len;i++){
+        var w=Math.random()*2-1;
+        if(kind==='brown'){ last=(last+0.02*w)/1.02; d[i]=last*3.5; }
+        else { d[i]=w; } // white
+      }
+      return b;
+    }
+    function srcNoise(kind){ var s=ctx.createBufferSource(); s.buffer=noiseBuffer(kind); s.loop=true; return s; }
+    function stopNodes(){ nodes.forEach(function(n){ try{ n.stop&&n.stop(); }catch(e){} try{ n.disconnect&&n.disconnect(); }catch(e){} }); nodes=[]; if(timer){clearInterval(timer);timer=null;} }
+
+    function build(sc){
+      stopNodes();
+      gain=ctx.createGain(); gain.gain.value=0.0; gain.connect(ctx.destination);
+      var target=0.18; // genel kısık seviye
+      if(sc==='rain'){
+        var n=srcNoise('white'), hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=900;
+        var lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=7000;
+        n.connect(hp); hp.connect(lp); lp.connect(gain); n.start(); nodes.push(n);
+        target=0.16;
+      } else if(sc==='waves'){
+        var n2=srcNoise('brown'), lp2=ctx.createBiquadFilter(); lp2.type='lowpass'; lp2.frequency.value=600;
+        var g2=ctx.createGain(); g2.gain.value=0.2; n2.connect(lp2); lp2.connect(g2); g2.connect(gain); n2.start(); nodes.push(n2);
+        // dalga salınımı (LFO ile gain modülasyonu)
+        var t0=ctx.currentTime; timer=setInterval(function(){
+          var now=ctx.currentTime; g2.gain.cancelScheduledValues(now);
+          g2.gain.setValueAtTime(g2.gain.value, now);
+          g2.gain.linearRampToValueAtTime(0.05, now+2.2);
+          g2.gain.linearRampToValueAtTime(0.30, now+4.5);
+        },4500);
+        target=0.22;
+      } else if(sc==='wind'){
+        var n3=srcNoise('brown'), bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=500; bp.Q.value=0.7;
+        n3.connect(bp); bp.connect(gain); n3.start(); nodes.push(n3); target=0.2;
+      } else if(sc==='city'){
+        var n4=srcNoise('brown'), lp4=ctx.createBiquadFilter(); lp4.type='lowpass'; lp4.frequency.value=400;
+        n4.connect(lp4); lp4.connect(gain); n4.start(); nodes.push(n4); target=0.17;
+      } else if(sc==='cafe'){
+        var n5=srcNoise('white'), bp5=ctx.createBiquadFilter(); bp5.type='bandpass'; bp5.frequency.value=1000; bp5.Q.value=0.5;
+        var lp5=ctx.createBiquadFilter(); lp5.type='lowpass'; lp5.frequency.value=2500;
+        n5.connect(bp5); bp5.connect(lp5); lp5.connect(gain); n5.start(); nodes.push(n5); target=0.14;
+      } else if(sc==='forest'){
+        var n6=srcNoise('white'), lp6=ctx.createBiquadFilter(); lp6.type='lowpass'; lp6.frequency.value=3000;
+        var g6=ctx.createGain(); g6.gain.value=0.05; n6.connect(lp6); lp6.connect(g6); g6.connect(gain); n6.start(); nodes.push(n6);
+        // ara ara kuş ötüşü (kısa sinüs cıvıltıları)
+        timer=setInterval(function(){
+          if(Math.random()<0.5) chirp();
+        },1800);
+        target=0.16;
+      } else if(sc==='night'){
+        var n7=srcNoise('white'), bp7=ctx.createBiquadFilter(); bp7.type='bandpass'; bp7.frequency.value=4500; bp7.Q.value=8;
+        var g7=ctx.createGain(); g7.gain.value=0.06; n7.connect(bp7); bp7.connect(g7); g7.connect(gain); n7.start(); nodes.push(n7); target=0.18;
+      } else { // room
+        var n8=srcNoise('brown'), lp8=ctx.createBiquadFilter(); lp8.type='lowpass'; lp8.frequency.value=200;
+        n8.connect(lp8); lp8.connect(gain); n8.start(); nodes.push(n8); target=0.10;
+      }
+      // yumuşak fade-in
+      var now=ctx.currentTime; gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(target, now+1.2);
+    }
+    function chirp(){
+      try{
+        var o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sine'; var f=1800+Math.random()*1500; o.frequency.setValueAtTime(f, ctx.currentTime);
+        o.frequency.linearRampToValueAtTime(f+400, ctx.currentTime+0.08);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.18);
+        o.connect(g); g.connect(gain||ctx.destination); o.start(); o.stop(ctx.currentTime+0.2);
+      }catch(e){}
+    }
+    return {
+      setScene:function(s){ scene=s||'room'; if(playing){ try{build(scene);}catch(e){} } },
+      isPlaying:function(){ return playing; },
+      toggle:function(){
+        if(!ensureCtx()) return false;
+        if(ctx.state==='suspended') ctx.resume();
+        if(playing){ stop(); return false; }
+        try{ build(scene); playing=true; return true; }catch(e){ return false; }
+      },
+      stop:stop
+    };
+    function stop(){ if(gain){ try{ var now=ctx.currentTime; gain.gain.cancelScheduledValues(now); gain.gain.setValueAtTime(gain.gain.value,now); gain.gain.linearRampToValueAtTime(0.0001, now+0.4);}catch(e){} } setTimeout(stopNodes,450); playing=false; }
+  })();
+  window.WMAmb = WMAmb;
+
+  // Ortam butonu (aksiyon satırına eklenir; toggle eder)
+  window.WMPath = window.WMPath || {};
+  window.WMPath.ambient = function(){
+    var on=WMAmb.toggle();
+    var b=document.querySelector('.wp-act.ambient .wp-lbl');
+    var ic=document.querySelector('.wp-act.ambient .wp-ico');
+    if(b) b.textContent = on?'Ortam ✓':'Ortam';
+    if(ic) ic.textContent = on?'🔉':'🌧️';
+  };
 
   /* ---------- ders aksiyonları (mevcut motorlara bağlı) ---------- */
   function curItem(){ var l=I.findLesson(view.lessonId); return l?l.items[view.stepIdx]:null; }
